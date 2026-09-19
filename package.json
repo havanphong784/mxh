@@ -1,0 +1,16 @@
+{
+  "name": "mxh",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@11.19.0",
+  "scripts": {
+    "dev": "turbo run dev"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "turbo": "^2.11.2"
+  }
+}
