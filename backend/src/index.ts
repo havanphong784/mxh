@@ -1,21 +1,27 @@
-import Fastify from 'fastify';
-import {db} from "./prisma/db";
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import {
+    FastifyAdapter,
+    NestFastifyApplication,
+} from '@nestjs/platform-fastify';
+import { AppModule } from './app.module.js';
+import 'dotenv/config';
 
-const app = Fastify({ logger: true });
-app.decorate('db',db);
+async function bootstrap() {
+    const app = await NestFactory.create<NestFastifyApplication>(
+        AppModule,
+        new FastifyAdapter({ logger: true })
+    );
 
-app.get('/api/health', async () => {
-    return { status: 'ok', message: 'Backend is running!' };
+    app.enableShutdownHooks();
+    app.setGlobalPrefix('api/v1');
+
+    const port = process.env.PORT || 3000 || 30001;
+    await app.listen(port, '0.0.0.0');
+    console.log(`🚀 Backend NestJS running on http://localhost:${port}`);
+}
+
+bootstrap().catch((err) => {
+    console.error('Error starting backend:', err);
+    process.exit(1);
 });
-
-const start = async () => {
-    try {
-        await app.listen({ port: 3001, host: '0.0.0.0' });
-        console.log('🚀 Backend running on http://localhost:5000');
-    } catch (err) {
-        app.log.error(err);
-        process.exit(1);
-    }
-};
-
-await start();
