@@ -1,6 +1,6 @@
 import {CanActivate, ExecutionContext, Injectable, UnauthorizedException,} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
-import {FastifyRequest} from 'fastify';
+import type {FastifyRequest} from 'fastify';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {

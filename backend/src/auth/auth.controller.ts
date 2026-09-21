@@ -1,6 +1,8 @@
-import {Body, Controller, HttpCode, HttpStatus, Post} from '@nestjs/common';
+import {Body, Controller, HttpCode, HttpStatus, Post, Req, Res,} from '@nestjs/common';
+import type {FastifyReply, FastifyRequest} from 'fastify';
 import {AuthService} from './auth.service.js';
-import {RegisterDto} from "./dto/register.dto.js";
+import {RegisterDto} from './dto/register.dto.js';
+import {VerifyOtpDto} from './dto/verify-otp.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -10,5 +12,36 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  async verifyOtp(
+      @Body() dto: VerifyOtpDto,
+      @Req() req: FastifyRequest,
+      @Res({ passthrough: true }) res: FastifyReply
+  ) {
+    const meta = {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    };
+
+    const result = await this.authService.verifyOtp(dto, meta);
+    this.setRefreshTokenCookie(res, result.refreshToken);
+    return {
+      message: result.message,
+      accessToken: result.accessToken,
+      user: result.user,
+    };
+  }
+
+  private setRefreshTokenCookie(res: FastifyReply, refreshToken: string) {
+    res.setCookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Chỉ bật HTTPS khi lên Production
+      sameSite: 'lax',    // Chống tấn công CSRF
+      path: '/api/v1/auth',
+      maxAge: 7 * 24 * 60 * 60,
+    });
   }
 }
