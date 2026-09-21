@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'9aee2e93a46a09853df2b1e5ceeb2935f544ca6627e88c3a8d13e85579b7db64'>;
+  StorageHashBase<'b9fa1226b406af36af7ca6d637d607e6a7a0cc409fecacd98ab27fa66f188c7a'>;
 export type ExecutionHash =
   ExecutionHashBase<'a96cc352420e3e8e3f2c5fbc1baed0635cf7c943e88fc1dc437b05abfc4c5cea'>;
 export type ProfileHash =
@@ -246,7 +246,7 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
       readonly codeHash: CodecTypes['pg/text@1']['output'];
-      readonly type: CodecTypes['pg/text@1']['output'];
+      readonly type: Varchar<20>;
       readonly attempts: CodecTypes['pg/int4@1']['output'];
       readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -266,10 +266,10 @@ export type FieldOutputTypes = {
     readonly User: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
-      readonly username: CodecTypes['pg/text@1']['output'];
-      readonly displayName: CodecTypes['pg/text@1']['output'];
+      readonly username: Varchar<30>;
+      readonly displayName: Varchar<80>;
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
-      readonly bio: CodecTypes['pg/text@1']['output'] | null;
+      readonly bio: Varchar<280> | null;
       readonly avatarUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly isActive: CodecTypes['pg/bool@1']['output'];
@@ -285,7 +285,7 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
       readonly codeHash: CodecTypes['pg/text@1']['input'];
-      readonly type: CodecTypes['pg/text@1']['input'];
+      readonly type: CodecTypes['sql/varchar@1']['input'];
       readonly attempts: CodecTypes['pg/int4@1']['input'];
       readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -305,10 +305,10 @@ export type FieldInputTypes = {
     readonly User: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
-      readonly username: CodecTypes['pg/text@1']['input'];
-      readonly displayName: CodecTypes['pg/text@1']['input'];
+      readonly username: CodecTypes['sql/varchar@1']['input'];
+      readonly displayName: CodecTypes['sql/varchar@1']['input'];
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
-      readonly bio: CodecTypes['pg/text@1']['input'] | null;
+      readonly bio: CodecTypes['sql/varchar@1']['input'] | null;
       readonly avatarUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly isActive: CodecTypes['pg/bool@1']['input'];
@@ -327,7 +327,7 @@ export type StorageColumnTypes = {
       readonly email: CodecTypes['pg/text@1']['output'];
       readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
-      readonly type: CodecTypes['pg/text@1']['output'];
+      readonly type: Varchar<20>;
       readonly userId: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly session: {
@@ -344,16 +344,16 @@ export type StorageColumnTypes = {
     readonly user: {
       readonly avatarUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['output'] | null;
-      readonly bio: CodecTypes['pg/text@1']['output'] | null;
+      readonly bio: Varchar<280> | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly displayName: CodecTypes['pg/text@1']['output'];
+      readonly displayName: Varchar<80>;
       readonly email: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly isActive: CodecTypes['pg/bool@1']['output'];
       readonly isEmailVerified: CodecTypes['pg/bool@1']['output'];
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly username: CodecTypes['pg/text@1']['output'];
+      readonly username: Varchar<30>;
     };
   };
 };
@@ -366,7 +366,7 @@ export type StorageColumnInputTypes = {
       readonly email: CodecTypes['pg/text@1']['input'];
       readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
-      readonly type: CodecTypes['pg/text@1']['input'];
+      readonly type: CodecTypes['sql/varchar@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly session: {
@@ -383,16 +383,16 @@ export type StorageColumnInputTypes = {
     readonly user: {
       readonly avatarUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['input'] | null;
-      readonly bio: CodecTypes['pg/text@1']['input'] | null;
+      readonly bio: CodecTypes['sql/varchar@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly displayName: CodecTypes['pg/text@1']['input'];
+      readonly displayName: CodecTypes['sql/varchar@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly isActive: CodecTypes['pg/bool@1']['input'];
       readonly isEmailVerified: CodecTypes['pg/bool@1']['input'];
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly username: CodecTypes['pg/text@1']['input'];
+      readonly username: CodecTypes['sql/varchar@1']['input'];
     };
   };
 };
@@ -401,10 +401,10 @@ export namespace Models {
   export type public_User = {
     id: CodecTypes['pg/text@1']['output'];
     email: CodecTypes['pg/text@1']['output'];
-    username: CodecTypes['pg/text@1']['output'];
-    displayName: CodecTypes['pg/text@1']['output'];
+    username: Varchar<30>;
+    displayName: Varchar<80>;
     passwordHash: CodecTypes['pg/text@1']['output'];
-    bio: CodecTypes['pg/text@1']['output'] | null;
+    bio: Varchar<280> | null;
     avatarUrl: CodecTypes['pg/text@1']['output'] | null;
     bannerUrl: CodecTypes['pg/text@1']['output'] | null;
     isActive: CodecTypes['pg/bool@1']['output'];
@@ -432,7 +432,7 @@ export namespace Models {
     id: CodecTypes['pg/text@1']['output'];
     email: CodecTypes['pg/text@1']['output'];
     codeHash: CodecTypes['pg/text@1']['output'];
-    type: CodecTypes['pg/text@1']['output'];
+    type: Varchar<20>;
     attempts: CodecTypes['pg/int4@1']['output'];
     expiresAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -486,9 +486,10 @@ type ContractBase = Omit<
                   readonly nullable: false;
                 };
                 readonly type: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
+                  readonly nativeType: 'character varying';
+                  readonly codecId: 'sql/varchar@1';
                   readonly nullable: false;
+                  readonly typeParams: { readonly length: 20 };
                 };
                 readonly attempts: {
                   readonly nativeType: 'int4';
@@ -644,14 +645,16 @@ type ContractBase = Omit<
                   readonly nullable: false;
                 };
                 readonly username: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
+                  readonly nativeType: 'character varying';
+                  readonly codecId: 'sql/varchar@1';
                   readonly nullable: false;
+                  readonly typeParams: { readonly length: 30 };
                 };
                 readonly displayName: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
+                  readonly nativeType: 'character varying';
+                  readonly codecId: 'sql/varchar@1';
                   readonly nullable: false;
+                  readonly typeParams: { readonly length: 80 };
                 };
                 readonly passwordHash: {
                   readonly nativeType: 'text';
@@ -659,9 +662,10 @@ type ContractBase = Omit<
                   readonly nullable: false;
                 };
                 readonly bio: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
+                  readonly nativeType: 'character varying';
+                  readonly codecId: 'sql/varchar@1';
                   readonly nullable: true;
+                  readonly typeParams: { readonly length: 280 };
                 };
                 readonly avatarUrl: {
                   readonly nativeType: 'text';
@@ -749,7 +753,11 @@ type ContractBase = Omit<
               };
               readonly type: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 20 };
+                };
               };
               readonly attempts: {
                 readonly nullable: false;
@@ -887,11 +895,19 @@ type ContractBase = Omit<
               };
               readonly username: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 30 };
+                };
               };
               readonly displayName: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 80 };
+                };
               };
               readonly passwordHash: {
                 readonly nullable: false;
@@ -899,7 +915,11 @@ type ContractBase = Omit<
               };
               readonly bio: {
                 readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 280 };
+                };
               };
               readonly avatarUrl: {
                 readonly nullable: true;

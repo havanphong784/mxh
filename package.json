@@ -14,5 +14,8 @@
     "@types/pg": "^8.23.1",
     "prisma": "^8.0.0-rc.15",
     "turbo": "^2.11.2"
+  },
+  "allowScripts": {
+    "*": true
   }
 }

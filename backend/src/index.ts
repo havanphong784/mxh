@@ -6,6 +6,8 @@ import {
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
 import 'dotenv/config';
+import fastifyCookie from "@fastify/cookie";
+import {ValidationPipe} from "@nestjs/common";
 
 async function bootstrap() {
     const app = await NestFactory.create<NestFastifyApplication>(
@@ -13,6 +15,14 @@ async function bootstrap() {
         new FastifyAdapter({ logger: true })
     );
 
+    await app.register(fastifyCookie as any,{secret: process.env.COOKIE_SECRET || 'cookies-secret'});
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        })
+    );
     app.enableShutdownHooks();
     app.setGlobalPrefix('api/v1');
 

@@ -1,10 +1,57 @@
 // use prisma-8
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
+  id              String   @id @default(cuid(2))
+  email           String   @unique
+  username        String   @unique
+  displayName     String
+  passwordHash    String
+
+  bio             String?
+  avatarUrl       String?
+  bannerUrl       String?
+
+  isActive        Boolean  @default(true)
+  isEmailVerified Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       temporal.updatedAt()
+
+  // Quan hệ
+  sessions        Session[]
+  otpCodes        OtpVerification[]
+}
+
+model Session {
+  id           String    @id @default(cuid(2))
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash    String    // Lưu mã băm SHA-256 của Refresh Token
+  userAgent    String?   // Thông tin thiết bị/trình duyệt
+  ipAddress    String?   // IP đăng nhập
+  isRevoked    Boolean   @default(false)
+  expiresAt    DateTime  // Thời điểm token hết hạn
+
+  createdAt    DateTime  @default(now())
+  updatedAt    temporal.updatedAt()
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid(2))
+  email     String
+  codeHash  String   // Lưu mã băm SHA-256 của OTP 6 số
+  type      String   // 'REGISTER_VERIFY' | 'FORGOT_PASSWORD'
+  attempts  Int      @default(0) // Số lần nhập sai (max 5)
+  expiresAt DateTime // Thời hạn OTP (5 phút)
+
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, type])
 }
