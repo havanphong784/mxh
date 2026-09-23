@@ -1,14 +1,34 @@
-import {Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException,} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import type {FastifyReply, FastifyRequest} from 'fastify';
 import {AuthService} from './auth.service.js';
 import {RegisterDto} from './dto/register.dto.js';
 import {VerifyOtpDto} from './dto/verify-otp.dto.js';
 import {ResendOtpDto} from "./dto/resend-otp.dto.js";
 import {LoginDto} from "./dto/login.dto.js";
+import {JwtAuthGuard} from "./guards/jwt-auth.guard.js";
+import {CurrentUser} from "./decorators/current-user.decorator.js";
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async getMe(@CurrentUser('sub') userId: string) {
+    return this.authService.getMe(userId);
+  }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)

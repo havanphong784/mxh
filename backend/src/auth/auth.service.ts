@@ -31,6 +31,28 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) {}
 
+    async getMe(userId: string) {
+        const user = await this.prisma.client.orm.public.User
+            .where((u) => u.id.eq(userId))
+            .first();
+
+        if (!user || !user.isActive) {
+            throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
+        }
+
+        return {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            bannerUrl: user.bannerUrl,
+            bio: user.bio,
+            isEmailVerified: user.isEmailVerified,
+            createdAt: user.createdAt,
+        };
+    }
+
     async register(dto:RegisterDto) {
         const email = dto.email;
         const username = dto.username;
