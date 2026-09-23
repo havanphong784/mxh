@@ -1,4 +1,4 @@
-import {Body, Controller, HttpCode, HttpStatus, Post, Req, Res,} from '@nestjs/common';
+import {Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException,} from '@nestjs/common';
 import type {FastifyReply, FastifyRequest} from 'fastify';
 import {AuthService} from './auth.service.js';
 import {RegisterDto} from './dto/register.dto.js';
@@ -62,6 +62,31 @@ export class AuthController {
       message: result.message,
       accessToken: result.accessToken,
       user: result.user,
+    };
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+      @Req() req: FastifyRequest,
+      @Res({ passthrough: true }) res: FastifyReply
+  ) {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Không tìm thấy refresh token trong cookie');
+    }
+
+    const meta = {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    };
+
+    const result = await this.authService.refreshTokens(refreshToken, meta);
+    this.setRefreshTokenCookie(res, result.refreshToken);
+
+    return {
+      message: result.message,
+      accessToken: result.accessToken,
     };
   }
 

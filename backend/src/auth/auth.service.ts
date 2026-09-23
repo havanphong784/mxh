@@ -239,6 +239,62 @@ export class AuthService {
         };
     }
 
+    async refreshTokens(refreshToken: string, meta: RequestMeta) {
+        let payload: any;
+        try {
+            payload = await this.jwtService.verifyAsync(refreshToken, {
+                secret: process.env.JWT_REFRESH_SECRET,
+            });
+        } catch {
+            throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn.');
+        }
+
+        const tokenHash = this.hashSha256(refreshToken);
+        const session = await this.prisma.client.orm.public.Session
+            .where((s) => s.tokenHash.eq(tokenHash))
+            .first();
+
+        if (!session) {
+            throw new UnauthorizedException('Phiên đăng nhập không tồn tại hoặc đã bị đăng xuất.');
+        }
+        if (session.isRevoked) {
+            await this.prisma.client.orm.public.Session
+                .where((s) => s.userId.eq(session.userId))
+                .update({ isRevoked: true });
+
+            await this.prisma.client.orm.public.Session
+                .where({ id: session.id })
+                .delete();
+
+            throw new ForbiddenException('Phát hiện dấu hiệu bất thường. Toàn bộ phiên đăng nhập đã bị hủy, vui lòng đăng nhập lại.');
+        }
+
+        if (Date.now() > (session.expiresAt as any).epochMilliseconds) {
+            throw new UnauthorizedException('Phiên đăng nhập đã hết hạn.');
+        }
+
+        const user = await this.prisma.client.orm.public.User
+            .where((u) => u.id.eq(session.userId))
+            .first();
+
+        if (!user || !user.isActive) {
+            throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
+        }
+
+        await this.prisma.client.orm.public.Session
+            .where({ id: session.id })
+            .update({ isRevoked: true });
+
+        const tokens = await this.generateTokens(user);
+        await this.createSession(user.id, tokens.refreshToken, meta);
+
+        return {
+            message: 'Làm mới phiên đăng nhập thành công!',
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+        };
+    }
+
     private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {
         const tokenHash = this.hashSha256(refreshToken);
         const expiresAt = Temporal.Instant.fromEpochMilliseconds(
