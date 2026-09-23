@@ -65,6 +65,18 @@ export class AuthController {
     };
   }
 
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+      @Req() req: FastifyRequest,
+      @Res({ passthrough: true }) res: FastifyReply
+  ) {
+    const refreshToken = req.cookies.refreshToken;
+    const result = await this.authService.logout(refreshToken);
+    this.clearRefreshTokenCookie(res);
+    return result;
+  }
+
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -88,6 +100,15 @@ export class AuthController {
       message: result.message,
       accessToken: result.accessToken,
     };
+  }
+
+  private clearRefreshTokenCookie(res: FastifyReply) {
+    res.clearCookie('refreshToken', {
+      path: '/api/v1/auth',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
   }
 
   private setRefreshTokenCookie(res: FastifyReply, refreshToken: string) {

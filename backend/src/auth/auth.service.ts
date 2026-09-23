@@ -16,7 +16,6 @@ import {JwtService} from "@nestjs/jwt";
 import {ResendOtpDto} from "./dto/resend-otp.dto.js";
 import {LoginDto} from "./dto/login.dto.js";
 
-// Khai báo kiểu toàn cục cho Temporal API trong Node.js
 declare const Temporal: any;
 
 export interface RequestMeta {
@@ -292,6 +291,28 @@ export class AuthService {
             message: 'Làm mới phiên đăng nhập thành công!',
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
+        };
+    }
+
+    async logout(refreshToken?: string) {
+        if (!refreshToken) {
+            return { message: 'Đăng xuất thành công!' };
+        }
+
+        const tokenHash = this.hashSha256(refreshToken);
+
+        const session = await this.prisma.client.orm.public.Session
+            .where((s) => s.tokenHash.eq(tokenHash))
+            .first();
+
+        if (session) {
+            await this.prisma.client.orm.public.Session
+                .where({ id: session.id })
+                .delete();
+        }
+
+        return {
+            message: 'Đăng xuất thành công!',
         };
     }
 
