@@ -3,7 +3,8 @@ import {
     ConflictException,
     ForbiddenException,
     Injectable,
-    NotFoundException
+    NotFoundException,
+    UnauthorizedException
 } from '@nestjs/common';
 import {PrismaService} from "../prisma/prisma.service.js";
 import argon2 from 'argon2';
@@ -12,6 +13,8 @@ import {MailService} from "../mail/mail.service.js";
 import {RegisterDto} from "./dto/register.dto.js";
 import {VerifyOtpDto} from "./dto/verify-otp.dto.js";
 import {JwtService} from "@nestjs/jwt";
+import {ResendOtpDto} from "./dto/resend-otp.dto.js";
+import {LoginDto} from "./dto/login.dto.js";
 
 // Khai báo kiểu toàn cục cho Temporal API trong Node.js
 declare const Temporal: any;
@@ -137,6 +140,103 @@ export class AuthService {
             },
         };
 
+    }
+
+    async resendOtp(dto: ResendOtpDto) {
+        const email = dto.email;
+        const user = await this.prisma.client.orm.public.User
+            .where((u) => u.email.eq(email))
+            .first();
+        if (!user) {
+            throw new NotFoundException('Không tìm thấy tài khoản với email này.');
+        }
+
+        if (user.isEmailVerified) {
+            throw new BadRequestException('Tài khoản này đã được kích hoạt trước đó. Vui lòng đăng nhập.');
+        }
+
+        const lastOtp = await this.prisma.client.orm.public.OtpVerification
+            .where((o) => o.email.eq(email))
+            .where((o) => o.type.eq('REGISTER_VERIFY'))
+            .orderBy((o) => o.createdAt.desc())
+            .first();
+
+        if (lastOtp) {
+            const createdAtMs = (lastOtp.createdAt as any).epochMilliseconds;
+            const diffMs = Date.now() - createdAtMs;
+            const cooldownMs = 60 * 1000;
+
+            if (diffMs < cooldownMs) {
+                const waitSeconds = Math.ceil((cooldownMs - diffMs) / 1000);
+                throw new BadRequestException(`Vui lòng chờ ${waitSeconds} giây nữa trước khi yêu cầu mã mới.`);
+            }
+
+            await this.prisma.client.orm.public.OtpVerification
+                .where({ id: lastOtp.id })
+                .delete();
+        }
+
+        const otpCode = this.generateOtpCode();
+        const codeHash = this.hashSha256(otpCode);
+        const expiresAt = Temporal.Instant.fromEpochMilliseconds(
+            Date.now() + 5 * 60 * 1000 // 5 phút
+        );
+
+        await this.prisma.client.orm.public.OtpVerification.create({
+            email: user.email,
+            codeHash,
+            type: 'REGISTER_VERIFY',
+            expiresAt,
+            attempts: 0,
+            userId: user.id,
+        });
+
+        await this.mailService.sendOtpEmail(user.email, otpCode);
+
+        return {
+            email: user.email,
+            message: 'Mã xác thực mới đã được gửi vào email của bạn'
+        };
+    }
+
+    async login(dto: LoginDto, meta: RequestMeta) {
+        const email = dto.email;
+        const user = await this.prisma.client.orm.public.User
+            .where((u) => u.email.eq(email))
+            .first();
+
+        if (!user) {
+            throw new UnauthorizedException('Email hoặc mật khẩu không chính xác.');
+        }
+
+        if (!user.isActive) {
+            throw new ForbiddenException('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+        }
+
+        if (!user.isEmailVerified) {
+            throw new ForbiddenException('Tài khoản chưa được kích hoạt. Vui lòng xác thực email trước khi đăng nhập.');
+        }
+
+        const isPasswordValid = await argon2.verify(user.passwordHash, dto.password);
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Email hoặc mật khẩu không chính xác.');
+        }
+
+        const tokens = await this.generateTokens(user);
+        await this.createSession(user.id, tokens.refreshToken, meta);
+
+        return {
+            message: 'Đăng nhập thành công!',
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                username: user.username,
+                displayName: user.displayName,
+                avatarUrl: user.avatarUrl,
+            },
+        };
     }
 
     private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {

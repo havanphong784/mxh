@@ -3,6 +3,8 @@ import type {FastifyReply, FastifyRequest} from 'fastify';
 import {AuthService} from './auth.service.js';
 import {RegisterDto} from './dto/register.dto.js';
 import {VerifyOtpDto} from './dto/verify-otp.dto.js';
+import {ResendOtpDto} from "./dto/resend-otp.dto.js";
+import {LoginDto} from "./dto/login.dto.js";
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +30,34 @@ export class AuthController {
 
     const result = await this.authService.verifyOtp(dto, meta);
     this.setRefreshTokenCookie(res, result.refreshToken);
+    return {
+      message: result.message,
+      accessToken: result.accessToken,
+      user: result.user,
+    };
+  }
+
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(
+      @Body() dto: LoginDto,
+      @Req() req: FastifyRequest,
+      @Res({ passthrough: true }) res: FastifyReply
+  ) {
+    const meta = {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    };
+
+    const result = await this.authService.login(dto, meta);
+    this.setRefreshTokenCookie(res, result.refreshToken);
+
     return {
       message: result.message,
       accessToken: result.accessToken,
