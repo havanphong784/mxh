@@ -20,6 +20,7 @@ import {JwtAuthGuard} from "./guards/jwt-auth.guard.js";
 import {CurrentUser} from "./decorators/current-user.decorator.js";
 import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
 import {ResetPasswordDto} from "./dto/reset-password.dto.js";
+import {Throttle} from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -33,12 +34,14 @@ export class AuthController {
   }
 
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('verify-otp')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async verifyOtp(
       @Body() dto: VerifyOtpDto,
@@ -60,12 +63,14 @@ export class AuthController {
   }
 
   @Post('resend-otp')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async resendOtp(@Body() dto: ResendOtpDto) {
     return this.authService.resendOtp(dto);
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async login(
       @Body() dto: LoginDto,
@@ -125,12 +130,14 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
 
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
