@@ -18,6 +18,8 @@ import {ResendOtpDto} from "./dto/resend-otp.dto.js";
 import {LoginDto} from "./dto/login.dto.js";
 import {JwtAuthGuard} from "./guards/jwt-auth.guard.js";
 import {CurrentUser} from "./decorators/current-user.decorator.js";
+import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
+import {ResetPasswordDto} from "./dto/reset-password.dto.js";
 
 @Controller('auth')
 export class AuthController {
@@ -120,6 +122,18 @@ export class AuthController {
       message: result.message,
       accessToken: result.accessToken,
     };
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   private clearRefreshTokenCookie(res: FastifyReply) {

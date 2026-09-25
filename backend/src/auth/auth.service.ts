@@ -15,6 +15,8 @@ import {VerifyOtpDto} from "./dto/verify-otp.dto.js";
 import {JwtService} from "@nestjs/jwt";
 import {ResendOtpDto} from "./dto/resend-otp.dto.js";
 import {LoginDto} from "./dto/login.dto.js";
+import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
+import {ResetPasswordDto} from "./dto/reset-password.dto.js";
 
 declare const Temporal: any;
 
@@ -335,6 +337,108 @@ export class AuthService {
 
         return {
             message: 'Đăng xuất thành công!',
+        };
+    }
+
+    async forgotPassword(dto: ForgotPasswordDto) {
+        const email = dto.email;
+        const user = await this.prisma.client.orm.public.User
+            .where((u) => u.email.eq(email))
+            .first();
+
+        if (!user || !user.isActive) {
+            return {
+                message: 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.',
+            };
+        }
+
+        const lastOtp = await this.prisma.client.orm.public.OtpVerification
+            .where((o) => o.email.eq(email))
+            .where((o) => o.type.eq('FORGOT_PASSWORD'))
+            .orderBy((o) => o.createdAt.desc())
+            .first();
+
+        if (lastOtp) {
+            const createdAtMs = (lastOtp.createdAt as any).epochMilliseconds;
+            const diffMs = Date.now() - createdAtMs;
+            const cooldownMs = 60 * 1000;
+
+            if (diffMs < cooldownMs) {
+                const waitSeconds = Math.ceil((cooldownMs - diffMs) / 1000);
+                throw new BadRequestException(`Vui lòng chờ ${waitSeconds} giây nữa trước khi yêu cầu mã mới.`);
+            }
+
+            await this.prisma.client.orm.public.OtpVerification
+                .where({ id: lastOtp.id })
+                .delete();
+        }
+
+        const otpCode = this.generateOtpCode();
+        const codeHash = this.hashSha256(otpCode);
+        const expiresAt = Temporal.Instant.fromEpochMilliseconds(
+            Date.now() + 5 * 60 * 1000
+        );
+
+        await this.prisma.client.orm.public.OtpVerification.create({
+            email: user.email,
+            codeHash,
+            type: 'FORGOT_PASSWORD',
+            expiresAt,
+            attempts: 0,
+            userId: user.id,
+        });
+
+        await this.mailService.sendResetPasswordEmail(user.email, otpCode);
+
+        return {
+            message: 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.',
+        };
+    }
+
+    async resetPassword(dto: ResetPasswordDto) {
+        const email = dto.email;
+        const otpRecord = await this.prisma.client.orm.public.OtpVerification
+            .where((o) => o.email.eq(email))
+            .where((o) => o.type.eq('FORGOT_PASSWORD'))
+            .orderBy((o) => o.createdAt.desc())
+            .first();
+        if (!otpRecord) {
+            throw new NotFoundException('Không tìm thấy yêu cầu đặt lại mật khẩu hoặc mã đã hết hạn.');
+        }
+
+        if (otpRecord.attempts >= 5) {
+            throw new ForbiddenException('Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.');
+        }
+
+        if (Date.now() > (otpRecord.expiresAt as any).epochMilliseconds) {
+            throw new BadRequestException('Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.');
+        }
+
+        const inputHash = this.hashSha256(dto.code);
+        if (inputHash !== otpRecord.codeHash) {
+            await this.prisma.client.orm.public.OtpVerification
+                .where({ id: otpRecord.id })
+                .update({ attempts: otpRecord.attempts + 1 });
+            throw new BadRequestException('Mã OTP không chính xác.');
+        }
+
+        const passwordHash = await argon2.hash(dto.newPassword);
+        await this.prisma.client.orm.public.User
+            .where((u) => u.email.eq(email))
+            .update({ passwordHash });
+
+        await this.prisma.client.orm.public.OtpVerification
+            .where({ id: otpRecord.id })
+            .delete();
+
+        if (otpRecord.userId) {
+            await this.prisma.client.orm.public.Session
+                .where((s) => s.userId.eq(otpRecord.userId!))
+                .delete();
+        }
+
+        return {
+            message: 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.',
         };
     }
 
