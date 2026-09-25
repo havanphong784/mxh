@@ -1,13 +1,11 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import {
-    FastifyAdapter,
-    NestFastifyApplication,
-} from '@nestjs/platform-fastify';
-import { AppModule } from './app.module.js';
+import {NestFactory} from '@nestjs/core';
+import {FastifyAdapter, NestFastifyApplication,} from '@nestjs/platform-fastify';
+import {AppModule} from './app.module.js';
 import 'dotenv/config';
 import fastifyCookie from "@fastify/cookie";
 import {ValidationPipe} from "@nestjs/common";
+import {AllExceptionsFilter} from "./common/filters/all-exceptions.filter.js";
 
 async function bootstrap() {
     const app = await NestFactory.create<NestFastifyApplication>(
@@ -25,8 +23,9 @@ async function bootstrap() {
     );
     app.enableShutdownHooks();
     app.setGlobalPrefix('api/v1');
+    app.useGlobalFilters(new AllExceptionsFilter());
 
-    const port = process.env.PORT || 3000 || 30001;
+    const port = process.env.PORT || 3000;
     await app.listen(port, '0.0.0.0');
     console.log(`🚀 Backend NestJS running on http://localhost:${port}`);
 }
