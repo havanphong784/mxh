@@ -5,11 +5,15 @@ import {AppService} from "./app.service.js";
 import {AuthModule} from "./auth/auth.module.js";
 import {ThrottlerGuard, ThrottlerModule} from "@nestjs/throttler";
 import {APP_GUARD} from "@nestjs/core";
+import { MediaModule } from './media/media.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
     PrismaModule,
     AuthModule,
+    MediaModule,
+    UsersModule,
     ThrottlerModule.forRoot([
       {
         name: "default",

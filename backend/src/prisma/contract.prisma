@@ -9,7 +9,9 @@ model User {
 
   bio             String?
   avatarUrl       String?
+  avatarPublicId  String?
   bannerUrl       String?
+  bannerPublicId  String?
 
   isActive        Boolean  @default(true)
   isEmailVerified Boolean  @default(false)

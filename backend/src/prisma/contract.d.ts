@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'9aee2e93a46a09853df2b1e5ceeb2935f544ca6627e88c3a8d13e85579b7db64'>;
+  StorageHashBase<'4309fdd3dfa36f8799bce6008a853acc9c472817a80526e6752b56700205e847'>;
 export type ExecutionHash =
   ExecutionHashBase<'a96cc352420e3e8e3f2c5fbc1baed0635cf7c943e88fc1dc437b05abfc4c5cea'>;
 export type ProfileHash =
@@ -271,7 +271,9 @@ export type FieldOutputTypes = {
       readonly passwordHash: CodecTypes['pg/text@1']['output'];
       readonly bio: CodecTypes['pg/text@1']['output'] | null;
       readonly avatarUrl: CodecTypes['pg/text@1']['output'] | null;
+      readonly avatarPublicId: CodecTypes['pg/text@1']['output'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['output'] | null;
+      readonly bannerPublicId: CodecTypes['pg/text@1']['output'] | null;
       readonly isActive: CodecTypes['pg/bool@1']['output'];
       readonly isEmailVerified: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -310,7 +312,9 @@ export type FieldInputTypes = {
       readonly passwordHash: CodecTypes['pg/text@1']['input'];
       readonly bio: CodecTypes['pg/text@1']['input'] | null;
       readonly avatarUrl: CodecTypes['pg/text@1']['input'] | null;
+      readonly avatarPublicId: CodecTypes['pg/text@1']['input'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['input'] | null;
+      readonly bannerPublicId: CodecTypes['pg/text@1']['input'] | null;
       readonly isActive: CodecTypes['pg/bool@1']['input'];
       readonly isEmailVerified: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -342,7 +346,9 @@ export type StorageColumnTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly user: {
+      readonly avatarPublicId: CodecTypes['pg/text@1']['output'] | null;
       readonly avatarUrl: CodecTypes['pg/text@1']['output'] | null;
+      readonly bannerPublicId: CodecTypes['pg/text@1']['output'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly bio: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -381,7 +387,9 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly user: {
+      readonly avatarPublicId: CodecTypes['pg/text@1']['input'] | null;
       readonly avatarUrl: CodecTypes['pg/text@1']['input'] | null;
+      readonly bannerPublicId: CodecTypes['pg/text@1']['input'] | null;
       readonly bannerUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly bio: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -406,7 +414,9 @@ export namespace Models {
     passwordHash: CodecTypes['pg/text@1']['output'];
     bio: CodecTypes['pg/text@1']['output'] | null;
     avatarUrl: CodecTypes['pg/text@1']['output'] | null;
+    avatarPublicId: CodecTypes['pg/text@1']['output'] | null;
     bannerUrl: CodecTypes['pg/text@1']['output'] | null;
+    bannerPublicId: CodecTypes['pg/text@1']['output'] | null;
     isActive: CodecTypes['pg/bool@1']['output'];
     isEmailVerified: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -668,7 +678,17 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
                 };
+                readonly avatarPublicId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
                 readonly bannerUrl: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly bannerPublicId: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
@@ -905,7 +925,15 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly avatarPublicId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly bannerUrl: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly bannerPublicId: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
@@ -967,7 +995,9 @@ type ContractBase = Omit<
                 readonly passwordHash: { readonly column: 'passwordHash' };
                 readonly bio: { readonly column: 'bio' };
                 readonly avatarUrl: { readonly column: 'avatarUrl' };
+                readonly avatarPublicId: { readonly column: 'avatarPublicId' };
                 readonly bannerUrl: { readonly column: 'bannerUrl' };
+                readonly bannerPublicId: { readonly column: 'bannerPublicId' };
                 readonly isActive: { readonly column: 'isActive' };
                 readonly isEmailVerified: { readonly column: 'isEmailVerified' };
                 readonly createdAt: { readonly column: 'createdAt' };

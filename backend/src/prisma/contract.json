@@ -249,7 +249,21 @@
           },
           "User": {
             "fields": {
+              "avatarPublicId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "avatarUrl": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "bannerPublicId": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -368,8 +382,14 @@
             },
             "storage": {
               "fields": {
+                "avatarPublicId": {
+                  "column": "avatarPublicId"
+                },
                 "avatarUrl": {
                   "column": "avatarUrl"
+                },
+                "bannerPublicId": {
+                  "column": "bannerPublicId"
                 },
                 "bannerUrl": {
                   "column": "bannerUrl"
@@ -616,7 +636,17 @@
             },
             "user": {
               "columns": {
+                "avatarPublicId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "avatarUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "bannerPublicId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": true
@@ -715,7 +745,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "9aee2e93a46a09853df2b1e5ceeb2935f544ca6627e88c3a8d13e85579b7db64"
+    "storageHash": "4309fdd3dfa36f8799bce6008a853acc9c472817a80526e6752b56700205e847"
   },
   "execution": {
     "executionHash": "a96cc352420e3e8e3f2c5fbc1baed0635cf7c943e88fc1dc437b05abfc4c5cea",
