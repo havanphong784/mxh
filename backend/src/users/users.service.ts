@@ -1,12 +1,8 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { MediaService } from '../media/media.service.js';
-import { UpdateProfileDto } from './dto/update-profile.dto.js';
-import { ChangePasswordDto } from './dto/change-password.dto.js';
+import {BadRequestException, Injectable, NotFoundException,} from '@nestjs/common';
+import {PrismaService} from '../prisma/prisma.service.js';
+import {MediaService} from '../media/media.service.js';
+import {UpdateProfileDto} from './dto/update-profile.dto.js';
+import {ChangePasswordDto} from './dto/change-password.dto.js';
 import * as argon2 from 'argon2';
 
 @Injectable()
@@ -45,7 +41,6 @@ export class UsersService {
       throw new NotFoundException('Người dùng không tồn tại hoặc đã bị khóa');
     }
 
-    // Xóa ảnh cũ trên Cloudinary nếu người dùng cập nhật ảnh mới
     if (
       dto.avatarPublicId &&
       currentUser.avatarPublicId &&
