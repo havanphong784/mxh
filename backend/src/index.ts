@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { Temporal } from '@js-temporal/polyfill';
+(globalThis as any).Temporal = Temporal;
 import {NestFactory} from '@nestjs/core';
 import {FastifyAdapter, NestFastifyApplication,} from '@nestjs/platform-fastify';
 import {AppModule} from './app.module.js';

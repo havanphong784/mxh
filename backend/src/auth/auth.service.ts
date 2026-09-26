@@ -17,8 +17,7 @@ import {ResendOtpDto} from "./dto/resend-otp.dto.js";
 import {LoginDto} from "./dto/login.dto.js";
 import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
 import {ResetPasswordDto} from "./dto/reset-password.dto.js";
-
-declare const Temporal: any;
+import {Temporal} from '@js-temporal/polyfill';
 
 export interface RequestMeta {
     userAgent?: string;
@@ -32,6 +31,17 @@ export class AuthService {
         private readonly mailService: MailService,
         private readonly jwtService: JwtService
     ) {}
+
+    private getTimestampMs(dateTime: any): number {
+        if (!dateTime) return 0;
+        if (typeof dateTime.epochMilliseconds === 'number') {
+            return dateTime.epochMilliseconds;
+        }
+        if (dateTime instanceof Date) {
+            return dateTime.getTime();
+        }
+        return new Date(dateTime).getTime();
+    }
 
     async getMe(userId: string) {
         const user = await this.prisma.client.orm.public.User
@@ -119,7 +129,8 @@ export class AuthService {
             throw new ForbiddenException('Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.');
         }
 
-        if (Date.now() > (otpRecord.expiresAt as any).epochMilliseconds) {
+        const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
+        if (Date.now() > expiresAtMs) {
             throw new BadRequestException('Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.');
         }
 
@@ -185,7 +196,7 @@ export class AuthService {
             .first();
 
         if (lastOtp) {
-            const createdAtMs = (lastOtp.createdAt as any).epochMilliseconds;
+            const createdAtMs = this.getTimestampMs(lastOtp.createdAt);
             const diffMs = Date.now() - createdAtMs;
             const cooldownMs = 60 * 1000;
 
@@ -292,7 +303,8 @@ export class AuthService {
             throw new ForbiddenException('Phát hiện dấu hiệu bất thường. Toàn bộ phiên đăng nhập đã bị hủy, vui lòng đăng nhập lại.');
         }
 
-        if (Date.now() > (session.expiresAt as any).epochMilliseconds) {
+        const expiresAtMs = this.getTimestampMs(session.expiresAt);
+        if (Date.now() > expiresAtMs) {
             throw new UnauthorizedException('Phiên đăng nhập đã hết hạn.');
         }
 
@@ -359,7 +371,7 @@ export class AuthService {
             .first();
 
         if (lastOtp) {
-            const createdAtMs = (lastOtp.createdAt as any).epochMilliseconds;
+            const createdAtMs = this.getTimestampMs(lastOtp.createdAt);
             const diffMs = Date.now() - createdAtMs;
             const cooldownMs = 60 * 1000;
 
@@ -410,7 +422,8 @@ export class AuthService {
             throw new ForbiddenException('Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.');
         }
 
-        if (Date.now() > (otpRecord.expiresAt as any).epochMilliseconds) {
+        const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
+        if (Date.now() > expiresAtMs) {
             throw new BadRequestException('Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.');
         }
 
