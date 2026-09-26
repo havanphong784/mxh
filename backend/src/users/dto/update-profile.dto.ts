@@ -1,13 +1,16 @@
+import { Transform } from 'class-transformer';
 import { IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(1, { message: 'Tên hiển thị phải có ít nhất 1 ký tự' })
   @MaxLength(50, { message: 'Tên hiển thị tối đa 50 ký tự' })
   displayName?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(250, { message: 'Tiểu sử tối đa 250 ký tự' })
   bio?: string;

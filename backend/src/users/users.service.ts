@@ -1,8 +1,10 @@
-import {BadRequestException, Injectable, NotFoundException,} from '@nestjs/common';
+import {BadRequestException, ForbiddenException, Injectable, NotFoundException,} from '@nestjs/common';
+import * as crypto from 'crypto';
 import {PrismaService} from '../prisma/prisma.service.js';
 import {MediaService} from '../media/media.service.js';
 import {UpdateProfileDto} from './dto/update-profile.dto.js';
 import {ChangePasswordDto} from './dto/change-password.dto.js';
+import {FollowPaginationDto} from './dto/follow-pagination.dto.js';
 import * as argon2 from 'argon2';
 
 @Injectable()
@@ -12,14 +14,70 @@ export class UsersService {
     private readonly mediaService: MediaService,
   ) {}
 
-  async getPublicProfile(username: string) {
+  async getMyProfile(userId: string) {
     const user = await this.prisma.client.orm.public.User
-      .where((u) => u.username.eq(username.toLowerCase()))
+      .where((u) => u.id.eq(userId))
       .first();
 
     if (!user || !user.isActive) {
       throw new NotFoundException('Người dùng không tồn tại hoặc tài khoản đã bị khóa');
     }
+
+    const [followersAgg, followingAgg] = await Promise.all([
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followingId.eq(user.id))
+        .aggregate((agg) => ({ total: agg.count() })),
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followerId.eq(user.id))
+        .aggregate((agg) => ({ total: agg.count() })),
+    ]);
+
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      bio: user.bio,
+      avatarUrl: user.avatarUrl,
+      avatarPublicId: user.avatarPublicId,
+      bannerUrl: user.bannerUrl,
+      bannerPublicId: user.bannerPublicId,
+      followersCount: Number(followersAgg.total),
+      followingCount: Number(followingAgg.total),
+      isEmailVerified: user.isEmailVerified,
+      createdAt: user.createdAt,
+    };
+  }
+
+  async getPublicProfile(username: string, currentUserId?: string) {
+    const user = await this.prisma.client.orm.public.User
+      .where((u) => u.username.eq(username.toLowerCase()))
+      .first();
+
+    if (!user || !user.isActive || !user.isEmailVerified) {
+      throw new NotFoundException('Người dùng không tồn tại hoặc tài khoản đã bị khóa');
+    }
+
+    const shouldCheckFollow = !!currentUserId && currentUserId !== user.id;
+
+    const [followersAgg, followingAgg, followRecord] = await Promise.all([
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followingId.eq(user.id))
+        .aggregate((agg) => ({ total: agg.count() })),
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followerId.eq(user.id))
+        .aggregate((agg) => ({ total: agg.count() })),
+      shouldCheckFollow
+        ? this.prisma.client.orm.public.Follow
+            .where((f) => f.followerId.eq(currentUserId!))
+            .where((f) => f.followingId.eq(user.id))
+            .first()
+        : Promise.resolve(null),
+    ]);
+
+    const followersCount = Number(followersAgg.total);
+    const followingCount = Number(followingAgg.total);
+    const isFollowing = !!followRecord;
 
     return {
       id: user.id,
@@ -28,6 +86,9 @@ export class UsersService {
       bio: user.bio,
       avatarUrl: user.avatarUrl,
       bannerUrl: user.bannerUrl,
+      followersCount,
+      followingCount,
+      isFollowing,
       createdAt: user.createdAt,
     };
   }
@@ -42,19 +103,19 @@ export class UsersService {
     }
 
     if (
-      dto.avatarPublicId &&
       currentUser.avatarPublicId &&
+      dto.avatarPublicId !== undefined &&
       dto.avatarPublicId !== currentUser.avatarPublicId
     ) {
-      this.mediaService.deleteFile(currentUser.avatarPublicId);
+      await this.mediaService.deleteFile(currentUser.avatarPublicId);
     }
 
     if (
-      dto.bannerPublicId &&
       currentUser.bannerPublicId &&
+      dto.bannerPublicId !== undefined &&
       dto.bannerPublicId !== currentUser.bannerPublicId
     ) {
-      this.mediaService.deleteFile(currentUser.bannerPublicId);
+      await this.mediaService.deleteFile(currentUser.bannerPublicId);
     }
 
     const updatePayload: Record<string, any> = {};
@@ -93,7 +154,7 @@ export class UsersService {
     };
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(userId: string, dto: ChangePasswordDto, currentRefreshToken?: string) {
     const user = await this.prisma.client.orm.public.User
       .where((u) => u.id.eq(userId))
       .first();
@@ -117,15 +178,226 @@ export class UsersService {
       .where((u) => u.id.eq(userId))
       .update({ passwordHash: newPasswordHash });
 
-    // Thu hồi các phiên đăng nhập khác nếu được yêu cầu (mặc định là true)
     if (dto.logoutOtherDevices ?? true) {
-      await this.prisma.client.orm.public.Session
-        .where((s) => s.userId.eq(userId))
-        .update({ isRevoked: true });
+      if (currentRefreshToken) {
+        const currentTokenHash = crypto
+          .createHash('sha256')
+          .update(currentRefreshToken)
+          .digest('hex');
+
+        const sessions = await this.prisma.client.orm.public.Session
+          .where((s) => s.userId.eq(userId))
+          .all();
+
+        for (const session of sessions) {
+          if (session.tokenHash !== currentTokenHash) {
+            await this.prisma.client.orm.public.Session
+              .where({ id: session.id })
+              .update({ isRevoked: true });
+          }
+        }
+      }
     }
 
     return {
       message: 'Đổi mật khẩu thành công',
+    };
+  }
+
+  async followUser(currentUserId: string, targetIdentifier: string) {
+    const currentUser = await this.prisma.client.orm.public.User
+      .where((u) => u.id.eq(currentUserId))
+      .first();
+
+    if (!currentUser || !currentUser.isActive) {
+      throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
+    }
+
+    let targetUser = await this.prisma.client.orm.public.User
+      .where((u) => u.id.eq(targetIdentifier))
+      .first();
+
+    if (!targetUser) {
+      targetUser = await this.prisma.client.orm.public.User
+        .where((u) => u.username.eq(targetIdentifier.toLowerCase()))
+        .first();
+    }
+
+    if (!targetUser || !targetUser.isActive || !targetUser.isEmailVerified) {
+      throw new NotFoundException('Người dùng không tồn tại hoặc tài khoản đã bị khóa');
+    }
+
+    if (currentUserId === targetUser.id) {
+      throw new BadRequestException('Bạn không thể tự theo dõi chính mình');
+    }
+
+    const existingFollow = await this.prisma.client.orm.public.Follow
+      .where((f) => f.followerId.eq(currentUserId))
+      .where((f) => f.followingId.eq(targetUser.id))
+      .first();
+
+    if (existingFollow) {
+      throw new BadRequestException('Bạn đã theo dõi người dùng này rồi');
+    }
+
+    try {
+      await this.prisma.client.orm.public.Follow.create({
+        followerId: currentUserId,
+        followingId: targetUser.id,
+      });
+    } catch (error: any) {
+      if (
+        error?.code === '23505' ||
+        error?.message?.includes('duplicate key') ||
+        error?.message?.includes('violates unique constraint')
+      ) {
+        throw new BadRequestException('Bạn đã theo dõi người dùng này rồi');
+      }
+      throw error;
+    }
+
+    return {
+      message: `Đã theo dõi ${targetUser.displayName}`,
+    };
+  }
+
+  async unfollowUser(currentUserId: string, targetIdentifier: string) {
+    const currentUser = await this.prisma.client.orm.public.User
+      .where((u) => u.id.eq(currentUserId))
+      .first();
+
+    if (!currentUser || !currentUser.isActive) {
+      throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
+    }
+
+    let targetUser = await this.prisma.client.orm.public.User
+      .where((u) => u.id.eq(targetIdentifier))
+      .first();
+
+    if (!targetUser) {
+      targetUser = await this.prisma.client.orm.public.User
+        .where((u) => u.username.eq(targetIdentifier.toLowerCase()))
+        .first();
+    }
+
+    if (!targetUser) {
+      throw new NotFoundException('Người dùng không tồn tại');
+    }
+
+    if (currentUserId === targetUser.id) {
+      throw new BadRequestException('Thao tác không hợp lệ');
+    }
+
+    const existingFollow = await this.prisma.client.orm.public.Follow
+      .where((f) => f.followerId.eq(currentUserId))
+      .where((f) => f.followingId.eq(targetUser.id))
+      .first();
+
+    if (!existingFollow) {
+      throw new BadRequestException('Bạn chưa theo dõi người dùng này');
+    }
+
+    await this.prisma.client.orm.public.Follow
+      .where((f) => f.followerId.eq(currentUserId))
+      .where((f) => f.followingId.eq(targetUser.id))
+      .delete();
+
+    return {
+      message: 'Đã hủy theo dõi thành công',
+    };
+  }
+
+  async getFollowers(username: string, query: FollowPaginationDto) {
+    const user = await this.prisma.client.orm.public.User
+      .where((u) => u.username.eq(username.toLowerCase()))
+      .first();
+
+    if (!user || !user.isActive || !user.isEmailVerified) {
+      throw new NotFoundException('Người dùng không tồn tại hoặc tài khoản đã bị khóa');
+    }
+
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [totalAgg, follows] = await Promise.all([
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followingId.eq(user.id))
+        .aggregate((agg) => ({ total: agg.count() })),
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followingId.eq(user.id))
+        .orderBy((f) => f.createdAt.desc())
+        .offset(skip)
+        .limit(limit)
+        .include('follower')
+        .all(),
+    ]);
+
+    const total = Number(totalAgg.total);
+
+    return {
+      items: follows
+        .filter((f: any) => f.follower && f.follower.isActive && f.follower.isEmailVerified)
+        .map((f: any) => ({
+          id: f.follower.id,
+          username: f.follower.username,
+          displayName: f.follower.displayName,
+          avatarUrl: f.follower.avatarUrl,
+          bio: f.follower.bio,
+        })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getFollowing(username: string, query: FollowPaginationDto) {
+    const user = await this.prisma.client.orm.public.User
+      .where((u) => u.username.eq(username.toLowerCase()))
+      .first();
+
+    if (!user || !user.isActive || !user.isEmailVerified) {
+      throw new NotFoundException('Người dùng không tồn tại hoặc tài khoản đã bị khóa');
+    }
+
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [totalAgg, follows] = await Promise.all([
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followerId.eq(user.id))
+        .aggregate((agg) => ({ total: agg.count() })),
+      this.prisma.client.orm.public.Follow
+        .where((f) => f.followerId.eq(user.id))
+        .orderBy((f) => f.createdAt.desc())
+        .offset(skip)
+        .limit(limit)
+        .include('following')
+        .all(),
+    ]);
+
+    const total = Number(totalAgg.total);
+
+    return {
+      items: follows
+        .filter((f: any) => f.following && f.following.isActive && f.following.isEmailVerified)
+        .map((f: any) => ({
+          id: f.following.id,
+          username: f.following.username,
+          displayName: f.following.displayName,
+          avatarUrl: f.following.avatarUrl,
+          bio: f.following.bio,
+        })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 }
