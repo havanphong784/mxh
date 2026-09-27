@@ -9,18 +9,16 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import type { FastifyRequest } from 'fastify';
-import { UsersService } from './users.service.js';
-import { UpdateProfileDto } from './dto/update-profile.dto.js';
-import { ChangePasswordDto } from './dto/change-password.dto.js';
-import { FollowPaginationDto } from './dto/follow-pagination.dto.js';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard.js';
-import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import {Throttle} from '@nestjs/throttler';
+import {UsersService} from './users.service.js';
+import {UpdateProfileDto} from './dto/update-profile.dto.js';
+import {ChangePasswordDto} from './dto/change-password.dto.js';
+import {FollowPaginationDto} from './dto/follow-pagination.dto.js';
+import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard.js';
+import {OptionalJwtAuthGuard} from '../auth/guards/optional-jwt-auth.guard.js';
+import {CurrentUser} from '../auth/decorators/current-user.decorator.js';
 
 @Controller('users')
 export class UsersController {
@@ -91,11 +89,11 @@ export class UsersController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async changePassword(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: ChangePasswordDto,
-    @Req() req: FastifyRequest,
+      @CurrentUser('sub') userId: string,
+      @CurrentUser('sessionId') currentSessionId: string,
+      @Body() dto: ChangePasswordDto,
   ) {
-    const currentRefreshToken = req.cookies?.refreshToken;
-    return this.usersService.changePassword(userId, dto, currentRefreshToken);
+    return this.usersService.changePassword(userId, dto, currentSessionId);
   }
+
 }

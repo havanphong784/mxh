@@ -32,17 +32,6 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) {}
 
-    private getTimestampMs(dateTime: any): number {
-        if (!dateTime) return 0;
-        if (typeof dateTime.epochMilliseconds === 'number') {
-            return dateTime.epochMilliseconds;
-        }
-        if (dateTime instanceof Date) {
-            return dateTime.getTime();
-        }
-        return new Date(dateTime).getTime();
-    }
-
     async getMe(userId: string) {
         const user = await this.prisma.client.orm.public.User
             .where((u) => u.id.eq(userId))
@@ -158,13 +147,14 @@ export class AuthService {
             throw new NotFoundException('Không tìm thấy thông tin người dùng');
         }
 
-        const tokens = await this.generateTokens(user);
-        await this.createSession(user.id, tokens.refreshToken, meta);
+        const refreshToken = await this.generateRefreshToken(user.id);
+        const session = await this.createSession(user.id, refreshToken, meta);
+        const accessToken = await this.generateAccessToken(user, session.id);
 
         return {
             message: 'Kích hoạt tài khoản thành công!',
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
+            accessToken,
+            refreshToken,
             user: {
                 id: user.id,
                 email: user.email,
@@ -256,13 +246,14 @@ export class AuthService {
             throw new UnauthorizedException('Email hoặc mật khẩu không chính xác.');
         }
 
-        const tokens = await this.generateTokens(user);
-        await this.createSession(user.id, tokens.refreshToken, meta);
+        const refreshToken = await this.generateRefreshToken(user.id);
+        const session = await this.createSession(user.id, refreshToken, meta);
+        const accessToken = await this.generateAccessToken(user, session.id);
 
         return {
             message: 'Đăng nhập thành công!',
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
+            accessToken,
+            refreshToken,
             user: {
                 id: user.id,
                 email: user.email,
@@ -320,13 +311,13 @@ export class AuthService {
             .where({ id: session.id })
             .update({ isRevoked: true });
 
-        const tokens = await this.generateTokens(user);
-        await this.createSession(user.id, tokens.refreshToken, meta);
-
+        const newRefreshToken = await this.generateRefreshToken(user.id);
+        const newSession = await this.createSession(user.id, newRefreshToken, meta);
+        const newAccessToken = await this.generateAccessToken(user, newSession.id);
         return {
             message: 'Làm mới phiên đăng nhập thành công!',
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken
         };
     }
 
@@ -455,41 +446,15 @@ export class AuthService {
         };
     }
 
-    private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {
-        const tokenHash = this.hashSha256(refreshToken);
-        const expiresAt = Temporal.Instant.fromEpochMilliseconds(
-            Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 ngày
-        );
-
-        await this.prisma.client.orm.public.Session.create({
-            userId,
-            tokenHash,
-            userAgent: meta.userAgent ?? null,
-            ipAddress: meta.ipAddress ?? null,
-            expiresAt,
-            isRevoked: false,
-        });
-    }
-
-    private async generateTokens(user: { id: string; email: string; username: string }) {
-        const payload = {
-            sub: user.id,
-            email: user.email,
-            username: user.username,
-        };
-
-        const [accessToken, refreshToken] = await Promise.all([
-            this.jwtService.signAsync(payload, {
-                secret: process.env.JWT_ACCESS_SECRET,
-                expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as any,
-            }),
-            this.jwtService.signAsync(payload, {
-                secret: process.env.JWT_REFRESH_SECRET,
-                expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any,
-            }),
-        ]);
-
-        return { accessToken, refreshToken };
+    private getTimestampMs(dateTime: any): number {
+        if (!dateTime) return 0;
+        if (typeof dateTime.epochMilliseconds === 'number') {
+            return dateTime.epochMilliseconds;
+        }
+        if (dateTime instanceof Date) {
+            return dateTime.getTime();
+        }
+        return new Date(dateTime).getTime();
     }
 
     private hashSha256(data: string): string {
@@ -499,4 +464,48 @@ export class AuthService {
     private generateOtpCode(): string {
         return crypto.randomInt(100000, 999999).toString();
     }
+
+    private async generateRefreshToken(userId: string): Promise<string> {
+        return this.jwtService.signAsync(
+            { sub: userId },
+            {
+                secret: process.env.JWT_REFRESH_SECRET,
+                expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any,
+            }
+        );
+    }
+
+    private async generateAccessToken(
+        user: { id: string; email: string; username: string },
+        sessionId: string
+    ): Promise<string> {
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            username: user.username,
+            sessionId, // Gắn ID của session vào đây
+        };
+
+        return this.jwtService.signAsync(payload, {
+            secret: process.env.JWT_ACCESS_SECRET,
+            expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as any,
+        });
+    }
+
+    private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {
+        const tokenHash = this.hashSha256(refreshToken);
+        const expiresAt = Temporal.Instant.fromEpochMilliseconds(
+            Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 ngày
+        );
+
+        return await this.prisma.client.orm.public.Session.create({
+            userId,
+            tokenHash,
+            userAgent: meta.userAgent ?? null,
+            ipAddress: meta.ipAddress ?? null,
+            expiresAt,
+            isRevoked: false,
+        });
+    }
+
 }

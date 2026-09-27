@@ -1,5 +1,4 @@
 import {BadRequestException, ForbiddenException, Injectable, NotFoundException,} from '@nestjs/common';
-import * as crypto from 'crypto';
 import {PrismaService} from '../prisma/prisma.service.js';
 import {MediaService} from '../media/media.service.js';
 import {UpdateProfileDto} from './dto/update-profile.dto.js';
@@ -154,10 +153,10 @@ export class UsersService {
     };
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto, currentRefreshToken?: string) {
+  async changePassword(userId: string, dto: ChangePasswordDto, currentSessionId?: string) {
     const user = await this.prisma.client.orm.public.User
-      .where((u) => u.id.eq(userId))
-      .first();
+        .where((u) => u.id.eq(userId))
+        .first();
 
     if (!user || !user.isActive) {
       throw new NotFoundException('Người dùng không tồn tại hoặc đã bị khóa');
@@ -173,28 +172,20 @@ export class UsersService {
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword);
-
     await this.prisma.client.orm.public.User
-      .where((u) => u.id.eq(userId))
-      .update({ passwordHash: newPasswordHash });
+        .where((u) => u.id.eq(userId))
+        .update({ passwordHash: newPasswordHash });
 
     if (dto.logoutOtherDevices ?? true) {
-      if (currentRefreshToken) {
-        const currentTokenHash = crypto
-          .createHash('sha256')
-          .update(currentRefreshToken)
-          .digest('hex');
-
-        const sessions = await this.prisma.client.orm.public.Session
+      const sessions = await this.prisma.client.orm.public.Session
           .where((s) => s.userId.eq(userId))
           .all();
 
-        for (const session of sessions) {
-          if (session.tokenHash !== currentTokenHash) {
-            await this.prisma.client.orm.public.Session
+      for (const session of sessions) {
+        if (session.id !== currentSessionId) {
+          await this.prisma.client.orm.public.Session
               .where({ id: session.id })
               .update({ isRevoked: true });
-          }
         }
       }
     }
