@@ -61,6 +61,12 @@ export class AuthService {
         const existingEmail = await this.prisma.client.orm.public.User
             .where((u) => u.email.eq(email)).first();
         if (existingEmail) {
+            if (!existingEmail.isEmailVerified) {
+                throw new ConflictException(
+                    'Email này đã được đăng ký nhưng chưa được kích hoạt. Vui lòng xác thực tài khoản.',
+                    'ACCOUNT_NOT_VERIFIED',
+                );
+            }
             throw new ConflictException('Email đã tồn tại !');
         }
 
@@ -95,7 +101,15 @@ export class AuthService {
             userId: user.id,
         });
 
-        await this.mailService.sendOtpEmail(user.email, otpCode);
+        const isSent = await this.mailService.sendOtpEmail(user.email, otpCode);
+        if (!isSent) {
+            await this.prisma.client.orm.public.User
+                .where({ id: user.id })
+                .delete();
+            throw new BadRequestException(
+                'Hệ thống tạm thời không thể gửi email xác thực. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.'
+            );
+        }
 
         return {
             message: 'Đăng ký tài khoản thành công! Vui lòng kiểm tra email để nhận mã xác thực.',
