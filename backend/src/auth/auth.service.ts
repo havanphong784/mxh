@@ -282,7 +282,16 @@ export class AuthService {
         if (!session) {
             throw new UnauthorizedException('Phiên đăng nhập không tồn tại hoặc đã bị đăng xuất.');
         }
+
         if (session.isRevoked) {
+            const revokedAtMs = this.getTimestampMs(session.updatedAt);
+            const GRACE_PERIOD_MS = 20 * 1000;
+            const timeSinceRevoked = Date.now() - revokedAtMs;
+
+            if (timeSinceRevoked <= GRACE_PERIOD_MS) {
+                throw new UnauthorizedException('Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.');
+            }
+
             await this.prisma.client.orm.public.Session
                 .where((s) => s.userId.eq(session.userId))
                 .update({ isRevoked: true });
