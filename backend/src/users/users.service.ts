@@ -25,9 +25,13 @@ export class UsersService {
     const [followersAgg, followingAgg] = await Promise.all([
       this.prisma.client.orm.public.Follow
         .where((f) => f.followingId.eq(user.id))
+        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
+        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
         .aggregate((agg) => ({ total: agg.count() })),
       this.prisma.client.orm.public.Follow
         .where((f) => f.followerId.eq(user.id))
+        .where((f) => f.following.some((u) => u.isActive.eq(true)))
+        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
         .aggregate((agg) => ({ total: agg.count() })),
     ]);
 
@@ -62,9 +66,13 @@ export class UsersService {
     const [followersAgg, followingAgg, followRecord] = await Promise.all([
       this.prisma.client.orm.public.Follow
         .where((f) => f.followingId.eq(user.id))
+        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
+        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
         .aggregate((agg) => ({ total: agg.count() })),
       this.prisma.client.orm.public.Follow
         .where((f) => f.followerId.eq(user.id))
+        .where((f) => f.following.some((u) => u.isActive.eq(true)))
+        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
         .aggregate((agg) => ({ total: agg.count() })),
       shouldCheckFollow
         ? this.prisma.client.orm.public.Follow
@@ -334,9 +342,13 @@ export class UsersService {
     const [totalAgg, follows] = await Promise.all([
       this.prisma.client.orm.public.Follow
         .where((f) => f.followingId.eq(user.id))
+        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
+        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
         .aggregate((agg) => ({ total: agg.count() })),
       this.prisma.client.orm.public.Follow
         .where((f) => f.followingId.eq(user.id))
+        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
+        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
         .orderBy((f) => f.createdAt.desc())
         .offset(skip)
         .limit(limit)
@@ -347,15 +359,13 @@ export class UsersService {
     const total = Number(totalAgg.total);
 
     return {
-      items: follows
-        .filter((f: any) => f.follower && f.follower.isActive && f.follower.isEmailVerified)
-        .map((f: any) => ({
-          id: f.follower.id,
-          username: f.follower.username,
-          displayName: f.follower.displayName,
-          avatarUrl: f.follower.avatarUrl,
-          bio: f.follower.bio,
-        })),
+      items: follows.map((f: any) => ({
+        id: f.follower.id,
+        username: f.follower.username,
+        displayName: f.follower.displayName,
+        avatarUrl: f.follower.avatarUrl,
+        bio: f.follower.bio,
+      })),
       meta: {
         total,
         page,
@@ -381,9 +391,13 @@ export class UsersService {
     const [totalAgg, follows] = await Promise.all([
       this.prisma.client.orm.public.Follow
         .where((f) => f.followerId.eq(user.id))
+        .where((f) => f.following.some((u) => u.isActive.eq(true)))
+        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
         .aggregate((agg) => ({ total: agg.count() })),
       this.prisma.client.orm.public.Follow
         .where((f) => f.followerId.eq(user.id))
+        .where((f) => f.following.some((u) => u.isActive.eq(true)))
+        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
         .orderBy((f) => f.createdAt.desc())
         .offset(skip)
         .limit(limit)
@@ -394,15 +408,13 @@ export class UsersService {
     const total = Number(totalAgg.total);
 
     return {
-      items: follows
-        .filter((f: any) => f.following && f.following.isActive && f.following.isEmailVerified)
-        .map((f: any) => ({
-          id: f.following.id,
-          username: f.following.username,
-          displayName: f.following.displayName,
-          avatarUrl: f.following.avatarUrl,
-          bio: f.following.bio,
-        })),
+      items: follows.map((f: any) => ({
+        id: f.following.id,
+        username: f.following.username,
+        displayName: f.following.displayName,
+        avatarUrl: f.following.avatarUrl,
+        bio: f.following.bio,
+      })),
       meta: {
         total,
         page,
