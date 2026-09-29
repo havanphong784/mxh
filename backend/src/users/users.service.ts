@@ -223,7 +223,7 @@ export class UsersService {
     };
   }
 
-  async followUser(currentUserId: string, targetIdentifier: string) {
+  async followUser(currentUserId: string, targetUserId: string) {
     const currentUser = await this.prisma.client.orm.public.User
       .where((u) => u.id.eq(currentUserId))
       .first();
@@ -232,15 +232,9 @@ export class UsersService {
       throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
     }
 
-    let targetUser = await this.prisma.client.orm.public.User
-      .where((u) => u.id.eq(targetIdentifier))
+    const targetUser = await this.prisma.client.orm.public.User
+      .where((u) => u.id.eq(targetUserId))
       .first();
-
-    if (!targetUser) {
-      targetUser = await this.prisma.client.orm.public.User
-        .where((u) => u.username.eq(targetIdentifier.toLowerCase()))
-        .first();
-    }
 
     if (!targetUser || !targetUser.isActive || !targetUser.isEmailVerified) {
       throw new NotFoundException('Người dùng không tồn tại hoặc tài khoản đã bị khóa');
@@ -280,7 +274,7 @@ export class UsersService {
     };
   }
 
-  async unfollowUser(currentUserId: string, targetIdentifier: string) {
+  async unfollowUser(currentUserId: string, targetUserId: string) {
     const currentUser = await this.prisma.client.orm.public.User
       .where((u) => u.id.eq(currentUserId))
       .first();
@@ -289,15 +283,9 @@ export class UsersService {
       throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
     }
 
-    let targetUser = await this.prisma.client.orm.public.User
-      .where((u) => u.id.eq(targetIdentifier))
+    const targetUser = await this.prisma.client.orm.public.User
+      .where((u) => u.id.eq(targetUserId))
       .first();
-
-    if (!targetUser) {
-      targetUser = await this.prisma.client.orm.public.User
-        .where((u) => u.username.eq(targetIdentifier.toLowerCase()))
-        .first();
-    }
 
     if (!targetUser) {
       throw new NotFoundException('Người dùng không tồn tại');

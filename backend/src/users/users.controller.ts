@@ -41,6 +41,7 @@ export class UsersController {
 
   @Post(':id/follow')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async follow(
     @CurrentUser('sub') currentUserId: string,
@@ -51,6 +52,7 @@ export class UsersController {
 
   @Delete(':id/follow')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async unfollow(
     @CurrentUser('sub') currentUserId: string,
@@ -77,6 +79,7 @@ export class UsersController {
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async updateProfile(
     @CurrentUser('sub') userId: string,
     @Body() dto: UpdateProfileDto,
