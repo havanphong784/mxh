@@ -101,12 +101,27 @@ export class UsersService {
       throw new NotFoundException('Người dùng không tồn tại hoặc đã bị khóa');
     }
 
+    const expectedAvatarPrefix = `mxh/${userId}/avatars/`;
+    if (dto.avatarPublicId && !dto.avatarPublicId.startsWith(expectedAvatarPrefix)) {
+      throw new BadRequestException('avatarPublicId không hợp lệ hoặc không thuộc quyền sở hữu của bạn');
+    }
+
+    const expectedBannerPrefix = `mxh/${userId}/banners/`;
+    if (dto.bannerPublicId && !dto.bannerPublicId.startsWith(expectedBannerPrefix)) {
+      throw new BadRequestException('bannerPublicId không hợp lệ hoặc không thuộc quyền sở hữu của bạn');
+    }
+
     if (
       currentUser.avatarPublicId &&
       dto.avatarPublicId !== undefined &&
       dto.avatarPublicId !== currentUser.avatarPublicId
     ) {
-      await this.mediaService.deleteFile(currentUser.avatarPublicId);
+      if (
+        currentUser.avatarPublicId.startsWith(expectedAvatarPrefix) ||
+        currentUser.avatarPublicId.startsWith('mxh/avatars/')
+      ) {
+        await this.mediaService.deleteFile(currentUser.avatarPublicId);
+      }
     }
 
     if (
@@ -114,7 +129,12 @@ export class UsersService {
       dto.bannerPublicId !== undefined &&
       dto.bannerPublicId !== currentUser.bannerPublicId
     ) {
-      await this.mediaService.deleteFile(currentUser.bannerPublicId);
+      if (
+        currentUser.bannerPublicId.startsWith(expectedBannerPrefix) ||
+        currentUser.bannerPublicId.startsWith('mxh/banners/')
+      ) {
+        await this.mediaService.deleteFile(currentUser.bannerPublicId);
+      }
     }
 
     const updatePayload: Record<string, any> = {};

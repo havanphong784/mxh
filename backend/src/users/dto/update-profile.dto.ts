@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MaxLength, MinLength, ValidateIf } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -10,24 +10,29 @@ export class UpdateProfileDto {
   displayName?: string;
 
   @IsOptional()
+  @ValidateIf((_, val) => val !== null)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(250, { message: 'Tiểu sử tối đa 250 ký tự' })
-  bio?: string;
+  bio?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, val) => val !== null)
   @IsUrl({}, { message: 'Đường dẫn avatar không hợp lệ' })
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, val) => val !== null)
   @IsString()
-  avatarPublicId?: string;
+  avatarPublicId?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, val) => val !== null)
   @IsUrl({}, { message: 'Đường dẫn banner không hợp lệ' })
-  bannerUrl?: string;
+  bannerUrl?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, val) => val !== null)
   @IsString()
-  bannerPublicId?: string;
+  bannerPublicId?: string | null;
 }

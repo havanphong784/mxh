@@ -1,8 +1,9 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { MediaService } from './media.service.js';
-import { UploadSignatureQueryDto } from './dto/upload-signature-query.dto.js';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { Throttle } from '@nestjs/throttler';
+import {Controller, Get, Query, UseGuards} from '@nestjs/common';
+import {MediaService} from './media.service.js';
+import {UploadSignatureQueryDto} from './dto/upload-signature-query.dto.js';
+import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard.js';
+import {Throttle} from '@nestjs/throttler';
+import {CurrentUser} from "../auth/decorators/current-user.decorator.js";
 
 @Controller('media')
 export class MediaController {
@@ -11,7 +12,10 @@ export class MediaController {
   @Get('upload-signature')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  getUploadSignature(@Query() query: UploadSignatureQueryDto) {
-    return this.mediaService.generateUploadSignature(query.folder);
+  getUploadSignature(
+      @CurrentUser('sub') userId: string,
+      @Query() query: UploadSignatureQueryDto,
+  ) {
+    return this.mediaService.generateUploadSignature(query.folder, userId);
   }
 }

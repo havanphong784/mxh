@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
+import {Injectable, Logger} from '@nestjs/common';
+import {v2 as cloudinary} from 'cloudinary';
 
 @Injectable()
 export class MediaService {
@@ -13,9 +13,9 @@ export class MediaService {
     });
   }
 
-  generateUploadSignature(folderName: 'avatars' | 'banners' | 'posts') {
+  generateUploadSignature(folderName: 'avatars' | 'banners' | 'posts', userId: string) {
     const timestamp = Math.floor(Date.now() / 1000);
-    const folder = `mxh/${folderName}`;
+    const folder = `mxh/${userId}/${folderName}`;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
     if (!apiSecret) {
@@ -47,6 +47,17 @@ export class MediaService {
       this.logger.log(`Đã xóa ảnh cũ trên Cloudinary: ${publicId}`);
     } catch (error) {
       this.logger.error(`Lỗi khi xóa file ${publicId}:`, error);
+    }
+  }
+
+  async deleteUserFolder(userId: string): Promise<void> {
+    try {
+      const prefix = `mxh/${userId}/`;
+      await cloudinary.api.delete_resources_by_prefix(prefix);
+      await cloudinary.api.delete_folder(`mxh/${userId}`);
+      this.logger.log(`Đã xóa toàn bộ tài nguyên trên Cloudinary của user: ${userId}`);
+    } catch (error) {
+      this.logger.error(`Lỗi khi xóa folder của user ${userId}:`, error);
     }
   }
 }
