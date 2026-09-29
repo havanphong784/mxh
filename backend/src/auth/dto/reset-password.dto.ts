@@ -1,5 +1,5 @@
-import {IsEmail, IsNotEmpty, Length, MaxLength} from 'class-validator';
-import {Transform} from 'class-transformer';
+import { IsEmail, IsNotEmpty, IsString, IsStrongPassword, Length, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class ResetPasswordDto {
     @Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
@@ -13,7 +13,20 @@ export class ResetPasswordDto {
     @Length(6, 6, { message: 'Mã OTP phải có đúng 6 chữ số' })
     code!: string;
 
+    @IsString()
     @IsNotEmpty({ message: 'Mật khẩu mới không được để trống' })
-    @Length(6, 100, { message: 'Mật khẩu mới phải từ 6 đến 100 ký tự' })
+    @MaxLength(100, { message: 'Mật khẩu mới không được vượt quá 100 ký tự' })
+    @IsStrongPassword(
+        {
+            minLength: 8,
+            minLowercase: 1,
+            minUppercase: 1,
+            minNumbers: 1,
+            minSymbols: 0,
+        },
+        {
+            message: 'Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số',
+        }
+    )
     newPassword!: string;
 }

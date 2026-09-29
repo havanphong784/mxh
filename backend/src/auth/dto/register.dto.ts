@@ -1,5 +1,5 @@
-import {IsEmail, IsNotEmpty, IsString, Length, Matches, MaxLength} from 'class-validator';
-import {Transform} from 'class-transformer';
+import { IsEmail, IsNotEmpty, IsString, IsStrongPassword, Length, Matches, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class RegisterDto {
     @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
@@ -20,6 +20,19 @@ export class RegisterDto {
     displayName!: string;
 
     @IsString()
-    @Length(6, 100, { message: 'Mật khẩu phải từ 6 đến 100 ký tự' })
+    @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
+    @MaxLength(100, { message: 'Mật khẩu không được vượt quá 100 ký tự' })
+    @IsStrongPassword(
+        {
+            minLength: 8,
+            minLowercase: 1,
+            minUppercase: 1,
+            minNumbers: 1,
+            minSymbols: 0,
+        },
+        {
+            message: 'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số',
+        }
+    )
     password!: string;
 }

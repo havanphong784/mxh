@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsStrongPassword, MaxLength } from 'class-validator';
 
 export class ChangePasswordDto {
   @IsString()
@@ -6,10 +6,20 @@ export class ChangePasswordDto {
   oldPassword!: string;
 
   @IsString()
-  @MinLength(8, { message: 'Mật khẩu mới phải có ít nhất 8 ký tự' })
-  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: 'Mật khẩu mới phải bao gồm chữ hoa, chữ thường và chữ số',
-  })
+  @IsNotEmpty({ message: 'Mật khẩu mới không được để trống' })
+  @MaxLength(100, { message: 'Mật khẩu mới không được vượt quá 100 ký tự' })
+  @IsStrongPassword(
+    {
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 0,
+    },
+    {
+      message: 'Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số',
+    }
+  )
   newPassword!: string;
 
   @IsOptional()
