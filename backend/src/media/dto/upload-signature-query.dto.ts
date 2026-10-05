@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import {IsIn, IsNotEmpty, IsOptional, IsString} from 'class-validator';
 
 export class UploadSignatureQueryDto {
   @IsString()
@@ -7,4 +7,11 @@ export class UploadSignatureQueryDto {
     message: 'Thư mục không hợp lệ. Chỉ chấp nhận: avatars, banners, posts',
   })
   folder!: 'avatars' | 'banners' | 'posts';
+
+  @IsOptional()
+  @IsString()
+    @IsIn(['image', 'video', 'audio'], {
+        message: 'mediaType không hợp lệ. Chỉ chấp nhận: image, video, audio',
+    })
+    mediaType?: 'image' | 'video' | 'audio' = 'image';
 }

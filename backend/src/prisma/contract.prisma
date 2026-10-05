@@ -25,6 +25,10 @@ model User {
   // Quan hệ
   sessions        Session[]
   otpCodes        OtpVerification[]
+
+  posts           Post[]            @relation("UserPosts")
+  postLikes       PostLike[]        @relation("UserPostLikes")
+  postBookmarks   PostBookmark[]    @relation("UserPostBookmarks")
 }
 
 model Session {
@@ -73,4 +77,114 @@ model Follow {
   @@id([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+}
+
+model Post {
+  id              String         @id @default(cuid(2))
+  authorId        String
+  author          User           @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
+
+  content         String?        // Tối đa 2000 ký tự (rỗng nếu là repost thuần hoặc tombstone)
+  visibility      PostVisibility @default(PUBLIC)
+
+  // Cấu trúc phân cấp Thread (Threads model)
+  parentId        String?        // Bài cha trực tiếp (nếu là reply)
+  parent          Post?          @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies         Post[]         @relation("PostReplies")
+
+  rootId          String?        // Gốc của toàn bộ thread thảo luận
+  root            Post?          @relation("ThreadRoot", fields: [rootId], references: [id], onDelete: SetNull)
+  rootReplies     Post[]         @relation("ThreadRoot")
+
+  // Repost & Quote
+  repostOfId      String?        // Nếu là bài Repost thuần
+  repostOf        Post?          @relation("PostReposts", fields: [repostOfId], references: [id], onDelete: Cascade)
+  reposts         Post[]         @relation("PostReposts")
+
+  quotedPostId    String?        // Nếu là bài Quote có nội dung riêng
+  quotedPost      Post?          @relation("PostQuotes", fields: [quotedPostId], references: [id], onDelete: SetNull)
+  quotes          Post[]         @relation("PostQuotes")
+
+  // Trạng thái vòng đời
+  isDeleted       Boolean        @default(false) // Đánh dấu Tombstone
+  editedAt        DateTime?
+
+  // Bộ đếm phi chuẩn hoá (Atomic counters)
+  likeCount       Int            @default(0)
+  replyCount      Int            @default(0)
+  repostCount     Int            @default(0)
+  quoteCount      Int            @default(0)
+  bookmarkCount   Int            @default(0)
+
+  createdAt       DateTime       @default(now())
+  updatedAt       temporal.updatedAt()
+
+  // Quan hệ tương tác & media
+  media           PostMedia[]
+  likes           PostLike[]
+  bookmarks       PostBookmark[]
+
+  // Indexes tối ưu hiệu năng truy vấn
+  @@index([authorId, createdAt])
+  @@index([createdAt])
+  @@index([parentId, createdAt])
+  @@index([rootId, createdAt])
+  @@index([repostOfId])
+  @@index([quotedPostId])
+  @@unique([authorId, repostOfId]) // 1 user chỉ repost thuần 1 bài gốc đúng 1 lần
+}
+
+model PostMedia {
+  id          String    @id @default(cuid(2))
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  publicId    String    // Cloudinary Public ID (phải có prefix mxh/{userId}/posts/)
+  url         String    // Cloudinary Secure URL
+  type        MediaType
+  width       Int?
+  height      Int?
+  duration    Float?    // Thời lượng giây đối với VIDEO / AUDIO
+  order       Int       @default(0) // Thứ tự hiển thị (0 -> 9)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([postId, order])
+}
+
+model PostLike {
+  userId      String
+  user        User      @relation("UserPostLikes", fields: [userId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@id([userId, postId])
+  @@index([postId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model PostBookmark {
+  userId      String
+  user        User      @relation("UserPostBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@id([userId, postId])
+  @@index([userId, createdAt])
 }

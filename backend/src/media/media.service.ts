@@ -13,7 +13,7 @@ export class MediaService {
     });
   }
 
-  generateUploadSignature(folderName: 'avatars' | 'banners' | 'posts', userId: string) {
+  generateUploadSignature(folderName: 'avatars' | 'banners' | 'posts', userId: string, mediaType: 'image' | 'video' | 'audio' = 'image') {
     const timestamp = Math.floor(Date.now() / 1000);
     const folder = `mxh/${userId}/${folderName}`;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -30,12 +30,15 @@ export class MediaService {
       apiSecret,
     );
 
+    const resourceType = mediaType === 'image' ? 'image' : 'video';
+
     return {
       signature,
       timestamp,
       apiKey: process.env.CLOUDINARY_API_KEY,
       cloudName: process.env.CLOUDINARY_CLOUD_NAME,
       folder,
+      resourceType,
     };
   }
 

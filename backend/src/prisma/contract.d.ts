@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0d95621981eddab4e100f2bfe063196f41f9a5b49a82d552da9f2f274ba69cff'>;
+  StorageHashBase<'cce7b9ec5a1025d8cb035cdbf84a371d3cbb3746c87512785bc8ad7dd365427e'>;
 export type ExecutionHash =
-  ExecutionHashBase<'a96cc352420e3e8e3f2c5fbc1baed0635cf7c943e88fc1dc437b05abfc4c5cea'>;
+  ExecutionHashBase<'19dd077835984622498a913ae0c766fe7598ceae1694cdef2b14ea63a02b7285'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -257,6 +257,47 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'] | null;
     };
+    readonly Post: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly authorId: CodecTypes['pg/text@1']['output'];
+      readonly content: CodecTypes['pg/text@1']['output'] | null;
+      readonly visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+      readonly parentId: CodecTypes['pg/text@1']['output'] | null;
+      readonly rootId: CodecTypes['pg/text@1']['output'] | null;
+      readonly repostOfId: CodecTypes['pg/text@1']['output'] | null;
+      readonly quotedPostId: CodecTypes['pg/text@1']['output'] | null;
+      readonly isDeleted: CodecTypes['pg/bool@1']['output'];
+      readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly likeCount: CodecTypes['pg/int4@1']['output'];
+      readonly replyCount: CodecTypes['pg/int4@1']['output'];
+      readonly repostCount: CodecTypes['pg/int4@1']['output'];
+      readonly quoteCount: CodecTypes['pg/int4@1']['output'];
+      readonly bookmarkCount: CodecTypes['pg/int4@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly PostBookmark: {
+      readonly userId: CodecTypes['pg/text@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly PostLike: {
+      readonly userId: CodecTypes['pg/text@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly PostMedia: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'];
+      readonly publicId: CodecTypes['pg/text@1']['output'];
+      readonly url: CodecTypes['pg/text@1']['output'];
+      readonly type: 'IMAGE' | 'VIDEO' | 'AUDIO';
+      readonly width: CodecTypes['pg/int4@1']['output'] | null;
+      readonly height: CodecTypes['pg/int4@1']['output'] | null;
+      readonly duration: CodecTypes['pg/float8@1']['output'] | null;
+      readonly order: CodecTypes['pg/int4@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
     readonly Session: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
@@ -302,6 +343,47 @@ export type FieldInputTypes = {
       readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'] | null;
+    };
+    readonly Post: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly authorId: CodecTypes['pg/text@1']['input'];
+      readonly content: CodecTypes['pg/text@1']['input'] | null;
+      readonly visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+      readonly parentId: CodecTypes['pg/text@1']['input'] | null;
+      readonly rootId: CodecTypes['pg/text@1']['input'] | null;
+      readonly repostOfId: CodecTypes['pg/text@1']['input'] | null;
+      readonly quotedPostId: CodecTypes['pg/text@1']['input'] | null;
+      readonly isDeleted: CodecTypes['pg/bool@1']['input'];
+      readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly likeCount: CodecTypes['pg/int4@1']['input'];
+      readonly replyCount: CodecTypes['pg/int4@1']['input'];
+      readonly repostCount: CodecTypes['pg/int4@1']['input'];
+      readonly quoteCount: CodecTypes['pg/int4@1']['input'];
+      readonly bookmarkCount: CodecTypes['pg/int4@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly PostBookmark: {
+      readonly userId: CodecTypes['pg/text@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly PostLike: {
+      readonly userId: CodecTypes['pg/text@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly PostMedia: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'];
+      readonly publicId: CodecTypes['pg/text@1']['input'];
+      readonly url: CodecTypes['pg/text@1']['input'];
+      readonly type: 'IMAGE' | 'VIDEO' | 'AUDIO';
+      readonly width: CodecTypes['pg/int4@1']['input'] | null;
+      readonly height: CodecTypes['pg/int4@1']['input'] | null;
+      readonly duration: CodecTypes['pg/float8@1']['input'] | null;
+      readonly order: CodecTypes['pg/int4@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly Session: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -349,6 +431,47 @@ export type StorageColumnTypes = {
       readonly type: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'] | null;
     };
+    readonly post: {
+      readonly authorId: CodecTypes['pg/text@1']['output'];
+      readonly bookmarkCount: CodecTypes['pg/int4@1']['output'];
+      readonly content: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly isDeleted: CodecTypes['pg/bool@1']['output'];
+      readonly likeCount: CodecTypes['pg/int4@1']['output'];
+      readonly parentId: CodecTypes['pg/text@1']['output'] | null;
+      readonly quoteCount: CodecTypes['pg/int4@1']['output'];
+      readonly quotedPostId: CodecTypes['pg/text@1']['output'] | null;
+      readonly replyCount: CodecTypes['pg/int4@1']['output'];
+      readonly repostCount: CodecTypes['pg/int4@1']['output'];
+      readonly repostOfId: CodecTypes['pg/text@1']['output'] | null;
+      readonly rootId: CodecTypes['pg/text@1']['output'] | null;
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+    };
+    readonly postBookmark: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'];
+    };
+    readonly postLike: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'];
+    };
+    readonly postMedia: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly duration: CodecTypes['pg/float8@1']['output'] | null;
+      readonly height: CodecTypes['pg/int4@1']['output'] | null;
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly order: CodecTypes['pg/int4@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'];
+      readonly publicId: CodecTypes['pg/text@1']['output'];
+      readonly type: 'IMAGE' | 'VIDEO' | 'AUDIO';
+      readonly url: CodecTypes['pg/text@1']['output'];
+      readonly width: CodecTypes['pg/int4@1']['output'] | null;
+    };
     readonly session: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -394,6 +517,47 @@ export type StorageColumnInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly type: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'] | null;
+    };
+    readonly post: {
+      readonly authorId: CodecTypes['pg/text@1']['input'];
+      readonly bookmarkCount: CodecTypes['pg/int4@1']['input'];
+      readonly content: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly isDeleted: CodecTypes['pg/bool@1']['input'];
+      readonly likeCount: CodecTypes['pg/int4@1']['input'];
+      readonly parentId: CodecTypes['pg/text@1']['input'] | null;
+      readonly quoteCount: CodecTypes['pg/int4@1']['input'];
+      readonly quotedPostId: CodecTypes['pg/text@1']['input'] | null;
+      readonly replyCount: CodecTypes['pg/int4@1']['input'];
+      readonly repostCount: CodecTypes['pg/int4@1']['input'];
+      readonly repostOfId: CodecTypes['pg/text@1']['input'] | null;
+      readonly rootId: CodecTypes['pg/text@1']['input'] | null;
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+    };
+    readonly postBookmark: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'];
+    };
+    readonly postLike: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'];
+    };
+    readonly postMedia: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly duration: CodecTypes['pg/float8@1']['input'] | null;
+      readonly height: CodecTypes['pg/int4@1']['input'] | null;
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly order: CodecTypes['pg/int4@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'];
+      readonly publicId: CodecTypes['pg/text@1']['input'];
+      readonly type: 'IMAGE' | 'VIDEO' | 'AUDIO';
+      readonly url: CodecTypes['pg/text@1']['input'];
+      readonly width: CodecTypes['pg/int4@1']['input'] | null;
     };
     readonly session: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -444,8 +608,12 @@ export namespace Models {
     followers: public_Follow[];
     following: public_Follow[];
     otpCodes: public_OtpVerification[];
+    postBookmarks: public_PostBookmark[];
+    postLikes: public_PostLike[];
+    posts: public_Post[];
     sessions: public_Session[];
-    readonly [RelationKeys]?: 'followers' | 'following' | 'otpCodes' | 'sessions';
+    readonly [RelationKeys]?:
+      'followers' | 'following' | 'otpCodes' | 'postBookmarks' | 'postLikes' | 'posts' | 'sessions';
   };
   export type public_Session = {
     id: CodecTypes['pg/text@1']['output'];
@@ -480,6 +648,80 @@ export namespace Models {
     following: public_User;
     readonly [RelationKeys]?: 'follower' | 'following';
   };
+  export type public_Post = {
+    id: CodecTypes['pg/text@1']['output'];
+    authorId: CodecTypes['pg/text@1']['output'];
+    content: CodecTypes['pg/text@1']['output'] | null;
+    visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+    parentId: CodecTypes['pg/text@1']['output'] | null;
+    rootId: CodecTypes['pg/text@1']['output'] | null;
+    repostOfId: CodecTypes['pg/text@1']['output'] | null;
+    quotedPostId: CodecTypes['pg/text@1']['output'] | null;
+    isDeleted: CodecTypes['pg/bool@1']['output'];
+    editedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    likeCount: CodecTypes['pg/int4@1']['output'];
+    replyCount: CodecTypes['pg/int4@1']['output'];
+    repostCount: CodecTypes['pg/int4@1']['output'];
+    quoteCount: CodecTypes['pg/int4@1']['output'];
+    bookmarkCount: CodecTypes['pg/int4@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    author: public_User;
+    bookmarks: public_PostBookmark[];
+    likes: public_PostLike[];
+    media: public_PostMedia[];
+    parent: public_Post | null;
+    quotedPost: public_Post | null;
+    quotes: public_Post[];
+    replies: public_Post[];
+    repostOf: public_Post | null;
+    reposts: public_Post[];
+    root: public_Post | null;
+    rootReplies: public_Post[];
+    readonly [RelationKeys]?:
+      | 'author'
+      | 'bookmarks'
+      | 'likes'
+      | 'media'
+      | 'parent'
+      | 'quotedPost'
+      | 'quotes'
+      | 'replies'
+      | 'repostOf'
+      | 'reposts'
+      | 'root'
+      | 'rootReplies';
+  };
+  export type public_PostMedia = {
+    id: CodecTypes['pg/text@1']['output'];
+    postId: CodecTypes['pg/text@1']['output'];
+    publicId: CodecTypes['pg/text@1']['output'];
+    url: CodecTypes['pg/text@1']['output'];
+    type: 'IMAGE' | 'VIDEO' | 'AUDIO';
+    width: CodecTypes['pg/int4@1']['output'] | null;
+    height: CodecTypes['pg/int4@1']['output'] | null;
+    duration: CodecTypes['pg/float8@1']['output'] | null;
+    order: CodecTypes['pg/int4@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    post: public_Post;
+    readonly [RelationKeys]?: 'post';
+  };
+  export type public_PostLike = {
+    userId: CodecTypes['pg/text@1']['output'];
+    postId: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    post: public_Post;
+    user: public_User;
+    readonly [RelationKeys]?: 'post' | 'user';
+  };
+  export type public_PostBookmark = {
+    userId: CodecTypes['pg/text@1']['output'];
+    postId: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    post: public_Post;
+    user: public_User;
+    readonly [RelationKeys]?: 'post' | 'user';
+  };
 }
 
 export declare const models: {
@@ -488,6 +730,10 @@ export declare const models: {
     Session: Models.public_Session;
     OtpVerification: Models.public_OtpVerification;
     Follow: Models.public_Follow;
+    Post: Models.public_Post;
+    PostMedia: Models.public_PostMedia;
+    PostLike: Models.public_PostLike;
+    PostBookmark: Models.public_PostBookmark;
   };
 };
 
@@ -645,6 +891,475 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly post: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly authorId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly content: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly visibility: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'PUBLIC'>;
+                  };
+                };
+                readonly parentId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly rootId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly repostOfId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly quotedPostId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly isDeleted: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly editedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly likeCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly replyCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly repostCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly quoteCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly bookmarkCount: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['authorId', 'repostOfId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'post_authorId_createdAt_idx_854b4c86';
+                  readonly prefix: 'post_authorId_createdAt_idx';
+                  readonly columns: readonly ['authorId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_createdAt_idx_9575dbd7';
+                  readonly prefix: 'post_createdAt_idx';
+                  readonly columns: readonly ['createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_parentId_createdAt_idx_d5e7872e';
+                  readonly prefix: 'post_parentId_createdAt_idx';
+                  readonly columns: readonly ['parentId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_rootId_createdAt_idx_1af84128';
+                  readonly prefix: 'post_rootId_createdAt_idx';
+                  readonly columns: readonly ['rootId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_repostOfId_idx_629bb631';
+                  readonly prefix: 'post_repostOfId_idx';
+                  readonly columns: readonly ['repostOfId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_quotedPostId_idx_0fd2e558';
+                  readonly prefix: 'post_quotedPostId_idx';
+                  readonly columns: readonly ['quotedPostId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_authorId_idx_e47547ed';
+                  readonly prefix: 'post_authorId_idx';
+                  readonly columns: readonly ['authorId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_parentId_idx_6a68f597';
+                  readonly prefix: 'post_parentId_idx';
+                  readonly columns: readonly ['parentId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'post_rootId_idx_d68d7552';
+                  readonly prefix: 'post_rootId_idx';
+                  readonly columns: readonly ['rootId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['authorId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['parentId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['rootId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['repostOfId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['quotedPostId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly postBookmark: {
+              columns: {
+                readonly userId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly postId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['userId', 'postId'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'postBookmark_userId_createdAt_idx_f726f04a';
+                  readonly prefix: 'postBookmark_userId_createdAt_idx';
+                  readonly columns: readonly ['userId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'postBookmark_userId_idx_a489d58a';
+                  readonly prefix: 'postBookmark_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'postBookmark_postId_idx_a7a72715';
+                  readonly prefix: 'postBookmark_postId_idx';
+                  readonly columns: readonly ['postId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'postBookmark';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'postBookmark';
+                    readonly columns: readonly ['postId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly postLike: {
+              columns: {
+                readonly userId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly postId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['userId', 'postId'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'postLike_postId_createdAt_idx_b244c517';
+                  readonly prefix: 'postLike_postId_createdAt_idx';
+                  readonly columns: readonly ['postId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'postLike_userId_createdAt_idx_f726f04a';
+                  readonly prefix: 'postLike_userId_createdAt_idx';
+                  readonly columns: readonly ['userId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'postLike_userId_idx_a489d58a';
+                  readonly prefix: 'postLike_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'postLike_postId_idx_a7a72715';
+                  readonly prefix: 'postLike_postId_idx';
+                  readonly columns: readonly ['postId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'postLike';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'postLike';
+                    readonly columns: readonly ['postId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly postMedia: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly postId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly publicId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly url: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly type: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly width: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly height: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly duration: {
+                  readonly nativeType: 'float8';
+                  readonly codecId: 'pg/float8@1';
+                  readonly nullable: true;
+                };
+                readonly order: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 0>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'postMedia_postId_order_idx_8a2a2182';
+                  readonly prefix: 'postMedia_postId_order_idx';
+                  readonly columns: readonly ['postId', 'order'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'postMedia_postId_idx_a7a72715';
+                  readonly prefix: 'postMedia_postId_idx';
+                  readonly columns: readonly ['postId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'postMedia';
+                    readonly columns: readonly ['postId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -825,6 +1540,16 @@ type ContractBase = Omit<
               foreignKeys: readonly [];
             };
           };
+          readonly valueSet: {
+            readonly MediaType: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['IMAGE', 'VIDEO', 'AUDIO'];
+            };
+            readonly PostVisibility: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['PUBLIC', 'FOLLOWERS', 'PRIVATE'];
+            };
+          };
         };
       };
     };
@@ -842,6 +1567,13 @@ type ContractBase = Omit<
       readonly model: 'OtpVerification';
     };
     readonly follow: { readonly namespace: 'public' & NamespaceId; readonly model: 'Follow' };
+    readonly post: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+    readonly postMedia: { readonly namespace: 'public' & NamespaceId; readonly model: 'PostMedia' };
+    readonly postLike: { readonly namespace: 'public' & NamespaceId; readonly model: 'PostLike' };
+    readonly postBookmark: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'PostBookmark';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -959,6 +1691,392 @@ type ContractBase = Omit<
                 readonly expiresAt: { readonly column: 'expiresAt' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly userId: { readonly column: 'userId' };
+              };
+            };
+          };
+          readonly Post: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly authorId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly content: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly visibility: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly parentId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly rootId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly repostOfId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly quotedPostId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly isDeleted: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly editedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly likeCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly replyCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly repostCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly quoteCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly bookmarkCount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly author: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['authorId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly bookmarks: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PostBookmark';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['postId'];
+                };
+              };
+              readonly likes: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PostLike';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['postId'];
+                };
+              };
+              readonly media: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PostMedia';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['postId'];
+                };
+              };
+              readonly parent: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['parentId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly quotedPost: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['quotedPostId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly quotes: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quotedPostId'];
+                };
+              };
+              readonly replies: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['parentId'];
+                };
+              };
+              readonly repostOf: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['repostOfId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly reposts: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['repostOfId'];
+                };
+              };
+              readonly root: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['rootId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly rootReplies: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['rootId'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'post';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly authorId: { readonly column: 'authorId' };
+                readonly content: { readonly column: 'content' };
+                readonly visibility: { readonly column: 'visibility' };
+                readonly parentId: { readonly column: 'parentId' };
+                readonly rootId: { readonly column: 'rootId' };
+                readonly repostOfId: { readonly column: 'repostOfId' };
+                readonly quotedPostId: { readonly column: 'quotedPostId' };
+                readonly isDeleted: { readonly column: 'isDeleted' };
+                readonly editedAt: { readonly column: 'editedAt' };
+                readonly likeCount: { readonly column: 'likeCount' };
+                readonly replyCount: { readonly column: 'replyCount' };
+                readonly repostCount: { readonly column: 'repostCount' };
+                readonly quoteCount: { readonly column: 'quoteCount' };
+                readonly bookmarkCount: { readonly column: 'bookmarkCount' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly PostBookmark: {
+            readonly fields: {
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly postId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly post: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['postId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'postBookmark';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly userId: { readonly column: 'userId' };
+                readonly postId: { readonly column: 'postId' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly PostLike: {
+            readonly fields: {
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly postId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly post: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['postId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'postLike';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly userId: { readonly column: 'userId' };
+                readonly postId: { readonly column: 'postId' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly PostMedia: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly postId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly publicId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly url: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly type: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly width: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly height: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly duration: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly order: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly post: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['postId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'postMedia';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly postId: { readonly column: 'postId' };
+                readonly publicId: { readonly column: 'publicId' };
+                readonly url: { readonly column: 'url' };
+                readonly type: { readonly column: 'type' };
+                readonly width: { readonly column: 'width' };
+                readonly height: { readonly column: 'height' };
+                readonly duration: { readonly column: 'duration' };
+                readonly order: { readonly column: 'order' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -1136,6 +2254,36 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly postBookmarks: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PostBookmark';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly postLikes: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PostLike';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly posts: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['authorId'];
+                };
+              };
               readonly sessions: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -1170,6 +2318,24 @@ type ContractBase = Omit<
             };
           };
         };
+        readonly enum: {
+          readonly PostVisibility: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'PUBLIC'; readonly value: 'PUBLIC' },
+              { readonly name: 'FOLLOWERS'; readonly value: 'FOLLOWERS' },
+              { readonly name: 'PRIVATE'; readonly value: 'PRIVATE' },
+            ];
+          };
+          readonly MediaType: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'IMAGE'; readonly value: 'IMAGE' },
+              { readonly name: 'VIDEO'; readonly value: 'VIDEO' },
+              { readonly name: 'AUDIO'; readonly value: 'AUDIO' },
+            ];
+          };
+        };
       };
     };
   };
@@ -1200,6 +2366,31 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'otpVerification';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'cuid2' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'post';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'cuid2' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'post';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'postMedia';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'cuid2' };
