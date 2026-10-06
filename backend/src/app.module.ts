@@ -7,6 +7,7 @@ import {ThrottlerGuard, ThrottlerModule} from "@nestjs/throttler";
 import {APP_GUARD} from "@nestjs/core";
 import { MediaModule } from './media/media.module.js';
 import { UsersModule } from './users/users.module.js';
+import { PostsModule } from './posts/posts.module.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module.js';
         limit: 60,
       },
     ]),
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [
