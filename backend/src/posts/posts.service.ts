@@ -4,6 +4,7 @@ import * as crypto from 'node:crypto';
 import {PrismaService} from "../prisma/prisma.service.js";
 import {UpdatePostDto} from "./dto/update-post.dto.js";
 import {MediaService} from "../media/media.service.js";
+import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
 
 @Injectable()
 export class PostsService {
@@ -22,13 +23,67 @@ export class PostsService {
             throw new BadRequestException('Bài viết phải có nội dung hoặc ít nhất một media item');
         }
 
+        let parentPost: any = null;
+        let rootPost: any = null;
+        let rootId: string | null = null;
+        let visibility = dto.visibility ?? 'PUBLIC';
+
+        if (dto.parentId) {
+            parentPost = await this.prismaService.client.orm.public.Post
+                .where({ id: dto.parentId })
+                .include('author')
+                .first();
+
+            if (!parentPost) {
+                throw new NotFoundException('Bài viết cha không tồn tại');
+            }
+
+            if (parentPost.isDeleted) {
+                throw new BadRequestException('Không thể trả lời bài viết đã bị xóa');
+            }
+
+            rootId = parentPost.rootId ? parentPost.rootId : parentPost.id;
+
+            rootPost = parentPost.rootId
+                ? await this.prismaService.client.orm.public.Post
+                    .where({ id: rootId })
+                    .include('author')
+                    .first()
+                : parentPost;
+
+            if (!rootPost) {
+                throw new NotFoundException('Không tìm thấy bài viết gốc của cuộc thảo luận');
+            }
+
+            const canViewRoot = await this.canView(rootPost, userId);
+            if (!canViewRoot) {
+                throw new ForbiddenException('Bạn không có quyền tham gia cuộc thảo luận này');
+            }
+
+            visibility = rootPost.visibility;
+        }
+
         const verifiedMedia = hasMedia ? this.verifyMediaItems(userId, dto.media!) : [];
+
         return this.prismaService.client.transaction(async (tx) => {
             const post = await tx.orm.public.Post.create({
                 authorId: userId,
-                content,
-                visibility: dto.visibility ?? 'PUBLIC',
-            })
+                content: content || null,
+                visibility,
+                parentId: dto.parentId || null,
+                rootId: rootId || null,
+            });
+
+            if (dto.parentId) {
+                const rawPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "replyCount" = "replyCount" + 1
+                    WHERE id = ${dto.parentId}
+                `
+                    .affectedCount()
+                    .build();
+                await tx.execute(rawPlan);
+            }
 
             for (const media of verifiedMedia) {
                 await tx.orm.public.PostMedia.create({
@@ -40,7 +95,7 @@ export class PostsService {
                     height: media.height,
                     duration: media.duration,
                     order: media.order,
-                })
+                });
             }
 
             const fullPost = await tx.orm.public.Post
@@ -50,7 +105,7 @@ export class PostsService {
                 .first();
 
             return this.toPostResponse(fullPost);
-        })
+        });
     }
 
     async updatePost(postId: string, userId: string, dto: UpdatePostDto) {
@@ -165,14 +220,7 @@ export class PostsService {
                 }
 
                 if (post.parentId) {
-                    const rawPlan = this.prismaService.client.raw.sql`
-            UPDATE "post"
-            SET "replyCount" = GREATEST(0, "replyCount" - 1)
-            WHERE id = ${post.parentId}
-          `
-                        .affectedCount()
-                        .build();
-                    await tx.execute(rawPlan);
+                    await this.cleanupParentTombstone(tx, post.parentId);
                 }
             }
         });
@@ -200,6 +248,14 @@ export class PostsService {
             return {
                 id: post.id,
                 isDeleted: true,
+                createdAt: post.createdAt,
+            };
+        }
+
+        if (post.author && (!post.author.isActive || !post.author.isEmailVerified)) {
+            return {
+                id: post.id,
+                isUnavailable: true,
                 createdAt: post.createdAt,
             };
         }
@@ -331,6 +387,169 @@ export class PostsService {
         return this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet });
     }
 
+    async getReplies(postId: string, query: CursorPaginationDto, viewerId?: string) {
+        const parentPost = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .include('author')
+            .first();
+
+        if (!parentPost) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const rootIdToCheck = parentPost.rootId || (parentPost.parentId ? null : parentPost.id);
+        if (rootIdToCheck) {
+            const rootPost = rootIdToCheck === parentPost.id
+                ? parentPost
+                : await this.prismaService.client.orm.public.Post
+                    .where({ id: rootIdToCheck })
+                    .include('author')
+                    .first();
+
+            if (rootPost && !rootPost.isDeleted) {
+                const canViewRoot = await this.canView(rootPost, viewerId);
+                if (!canViewRoot) {
+                    throw new ForbiddenException('Bạn không có quyền xem các câu trả lời trong chuỗi bài này');
+                }
+            }
+        }
+
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const cursor = this.decodeCursor(query.cursor);
+
+        let replyQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.parentId.eq(postId))
+            .orderBy([(p) => p.createdAt.asc(), (p) => p.id.asc()]);
+
+        if (cursor) {
+            replyQuery = replyQuery.cursor({
+                createdAt: cursor.createdAt,
+                id: cursor.id,
+            });
+        }
+
+        const replies = await replyQuery
+            .limit(limit + 1)
+            .include('author')
+            .include('media')
+            .all();
+
+        const hasNextPage = replies.length > limit;
+        const items = hasNextPage ? replies.slice(0, limit) : replies;
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>();
+
+        if (viewerId && items.length > 0) {
+            const postIds = items.map((p: any) => p.id);
+            const [likes, reposts, bookmarks] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.userId.eq(viewerId))
+                    .where((l) => l.postId.in(postIds))
+                    .all(),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.authorId.eq(viewerId))
+                    .where((p) => p.repostOfId.in(postIds))
+                    .where((p) => p.isDeleted.eq(false))
+                    .all(),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.userId.eq(viewerId))
+                    .where((b) => b.postId.in(postIds))
+                    .all(),
+            ]);
+
+            likes.forEach((l: any) => likedSet.add(l.postId));
+            reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+            bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+        }
+
+        const lastItem = items[items.length - 1];
+        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+
+        return {
+            items: items.map((item: any) =>
+                this.toPostResponse(item, { likedSet, repostedSet, bookmarkedSet }),
+            ),
+            nextCursor,
+        };
+    }
+
+    async getAncestors(postId: string, viewerId?: string) {
+        const currentPost = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!currentPost) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        if (!currentPost.parentId) {
+            return { ancestors: [] };
+        }
+
+        const ancestorsList: any[] = [];
+        let currentParentId: string | null = currentPost.parentId;
+
+        let depth = 0;
+        while (currentParentId && depth < 20) {
+            depth++;
+            const parent: any = await this.prismaService.client.orm.public.Post
+                .where({ id: currentParentId })
+                .include('author')
+                .include('media')
+                .first();
+
+            if (!parent) break;
+
+            ancestorsList.unshift(parent);
+            currentParentId = parent.parentId;
+        }
+
+        if (ancestorsList.length > 0) {
+            const rootPost = ancestorsList[0];
+            if (!rootPost.isDeleted) {
+                const canViewRoot = await this.canView(rootPost, viewerId);
+                if (!canViewRoot) {
+                    throw new ForbiddenException('Bạn không có quyền xem chuỗi bài viết này');
+                }
+            }
+        }
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>();
+
+        if (viewerId && ancestorsList.length > 0) {
+            const postIds = ancestorsList.map((p: any) => p.id);
+            const [likes, reposts, bookmarks] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.userId.eq(viewerId))
+                    .where((l) => l.postId.in(postIds))
+                    .all(),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.authorId.eq(viewerId))
+                    .where((p) => p.repostOfId.in(postIds))
+                    .where((p) => p.isDeleted.eq(false))
+                    .all(),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.userId.eq(viewerId))
+                    .where((b) => b.postId.in(postIds))
+                    .all(),
+            ]);
+
+            likes.forEach((l: any) => likedSet.add(l.postId));
+            reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+            bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+        }
+
+        return {
+            ancestors: ancestorsList.map((item: any) =>
+                this.toPostResponse(item, { likedSet, repostedSet, bookmarkedSet }),
+            ),
+        };
+    }
+
     private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
         const apiSecret = process.env.CLOUDINARY_API_SECRET;
         const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -365,5 +584,56 @@ export class PostsService {
                 order: item.order,
             };
         });
+    }
+
+    private encodeCursor(item: { createdAt: any; id: string }): string {
+        const payload = JSON.stringify({
+            createdAt: item.createdAt.toString(),
+            id: item.id,
+        });
+        return Buffer.from(payload).toString('base64url');
+    }
+
+    private decodeCursor(cursor?: string): { createdAt: Date; id: string } | null {
+        if (!cursor) return null;
+        try {
+            const decoded = Buffer.from(cursor, 'base64url').toString('utf-8');
+            const parsed = JSON.parse(decoded);
+            return {
+                createdAt: new Date(parsed.createdAt),
+                id: parsed.id,
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    private async cleanupParentTombstone(tx: any, parentId: string) {
+        let currentId: string | null = parentId;
+
+        while (currentId) {
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "replyCount" = GREATEST(0, "replyCount" - 1)
+                WHERE id = ${currentId}
+            `
+                .affectedCount()
+                .build();
+            await tx.execute(rawPlan);
+
+            const parent: any = await tx.orm.public.Post
+                .where({ id: currentId })
+                .first();
+
+            if (parent && parent.isDeleted && parent.replyCount === 0) {
+                await tx.orm.public.Post
+                    .where({ id: currentId })
+                    .delete();
+
+                currentId = parent.parentId;
+            } else {
+                break;
+            }
+        }
     }
 }

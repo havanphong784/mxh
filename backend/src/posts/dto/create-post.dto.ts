@@ -66,4 +66,8 @@ export class CreatePostDto {
     @ValidateNested({ each: true })
     @Type(() => PostMediaItemDto)
     media?: PostMediaItemDto[];
+
+    @IsOptional()
+    @IsString()
+    parentId?: string;
 }
