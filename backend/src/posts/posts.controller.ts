@@ -87,4 +87,26 @@ export class PostsController {
   ) {
     return this.postsService.getAncestors(postId, viewerId);
   }
+
+  @Post(':id/repost')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async repost(
+      @Param('id') postId: string,
+      @CurrentUser('sub') userId: string,
+  ) {
+    return this.postsService.repost(postId, userId);
+  }
+
+  @Delete(':id/repost')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async unrepost(
+      @Param('id') postId: string,
+      @CurrentUser('sub') userId: string,
+  ) {
+    return this.postsService.unrepost(postId, userId);
+  }
 }

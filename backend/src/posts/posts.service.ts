@@ -63,6 +63,20 @@ export class PostsService {
             visibility = rootPost.visibility;
         }
 
+        if (dto.quotedPostId) {
+            const quotedPost = await this.prismaService.client.orm.public.Post
+                .where({ id: dto.quotedPostId })
+                .first();
+
+            if (!quotedPost || quotedPost.isDeleted) {
+                throw new BadRequestException('Không thể trích dẫn bài viết không tồn tại hoặc đã bị xóa');
+            }
+
+            if (quotedPost.visibility !== 'PUBLIC') {
+                throw new ForbiddenException('Chỉ có thể trích dẫn bài viết công khai');
+            }
+        }
+
         const verifiedMedia = hasMedia ? this.verifyMediaItems(userId, dto.media!) : [];
 
         return this.prismaService.client.transaction(async (tx) => {
@@ -72,6 +86,7 @@ export class PostsService {
                 visibility,
                 parentId: dto.parentId || null,
                 rootId: rootId || null,
+                quotedPostId: dto.quotedPostId || null,
             });
 
             if (dto.parentId) {
@@ -82,6 +97,15 @@ export class PostsService {
                 `
                     .affectedCount()
                     .build();
+                await tx.execute(rawPlan);
+            }
+
+            if (dto.quotedPostId) {
+                const rawPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "quoteCount" = "quoteCount" + 1
+                    WHERE id = ${dto.quotedPostId}
+                `.affectedCount().build();
                 await tx.execute(rawPlan);
             }
 
@@ -102,6 +126,7 @@ export class PostsService {
                 .where({ id: post.id })
                 .include('author')
                 .include('media')
+                .include('quotedPost')
                 .first();
 
             return this.toPostResponse(fullPost);
@@ -203,6 +228,17 @@ export class PostsService {
                         .build();
                     await tx.execute(rawPlan);
                 }
+
+                if (post.repostOfId) {
+                    const rawPlan = this.prismaService.client.raw.sql`
+            UPDATE "post"
+            SET "repostCount" = GREATEST(0, "repostCount" - 1)
+            WHERE id = ${post.repostOfId}
+          `
+                        .affectedCount()
+                        .build();
+                    await tx.execute(rawPlan);
+                }
             } else {
                 await tx.orm.public.Post
                     .where({ id: postId })
@@ -213,6 +249,17 @@ export class PostsService {
             UPDATE "post"
             SET "quoteCount" = GREATEST(0, "quoteCount" - 1)
             WHERE id = ${post.quotedPostId}
+          `
+                        .affectedCount()
+                        .build();
+                    await tx.execute(rawPlan);
+                }
+
+                if (post.repostOfId) {
+                    const rawPlan = this.prismaService.client.raw.sql`
+            UPDATE "post"
+            SET "repostCount" = GREATEST(0, "repostCount" - 1)
+            WHERE id = ${post.repostOfId}
           `
                         .affectedCount()
                         .build();
@@ -264,10 +311,44 @@ export class PostsService {
         const isReposted = options?.repostedSet ? options.repostedSet.has(post.id) : false;
         const isBookmarked = options?.bookmarkedSet ? options.bookmarkedSet.has(post.id) : false;
 
+        let quotedPostData: any = null;
+        let isQuotedPostDeleted = false;
+
+        if (post.quotedPostId) {
+            if (post.quotedPost && !post.quotedPost.isDeleted) {
+                quotedPostData = {
+                    id: post.quotedPost.id,
+                    content: post.quotedPost.content,
+                    createdAt: post.quotedPost.createdAt,
+                    author: post.quotedPost.author
+                        ? {
+                            id: post.quotedPost.author.id,
+                            username: post.quotedPost.author.username,
+                            displayName: post.quotedPost.author.displayName,
+                            avatarUrl: post.quotedPost.author.avatarUrl,
+                        }
+                        : null,
+                    media: (post.quotedPost.media || []).map((m: any) => ({
+                        id: m.id,
+                        url: m.url,
+                        type: m.type,
+                    })),
+                };
+            } else {
+                isQuotedPostDeleted = true;
+            }
+        }
+
         return {
             id: post.id,
             content: post.content,
             visibility: post.visibility,
+            parentId: post.parentId ?? null,
+            rootId: post.rootId ?? null,
+            repostOfId: post.repostOfId ?? null,
+            quotedPostId: post.quotedPostId ?? null,
+            quotedPost: quotedPostData,
+            isQuotedPostDeleted,
             isDeleted: false,
             editedAt: post.editedAt,
             createdAt: post.createdAt,
@@ -339,6 +420,7 @@ export class PostsService {
             .where({ id: postId })
             .include('author')
             .include('media')
+            .include('quotedPost')
             .first();
 
         if (!post) {
@@ -432,6 +514,7 @@ export class PostsService {
             .limit(limit + 1)
             .include('author')
             .include('media')
+            .include('quotedPost')
             .all();
 
         const hasNextPage = replies.length > limit;
@@ -498,6 +581,7 @@ export class PostsService {
                 .where({ id: currentParentId })
                 .include('author')
                 .include('media')
+                .include('quotedPost')
                 .first();
 
             if (!parent) break;
@@ -548,6 +632,92 @@ export class PostsService {
                 this.toPostResponse(item, { likedSet, repostedSet, bookmarkedSet }),
             ),
         };
+    }
+
+    async repost(postId: string, userId: string) {
+        const targetPost = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!targetPost || targetPost.isDeleted) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        if (targetPost.visibility !== 'PUBLIC') {
+            throw new ForbiddenException('Chỉ có thể chia sẻ lại bài viết công khai');
+        }
+
+        // Kiểm tra xem người dùng đã repost chưa
+        const existingRepost = await this.prismaService.client.orm.public.Post
+            .where({ authorId: userId, repostOfId: postId })
+            .first();
+
+        if (existingRepost) {
+            // Idempotent: Đã repost rồi thì trả về thành công kèm số đếm hiện tại
+            return {
+                reposted: true,
+                repostCount: targetPost.repostCount,
+            };
+        }
+
+        return this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.Post.create({
+                authorId: userId,
+                repostOfId: postId,
+                visibility: 'PUBLIC',
+            });
+
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "repostCount" = "repostCount" + 1
+                WHERE id = ${postId}
+            `.affectedCount().build();
+            await tx.execute(rawPlan);
+
+            return {
+                reposted: true,
+                repostCount: targetPost.repostCount + 1,
+            };
+        });
+    }
+
+    async unrepost(postId: string, userId: string) {
+        const targetPost = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!targetPost) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const existingRepost = await this.prismaService.client.orm.public.Post
+            .where({ authorId: userId, repostOfId: postId })
+            .first();
+
+        if (!existingRepost) {
+            return {
+                reposted: false,
+                repostCount: targetPost.repostCount,
+            };
+        }
+
+        return this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.Post
+                .where({ id: existingRepost.id })
+                .delete();
+
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "repostCount" = GREATEST(0, "repostCount" - 1)
+                WHERE id = ${postId}
+            `.affectedCount().build();
+            await tx.execute(rawPlan);
+
+            return {
+                reposted: false,
+                repostCount: Math.max(0, targetPost.repostCount - 1),
+            };
+        });
     }
 
     private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
