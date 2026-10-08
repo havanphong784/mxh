@@ -19,6 +19,7 @@ import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard.js';
 import {OptionalJwtAuthGuard} from '../auth/guards/optional-jwt-auth.guard.js';
 import {CurrentUser} from '../auth/decorators/current-user.decorator.js';
 import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
+import {OffsetPaginationDto} from "./dto/offset-pagination.dto.js";
 
 @Controller('posts')
 export class PostsController {
@@ -33,6 +34,16 @@ export class PostsController {
     @Body() dto: CreatePostDto,
   ) {
     return this.postsService.createPost(userId, dto);
+  }
+
+  @Get('bookmarks')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getBookmarks(
+      @CurrentUser('sub') userId: string,
+      @Query() query: OffsetPaginationDto,
+  ) {
+    return this.postsService.getBookmarks(userId, query);
   }
 
   @Get(':id')
@@ -109,4 +120,60 @@ export class PostsController {
   ) {
     return this.postsService.unrepost(postId, userId);
   }
+
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async likePost(
+      @Param('id') postId: string,
+      @CurrentUser('sub') userId: string,
+  ) {
+    return this.postsService.likePost(postId, userId);
+  }
+
+  @Delete(':id/like')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async unlikePost(
+      @Param('id') postId: string,
+      @CurrentUser('sub') userId: string,
+  ) {
+    return this.postsService.unlikePost(postId, userId);
+  }
+
+  @Get(':id/likes')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getPostLikes(
+      @Param('id') postId: string,
+      @Query() query: OffsetPaginationDto,
+      @CurrentUser('sub') viewerId?: string,
+  ) {
+    return this.postsService.getPostLikes(postId, query, viewerId);
+  }
+
+  @Post(':id/bookmark')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async bookmarkPost(
+      @Param('id') postId: string,
+      @CurrentUser('sub') userId: string,
+  ) {
+    return this.postsService.bookmarkPost(postId, userId);
+  }
+
+  @Delete(':id/bookmark')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async unbookmarkPost(
+      @Param('id') postId: string,
+      @CurrentUser('sub') userId: string,
+  ) {
+    return this.postsService.unbookmarkPost(postId, userId);
+  }
+
 }

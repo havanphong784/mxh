@@ -5,6 +5,7 @@ import {PrismaService} from "../prisma/prisma.service.js";
 import {UpdatePostDto} from "./dto/update-post.dto.js";
 import {MediaService} from "../media/media.service.js";
 import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
+import {OffsetPaginationDto} from "./dto/offset-pagination.dto.js";
 
 @Injectable()
 export class PostsService {
@@ -718,6 +719,290 @@ export class PostsService {
                 repostCount: Math.max(0, targetPost.repostCount - 1),
             };
         });
+    }
+
+    async likePost(postId: string, userId: string) {
+        const post = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!post || post.isDeleted) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const allowed = await this.canView(post, userId);
+        if (!allowed) {
+            throw new ForbiddenException('Bạn không có quyền tương tác với bài viết này');
+        }
+
+        const existingLike = await this.prismaService.client.orm.public.PostLike
+            .where((l) => l.userId.eq(userId))
+            .where((l) => l.postId.eq(postId))
+            .first();
+
+        if (existingLike) {
+            return {
+                liked: true,
+                likeCount: post.likeCount,
+            };
+        }
+
+        return this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.PostLike.create({
+                userId,
+                postId,
+            });
+
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "likeCount" = "likeCount" + 1
+                WHERE id = ${postId}
+            `.affectedCount().build();
+            await tx.execute(rawPlan);
+
+            return {
+                liked: true,
+                likeCount: post.likeCount + 1,
+            };
+        });
+    }
+
+    async unlikePost(postId: string, userId: string) {
+        const post = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!post) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const existingLike = await this.prismaService.client.orm.public.PostLike
+            .where((l) => l.userId.eq(userId))
+            .where((l) => l.postId.eq(postId))
+            .first();
+
+        if (!existingLike) {
+            return {
+                liked: false,
+                likeCount: post.likeCount,
+            };
+        }
+
+        return this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.PostLike
+                .where((l) => l.userId.eq(userId))
+                .where((l) => l.postId.eq(postId))
+                .delete();
+
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "likeCount" = GREATEST(0, "likeCount" - 1)
+                WHERE id = ${postId}
+            `.affectedCount().build();
+            await tx.execute(rawPlan);
+
+            return {
+                liked: false,
+                likeCount: Math.max(0, post.likeCount - 1),
+            };
+        });
+    }
+
+    async getPostLikes(postId: string, query: OffsetPaginationDto, viewerId?: string) {
+        const post = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!post || post.isDeleted) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const allowed = await this.canView(post, viewerId);
+        if (!allowed) {
+            throw new ForbiddenException('Bạn không có quyền xem thông tin bài viết này');
+        }
+
+        const page = Math.max(1, Number(query.page) || 1);
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const skip = (page - 1) * limit;
+
+        const [likes, totalAgg] = await Promise.all([
+            this.prismaService.client.orm.public.PostLike
+                .where((l) => l.postId.eq(postId))
+                .orderBy((l) => l.createdAt.desc())
+                .offset(skip)
+                .limit(limit)
+                .include('user')
+                .all(),
+            this.prismaService.client.orm.public.PostLike
+                .where((l) => l.postId.eq(postId))
+                .aggregate((agg) => ({ total: agg.count() })),
+        ]);
+
+        const total = Number(totalAgg.total) || 0;
+
+        return {
+            items: likes.map((item: any) => ({
+                id: item.user.id,
+                username: item.user.username,
+                displayName: item.user.displayName,
+                avatarUrl: item.user.avatarUrl,
+                bio: item.user.bio,
+                likedAt: item.createdAt,
+            })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async bookmarkPost(postId: string, userId: string) {
+        const post = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!post || post.isDeleted) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const allowed = await this.canView(post, userId);
+        if (!allowed) {
+            throw new ForbiddenException('Bạn không có quyền lưu bài viết này');
+        }
+
+        const existingBookmark = await this.prismaService.client.orm.public.PostBookmark
+            .where((b) => b.userId.eq(userId))
+            .where((b) => b.postId.eq(postId))
+            .first();
+
+        if (existingBookmark) {
+            return { bookmarked: true };
+        }
+
+        return this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.PostBookmark.create({
+                userId,
+                postId,
+            });
+
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "bookmarkCount" = "bookmarkCount" + 1
+                WHERE id = ${postId}
+            `.affectedCount().build();
+            await tx.execute(rawPlan);
+
+            return { bookmarked: true };
+        });
+    }
+
+    async unbookmarkPost(postId: string, userId: string) {
+        const post = await this.prismaService.client.orm.public.Post
+            .where({ id: postId })
+            .first();
+
+        if (!post) {
+            throw new NotFoundException('Không tìm thấy bài viết');
+        }
+
+        const existingBookmark = await this.prismaService.client.orm.public.PostBookmark
+            .where((b) => b.userId.eq(userId))
+            .where((b) => b.postId.eq(postId))
+            .first();
+
+        if (!existingBookmark) {
+            return { bookmarked: false };
+        }
+
+        return this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.PostBookmark
+                .where((b) => b.userId.eq(userId))
+                .where((b) => b.postId.eq(postId))
+                .delete();
+
+            const rawPlan = this.prismaService.client.raw.sql`
+                UPDATE "post"
+                SET "bookmarkCount" = GREATEST(0, "bookmarkCount" - 1)
+                WHERE id = ${postId}
+            `.affectedCount().build();
+            await tx.execute(rawPlan);
+
+            return { bookmarked: false };
+        });
+    }
+
+    async getBookmarks(userId: string, query: OffsetPaginationDto) {
+        const page = Math.max(1, Number(query.page) || 1);
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const skip = (page - 1) * limit;
+
+        const [bookmarks, totalAgg] = await Promise.all([
+            this.prismaService.client.orm.public.PostBookmark
+                .where((b) => b.userId.eq(userId))
+                .orderBy((b) => b.createdAt.desc())
+                .offset(skip)
+                .limit(limit)
+                .all(),
+            this.prismaService.client.orm.public.PostBookmark
+                .where((b) => b.userId.eq(userId))
+                .aggregate((agg) => ({ total: agg.count() })),
+        ]);
+
+        const total = Number(totalAgg.total) || 0;
+        const postIds = bookmarks.map((b: any) => b.postId);
+
+        if (postIds.length === 0) {
+            return {
+                items: [],
+                pagination: { page, limit, total, totalPages: 0 },
+            };
+        }
+
+        const posts = await this.prismaService.client.orm.public.Post
+            .where((p) => p.id.in(postIds))
+            .include('author')
+            .include('media')
+            .include('quotedPost')
+            .all();
+
+        const postMap = new Map<string, any>(posts.map((p: any) => [p.id, p]));
+        const orderedPosts = postIds
+            .map((id: string) => postMap.get(id))
+            .filter(Boolean);
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>(postIds); // Chắc chắn đã bookmark vì lấy từ bảng PostBookmark của chính user
+
+        const [likes, reposts] = await Promise.all([
+            this.prismaService.client.orm.public.PostLike
+                .where((l) => l.userId.eq(userId))
+                .where((l) => l.postId.in(postIds))
+                .all(),
+            this.prismaService.client.orm.public.Post
+                .where((p) => p.authorId.eq(userId))
+                .where((p) => p.repostOfId.in(postIds))
+                .where((p) => p.isDeleted.eq(false))
+                .all(),
+        ]);
+
+        likes.forEach((l: any) => likedSet.add(l.postId));
+        reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+
+        return {
+            items: orderedPosts.map((post: any) =>
+                this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet }),
+            ),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 
     private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
