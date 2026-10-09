@@ -1005,6 +1005,344 @@ export class PostsService {
         };
     }
 
+    async getFeed(userId: string, query: CursorPaginationDto) {
+        const follows = await this.prismaService.client.orm.public.Follow
+            .where((f) => f.followerId.eq(userId))
+            .where((f) => f.following.some((u) => u.isActive.eq(true)))
+            .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
+            .all();
+
+        const followingIds = follows.map((f: any) => f.followingId);
+        const targetAuthorIds = [userId, ...followingIds];
+
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const cursor = this.decodeCursor(query.cursor);
+
+        let feedQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.authorId.in(targetAuthorIds))
+            .where((p) => p.isDeleted.eq(false))
+            .where((p) => p.author.some((u) => u.isActive.eq(true)))
+            .where((p) => p.author.some((u) => u.isEmailVerified.eq(true)))
+            .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
+
+        if (cursor) {
+            feedQuery = feedQuery.cursor({
+                createdAt: cursor.createdAt,
+                id: cursor.id,
+            });
+        }
+
+        const posts = await feedQuery
+            .limit(limit + 1)
+            .include('author')
+            .include('media')
+            .include('quotedPost')
+            .all();
+
+        const accessiblePosts = posts.filter((post: any) => {
+            if (post.authorId === userId) return true;
+            return post.visibility !== 'PRIVATE';
+        });
+
+        const hasNextPage = accessiblePosts.length > limit;
+        const items = hasNextPage ? accessiblePosts.slice(0, limit) : accessiblePosts;
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>();
+
+        if (items.length > 0) {
+            const postIds = items.map((p: any) => p.id);
+            const [likes, reposts, bookmarks] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.userId.eq(userId))
+                    .where((l) => l.postId.in(postIds))
+                    .all(),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.authorId.eq(userId))
+                    .where((p) => p.repostOfId.in(postIds))
+                    .where((p) => p.isDeleted.eq(false))
+                    .all(),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.userId.eq(userId))
+                    .where((b) => b.postId.in(postIds))
+                    .all(),
+            ]);
+
+            likes.forEach((l: any) => likedSet.add(l.postId));
+            reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+            bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+        }
+
+        const lastItem = items[items.length - 1];
+        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+
+        return {
+            items: items.map((post: any) =>
+                this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet }),
+            ),
+            nextCursor,
+        };
+    }
+
+    async getExplore(query: CursorPaginationDto, viewerId?: string) {
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const cursor = this.decodeCursor(query.cursor);
+
+        let exploreQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.visibility.eq('PUBLIC'))
+            .where((p) => p.parentId.isNull())
+            .where((p) => p.isDeleted.eq(false))
+            .where((p) => p.author.some((u) => u.isActive.eq(true)))
+            .where((p) => p.author.some((u) => u.isEmailVerified.eq(true)))
+            .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
+
+        if (cursor) {
+            exploreQuery = exploreQuery.cursor({
+                createdAt: cursor.createdAt,
+                id: cursor.id,
+            });
+        }
+
+        const posts = await exploreQuery
+            .limit(limit + 1)
+            .include('author')
+            .include('media')
+            .include('quotedPost')
+            .all();
+
+        const hasNextPage = posts.length > limit;
+        const items = hasNextPage ? posts.slice(0, limit) : posts;
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>();
+
+        if (viewerId && items.length > 0) {
+            const postIds = items.map((p: any) => p.id);
+            const [likes, reposts, bookmarks] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.userId.eq(viewerId))
+                    .where((l) => l.postId.in(postIds))
+                    .all(),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.authorId.eq(viewerId))
+                    .where((p) => p.repostOfId.in(postIds))
+                    .where((p) => p.isDeleted.eq(false))
+                    .all(),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.userId.eq(viewerId))
+                    .where((b) => b.postId.in(postIds))
+                    .all(),
+            ]);
+
+            likes.forEach((l: any) => likedSet.add(l.postId));
+            reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+            bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+        }
+
+        const lastItem = items[items.length - 1];
+        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+
+        return {
+            items: items.map((post: any) =>
+                this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet }),
+            ),
+            nextCursor,
+        };
+    }
+
+    async getUserPosts(username: string, query: CursorPaginationDto, viewerId?: string) {
+        const targetUser = await this.prismaService.client.orm.public.User
+            .where((u) => u.username.eq(username.toLowerCase()))
+            .first();
+
+        if (!targetUser || !targetUser.isActive || !targetUser.isEmailVerified) {
+            throw new NotFoundException('Không tìm thấy người dùng');
+        }
+
+        const isOwner = viewerId === targetUser.id;
+        let isFollowing = false;
+        if (viewerId && !isOwner) {
+            const follow = await this.prismaService.client.orm.public.Follow
+                .where((f) => f.followerId.eq(viewerId))
+                .where((f) => f.followingId.eq(targetUser.id))
+                .first();
+            isFollowing = !!follow;
+        }
+
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const cursor = this.decodeCursor(query.cursor);
+
+        const allowedVisibilities: ('PUBLIC' | 'FOLLOWERS' | 'PRIVATE')[] = isOwner
+            ? ['PUBLIC', 'FOLLOWERS', 'PRIVATE']
+            : isFollowing
+                ? ['PUBLIC', 'FOLLOWERS']
+                : ['PUBLIC'];
+
+        let userPostsQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.authorId.eq(targetUser.id))
+            .where((p) => p.parentId.isNull())
+            .where((p) => p.isDeleted.eq(false))
+            .where((p) => p.visibility.in(allowedVisibilities))
+            .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
+
+        if (cursor) {
+            userPostsQuery = userPostsQuery.cursor({
+                createdAt: cursor.createdAt,
+                id: cursor.id,
+            });
+        }
+
+        const posts = await userPostsQuery
+            .limit(limit + 1)
+            .include('author')
+            .include('media')
+            .include('quotedPost')
+            .all();
+
+        const hasNextPage = posts.length > limit;
+        const items = hasNextPage ? posts.slice(0, limit) : posts;
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>();
+
+        if (viewerId && items.length > 0) {
+            const postIds = items.map((p: any) => p.id);
+            const [likes, reposts, bookmarks] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.userId.eq(viewerId))
+                    .where((l) => l.postId.in(postIds))
+                    .all(),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.authorId.eq(viewerId))
+                    .where((p) => p.repostOfId.in(postIds))
+                    .where((p) => p.isDeleted.eq(false))
+                    .all(),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.userId.eq(viewerId))
+                    .where((b) => b.postId.in(postIds))
+                    .all(),
+            ]);
+
+            likes.forEach((l: any) => likedSet.add(l.postId));
+            reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+            bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+        }
+
+        const lastItem = items[items.length - 1];
+        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+
+        return {
+            items: items.map((post: any) =>
+                this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet }),
+            ),
+            nextCursor,
+        };
+    }
+
+    async getUserReplies(username: string, query: CursorPaginationDto, viewerId?: string) {
+        const targetUser = await this.prismaService.client.orm.public.User
+            .where((u) => u.username.eq(username.toLowerCase()))
+            .first();
+
+        if (!targetUser || !targetUser.isActive || !targetUser.isEmailVerified) {
+            throw new NotFoundException('Không tìm thấy người dùng');
+        }
+
+        const isOwner = viewerId === targetUser.id;
+        let isFollowing = false;
+        if (viewerId && !isOwner) {
+            const follow = await this.prismaService.client.orm.public.Follow
+                .where((f) => f.followerId.eq(viewerId))
+                .where((f) => f.followingId.eq(targetUser.id))
+                .first();
+            isFollowing = !!follow;
+        }
+
+        const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+        const cursor = this.decodeCursor(query.cursor);
+
+        const allowedVisibilities: ('PUBLIC' | 'FOLLOWERS' | 'PRIVATE')[] = isOwner
+            ? ['PUBLIC', 'FOLLOWERS', 'PRIVATE']
+            : isFollowing
+                ? ['PUBLIC', 'FOLLOWERS']
+                : ['PUBLIC'];
+
+        let userRepliesQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.authorId.eq(targetUser.id))
+            .where((p) => p.parentId.isNotNull())
+            .where((p) => p.isDeleted.eq(false))
+            .where((p) => p.visibility.in(allowedVisibilities))
+            .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
+
+        if (cursor) {
+            userRepliesQuery = userRepliesQuery.cursor({
+                createdAt: cursor.createdAt,
+                id: cursor.id,
+            });
+        }
+
+        const posts = await userRepliesQuery
+            .limit(limit + 1)
+            .include('author')
+            .include('media')
+            .include('quotedPost')
+            .include('parent')
+            .all();
+
+        const hasNextPage = posts.length > limit;
+        const items = hasNextPage ? posts.slice(0, limit) : posts;
+
+        let likedSet = new Set<string>();
+        let repostedSet = new Set<string>();
+        let bookmarkedSet = new Set<string>();
+
+        if (viewerId && items.length > 0) {
+            const postIds = items.map((p: any) => p.id);
+            const [likes, reposts, bookmarks] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.userId.eq(viewerId))
+                    .where((l) => l.postId.in(postIds))
+                    .all(),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.authorId.eq(viewerId))
+                    .where((p) => p.repostOfId.in(postIds))
+                    .where((p) => p.isDeleted.eq(false))
+                    .all(),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.userId.eq(viewerId))
+                    .where((b) => b.postId.in(postIds))
+                    .all(),
+            ]);
+
+            likes.forEach((l: any) => likedSet.add(l.postId));
+            reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+            bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+        }
+
+        const lastItem = items[items.length - 1];
+        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+
+        return {
+            items: items.map((post: any) => {
+                const response: any = this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet });
+                if (post.parent) {
+                    response.parent = {
+                        id: post.parent.id,
+                        content: post.parent.isDeleted ? null : post.parent.content,
+                        isDeleted: post.parent.isDeleted,
+                        authorId: post.parent.authorId,
+                        createdAt: post.parent.createdAt,
+                    };
+                }
+                return response;
+            }),
+            nextCursor,
+        };
+    }
+
     private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
         const apiSecret = process.env.CLOUDINARY_API_SECRET;
         const cloudName = process.env.CLOUDINARY_CLOUD_NAME;

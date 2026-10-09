@@ -13,16 +13,21 @@ import {
 } from '@nestjs/common';
 import {Throttle} from '@nestjs/throttler';
 import {UsersService} from './users.service.js';
+import {PostsService} from '../posts/posts.service.js';
 import {UpdateProfileDto} from './dto/update-profile.dto.js';
 import {ChangePasswordDto} from './dto/change-password.dto.js';
 import {FollowPaginationDto} from './dto/follow-pagination.dto.js';
+import {CursorPaginationDto} from '../posts/dto/cursor-pagination.dto.js';
 import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard.js';
 import {OptionalJwtAuthGuard} from '../auth/guards/optional-jwt-auth.guard.js';
 import {CurrentUser} from '../auth/decorators/current-user.decorator.js';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly postsService: PostsService,
+  ) {}
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -75,6 +80,28 @@ export class UsersController {
     @Query() query: FollowPaginationDto,
   ) {
     return this.usersService.getFollowing(username, query);
+  }
+
+  @Get(':username/posts')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getUserPosts(
+    @Param('username') username: string,
+    @Query() query: CursorPaginationDto,
+    @CurrentUser('sub') viewerId?: string,
+  ) {
+    return this.postsService.getUserPosts(username, query, viewerId);
+  }
+
+  @Get(':username/replies')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getUserReplies(
+    @Param('username') username: string,
+    @Query() query: CursorPaginationDto,
+    @CurrentUser('sub') viewerId?: string,
+  ) {
+    return this.postsService.getUserReplies(username, query, viewerId);
   }
 
   @Patch('me')

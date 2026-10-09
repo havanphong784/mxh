@@ -36,6 +36,26 @@ export class PostsController {
     return this.postsService.createPost(userId, dto);
   }
 
+  @Get('feed')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getFeed(
+    @CurrentUser('sub') userId: string,
+    @Query() query: CursorPaginationDto,
+  ) {
+    return this.postsService.getFeed(userId, query);
+  }
+
+  @Get('explore')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getExplore(
+    @Query() query: CursorPaginationDto,
+    @CurrentUser('sub') viewerId?: string,
+  ) {
+    return this.postsService.getExplore(query, viewerId);
+  }
+
   @Get('bookmarks')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 60, ttl: 60000 } })
