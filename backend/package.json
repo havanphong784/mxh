@@ -21,6 +21,7 @@
     "@nestjs/mapped-types": "^12.0.0",
     "@nestjs/platform-fastify": "^12.0.3",
     "@nestjs/throttler": "^6.7.1",
+    "@nestjs/event-emitter": "^12.0.1",
     "@prisma/client": "^7.10.0",
     "@prisma/orm-postgres": "^8.0.0-rc.11",
     "argon2": "^0.45.1",

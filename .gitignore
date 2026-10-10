@@ -12,3 +12,5 @@ build/
 coverage/
 .turbo/
 /docs/
+/docs/mxh_posts_api.postman_collection.json
+/docs/posts.http

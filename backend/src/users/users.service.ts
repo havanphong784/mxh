@@ -5,12 +5,15 @@ import {UpdateProfileDto} from './dto/update-profile.dto.js';
 import {ChangePasswordDto} from './dto/change-password.dto.js';
 import {FollowPaginationDto} from './dto/follow-pagination.dto.js';
 import * as argon2 from 'argon2';
+import {EventEmitter2} from '@nestjs/event-emitter';
+import {USER_EVENTS, UserFollowedEvent} from '../events/event-types.js';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async getMyProfile(userId: string) {
@@ -268,6 +271,11 @@ export class UsersService {
       }
       throw error;
     }
+
+    this.eventEmitter.emit(USER_EVENTS.FOLLOWED, {
+      followerId: currentUserId,
+      followingId: targetUser.id,
+    } satisfies UserFollowedEvent);
 
     return {
       message: `Đã theo dõi ${targetUser.displayName}`,

@@ -6,6 +6,14 @@ import {UpdatePostDto} from "./dto/update-post.dto.js";
 import {MediaService} from "../media/media.service.js";
 import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
 import {OffsetPaginationDto} from "./dto/offset-pagination.dto.js";
+import {
+    POST_EVENTS,
+    PostLikedEvent,
+    PostQuotedEvent,
+    PostRepliedEvent,
+    PostRepostedEvent,
+} from "../events/event-types.js";
+import {EventEmitter2} from "@nestjs/event-emitter";
 
 @Injectable()
 export class PostsService {
@@ -14,23 +22,8 @@ export class PostsService {
     constructor(
         private readonly prismaService: PrismaService,
         private readonly mediaService: MediaService,
+        private readonly eventEmitter: EventEmitter2
     ) {
-    }
-
-    private async ensureActiveUser(userId: string) {
-        const user = await this.prismaService.client.orm.public.User
-            .where((u) => u.id.eq(userId))
-            .first();
-
-        if (!user || !user.isActive) {
-            throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
-        }
-
-        if (!user.isEmailVerified) {
-            throw new ForbiddenException('Vui lòng xác thực email để thực hiện hành động này');
-        }
-
-        return user;
     }
 
     async createPost(userId: string, dto: CreatePostDto) {
@@ -45,6 +38,7 @@ export class PostsService {
         let parentPost: any = null;
         let rootPost: any = null;
         let rootId: string | null = null;
+        let quotedPost: any = null;
         let visibility = dto.visibility ?? 'PUBLIC';
 
         if (dto.parentId) {
@@ -83,7 +77,7 @@ export class PostsService {
         }
 
         if (dto.quotedPostId) {
-            const quotedPost = await this.prismaService.client.orm.public.Post
+            quotedPost = await this.prismaService.client.orm.public.Post
                 .where({ id: dto.quotedPostId })
                 .first();
 
@@ -98,7 +92,7 @@ export class PostsService {
 
         const verifiedMedia = hasMedia ? this.verifyMediaItems(userId, dto.media!) : [];
 
-        return this.prismaService.client.transaction(async (tx) => {
+        const result = await this.prismaService.client.transaction(async (tx) => {
             const post = await tx.orm.public.Post.create({
                 authorId: userId,
                 content: content || null,
@@ -150,6 +144,26 @@ export class PostsService {
 
             return this.toPostResponse(fullPost);
         });
+
+        if (dto.parentId && parentPost && parentPost.authorId !== userId) {
+            this.eventEmitter.emit(POST_EVENTS.REPLIED, {
+                actorId: userId,
+                postId: result.id,
+                parentId: dto.parentId,
+                parentAuthorId: parentPost.authorId,
+            } satisfies PostRepliedEvent);
+        }
+
+        if (dto.quotedPostId && quotedPost && quotedPost.authorId !== userId) {
+            this.eventEmitter.emit(POST_EVENTS.QUOTED, {
+                actorId: userId,
+                postId: result.id,
+                quotedPostId: dto.quotedPostId,
+                quotedPostAuthorId: quotedPost.authorId,
+            } satisfies PostQuotedEvent);
+        }
+
+        return result;
     }
 
     async updatePost(postId: string, userId: string, dto: UpdatePostDto) {
@@ -702,7 +716,7 @@ export class PostsService {
             };
         }
 
-        return this.prismaService.client.transaction(async (tx) => {
+        const result = await this.prismaService.client.transaction(async (tx) => {
             await tx.orm.public.Post.create({
                 authorId: userId,
                 repostOfId: postId,
@@ -721,6 +735,16 @@ export class PostsService {
                 repostCount: targetPost.repostCount + 1,
             };
         });
+
+        if (targetPost.authorId !== userId) {
+            this.eventEmitter.emit(POST_EVENTS.REPOSTED, {
+                actorId: userId,
+                postId,
+                postAuthorId: targetPost.authorId,
+            } satisfies PostRepostedEvent);
+        }
+
+        return result;
     }
 
     async unrepost(postId: string, userId: string) {
@@ -792,7 +816,7 @@ export class PostsService {
             };
         }
 
-        return this.prismaService.client.transaction(async (tx) => {
+        const result = await this.prismaService.client.transaction(async (tx) => {
             await tx.orm.public.PostLike.create({
                 userId,
                 postId,
@@ -810,6 +834,16 @@ export class PostsService {
                 likeCount: post.likeCount + 1,
             };
         });
+
+        if (post.authorId !== userId) {
+            this.eventEmitter.emit(POST_EVENTS.LIKED, {
+                actorId: userId,
+                postId,
+                postAuthorId: post.authorId,
+            } satisfies PostLikedEvent);
+        }
+
+        return result;
     }
 
     async unlikePost(postId: string, userId: string) {
@@ -1398,6 +1432,108 @@ export class PostsService {
         };
     }
 
+    async reconcileCounters(targetPostId?: string) {
+        let postsQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.isDeleted.eq(false));
+
+        if (targetPostId) {
+            postsQuery = postsQuery.where((p) => p.id.eq(targetPostId));
+        }
+
+        const posts = await postsQuery.all();
+        let correctedCount = 0;
+        const discrepancies: any[] = [];
+
+        for (const post of posts) {
+            const [likesAgg, bookmarksAgg, repostsAgg, quotesAgg, repliesAgg] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.postId.eq(post.id))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.postId.eq(post.id))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.repostOfId.eq(post.id))
+                    .where((p) => p.isDeleted.eq(false))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.quotedPostId.eq(post.id))
+                    .where((p) => p.isDeleted.eq(false))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.parentId.eq(post.id))
+                    .where((p) => p.isDeleted.eq(false))
+                    .aggregate((agg) => ({ total: agg.count() })),
+            ]);
+
+            const actualLikes = Number(likesAgg.total);
+            const actualBookmarks = Number(bookmarksAgg.total);
+            const actualReposts = Number(repostsAgg.total);
+            const actualQuotes = Number(quotesAgg.total);
+            const actualReplies = Number(repliesAgg.total);
+
+            const hasDiscrepancy =
+                post.likeCount !== actualLikes ||
+                post.bookmarkCount !== actualBookmarks ||
+                post.repostCount !== actualReposts ||
+                post.quoteCount !== actualQuotes ||
+                post.replyCount !== actualReplies;
+
+            if (hasDiscrepancy) {
+                correctedCount++;
+                discrepancies.push({
+                    postId: post.id,
+                    before: {
+                        likeCount: post.likeCount,
+                        bookmarkCount: post.bookmarkCount,
+                        repostCount: post.repostCount,
+                        quoteCount: post.quoteCount,
+                        replyCount: post.replyCount,
+                    },
+                    after: {
+                        likeCount: actualLikes,
+                        bookmarkCount: actualBookmarks,
+                        repostCount: actualReposts,
+                        quoteCount: actualQuotes,
+                        replyCount: actualReplies,
+                    },
+                });
+
+                await this.prismaService.client.orm.public.Post
+                    .where({ id: post.id })
+                    .update({
+                        likeCount: actualLikes,
+                        bookmarkCount: actualBookmarks,
+                        repostCount: actualReposts,
+                        quoteCount: actualQuotes,
+                        replyCount: actualReplies,
+                    });
+            }
+        }
+
+        return {
+            totalScanned: posts.length,
+            correctedCount,
+            discrepancies,
+        };
+    }
+
+    private async ensureActiveUser(userId: string) {
+        const user = await this.prismaService.client.orm.public.User
+            .where((u) => u.id.eq(userId))
+            .first();
+
+        if (!user || !user.isActive) {
+            throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
+        }
+
+        if (!user.isEmailVerified) {
+            throw new ForbiddenException('Vui lòng xác thực email để thực hiện hành động này');
+        }
+
+        return user;
+    }
+
     private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
         const apiSecret = process.env.CLOUDINARY_API_SECRET;
         const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -1483,91 +1619,5 @@ export class PostsService {
                 break;
             }
         }
-    }
-
-    async reconcileCounters(targetPostId?: string) {
-        let postsQuery = this.prismaService.client.orm.public.Post
-            .where((p) => p.isDeleted.eq(false));
-
-        if (targetPostId) {
-            postsQuery = postsQuery.where((p) => p.id.eq(targetPostId));
-        }
-
-        const posts = await postsQuery.all();
-        let correctedCount = 0;
-        const discrepancies: any[] = [];
-
-        for (const post of posts) {
-            const [likesAgg, bookmarksAgg, repostsAgg, quotesAgg, repliesAgg] = await Promise.all([
-                this.prismaService.client.orm.public.PostLike
-                    .where((l) => l.postId.eq(post.id))
-                    .aggregate((agg) => ({ total: agg.count() })),
-                this.prismaService.client.orm.public.PostBookmark
-                    .where((b) => b.postId.eq(post.id))
-                    .aggregate((agg) => ({ total: agg.count() })),
-                this.prismaService.client.orm.public.Post
-                    .where((p) => p.repostOfId.eq(post.id))
-                    .where((p) => p.isDeleted.eq(false))
-                    .aggregate((agg) => ({ total: agg.count() })),
-                this.prismaService.client.orm.public.Post
-                    .where((p) => p.quotedPostId.eq(post.id))
-                    .where((p) => p.isDeleted.eq(false))
-                    .aggregate((agg) => ({ total: agg.count() })),
-                this.prismaService.client.orm.public.Post
-                    .where((p) => p.parentId.eq(post.id))
-                    .where((p) => p.isDeleted.eq(false))
-                    .aggregate((agg) => ({ total: agg.count() })),
-            ]);
-
-            const actualLikes = Number(likesAgg.total);
-            const actualBookmarks = Number(bookmarksAgg.total);
-            const actualReposts = Number(repostsAgg.total);
-            const actualQuotes = Number(quotesAgg.total);
-            const actualReplies = Number(repliesAgg.total);
-
-            const hasDiscrepancy =
-                post.likeCount !== actualLikes ||
-                post.bookmarkCount !== actualBookmarks ||
-                post.repostCount !== actualReposts ||
-                post.quoteCount !== actualQuotes ||
-                post.replyCount !== actualReplies;
-
-            if (hasDiscrepancy) {
-                correctedCount++;
-                discrepancies.push({
-                    postId: post.id,
-                    before: {
-                        likeCount: post.likeCount,
-                        bookmarkCount: post.bookmarkCount,
-                        repostCount: post.repostCount,
-                        quoteCount: post.quoteCount,
-                        replyCount: post.replyCount,
-                    },
-                    after: {
-                        likeCount: actualLikes,
-                        bookmarkCount: actualBookmarks,
-                        repostCount: actualReposts,
-                        quoteCount: actualQuotes,
-                        replyCount: actualReplies,
-                    },
-                });
-
-                await this.prismaService.client.orm.public.Post
-                    .where({ id: post.id })
-                    .update({
-                        likeCount: actualLikes,
-                        bookmarkCount: actualBookmarks,
-                        repostCount: actualReposts,
-                        quoteCount: actualQuotes,
-                        replyCount: actualReplies,
-                    });
-            }
-        }
-
-        return {
-            totalScanned: posts.length,
-            correctedCount,
-            discrepancies,
-        };
     }
 }
