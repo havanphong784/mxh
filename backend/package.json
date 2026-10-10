@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --watch --import @swc-node/register/esm-register src/index.ts",
-    "contract:emit": "prisma contract emit"
+    "contract:emit": "prisma contract emit",
+    "reconcile:counters": "node --import @swc-node/register/esm-register src/scripts/reconcile-counters.ts"
   },
   "keywords": [],
   "author": "",

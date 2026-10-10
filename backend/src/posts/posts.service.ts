@@ -17,7 +17,25 @@ export class PostsService {
     ) {
     }
 
+    private async ensureActiveUser(userId: string) {
+        const user = await this.prismaService.client.orm.public.User
+            .where((u) => u.id.eq(userId))
+            .first();
+
+        if (!user || !user.isActive) {
+            throw new ForbiddenException('Tài khoản của bạn đã bị khóa hoặc không tồn tại');
+        }
+
+        if (!user.isEmailVerified) {
+            throw new ForbiddenException('Vui lòng xác thực email để thực hiện hành động này');
+        }
+
+        return user;
+    }
+
     async createPost(userId: string, dto: CreatePostDto) {
+        await this.ensureActiveUser(userId);
+
         const content = dto.content?.trim();
         const hasMedia = dto.media && dto.media.length > 0;
         if (!content && !hasMedia) {
@@ -135,6 +153,8 @@ export class PostsService {
     }
 
     async updatePost(postId: string, userId: string, dto: UpdatePostDto) {
+        await this.ensureActiveUser(userId);
+
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .include('author')
@@ -175,6 +195,8 @@ export class PostsService {
     }
 
     async deletePost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .include('media')
@@ -340,6 +362,16 @@ export class PostsService {
             }
         }
 
+        if (post.author && (!post.author.isActive || !post.author.isEmailVerified)) {
+            return {
+                id: post.id,
+                isUnavailable: true,
+                createdAt: post.createdAt,
+                parentId: post.parentId ?? null,
+                rootId: post.rootId ?? null,
+            };
+        }
+
         return {
             id: post.id,
             content: post.content,
@@ -388,7 +420,14 @@ export class PostsService {
     }
 
     async canView(post: any, viewerId?: string): Promise<boolean> {
-        if (!post.author?.isActive || !post.author?.isEmailVerified) {
+        let author = post.author;
+        if (!author && post.authorId) {
+            author = await this.prismaService.client.orm.public.User
+                .where((u) => u.id.eq(post.authorId))
+                .first();
+        }
+
+        if (!author || !author.isActive || !author.isEmailVerified) {
             return false;
         }
 
@@ -636,6 +675,8 @@ export class PostsService {
     }
 
     async repost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const targetPost = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .first();
@@ -683,6 +724,8 @@ export class PostsService {
     }
 
     async unrepost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const targetPost = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .first();
@@ -722,6 +765,8 @@ export class PostsService {
     }
 
     async likePost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .first();
@@ -768,6 +813,8 @@ export class PostsService {
     }
 
     async unlikePost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .first();
@@ -860,6 +907,8 @@ export class PostsService {
     }
 
     async bookmarkPost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .first();
@@ -900,6 +949,8 @@ export class PostsService {
     }
 
     async unbookmarkPost(postId: string, userId: string) {
+        await this.ensureActiveUser(userId);
+
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .first();
@@ -935,6 +986,8 @@ export class PostsService {
     }
 
     async getBookmarks(userId: string, query: OffsetPaginationDto) {
+        await this.ensureActiveUser(userId);
+
         const page = Math.max(1, Number(query.page) || 1);
         const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
         const skip = (page - 1) * limit;
@@ -1006,6 +1059,8 @@ export class PostsService {
     }
 
     async getFeed(userId: string, query: CursorPaginationDto) {
+        await this.ensureActiveUser(userId);
+
         const follows = await this.prismaService.client.orm.public.Follow
             .where((f) => f.followerId.eq(userId))
             .where((f) => f.following.some((u) => u.isActive.eq(true)))
@@ -1428,5 +1483,91 @@ export class PostsService {
                 break;
             }
         }
+    }
+
+    async reconcileCounters(targetPostId?: string) {
+        let postsQuery = this.prismaService.client.orm.public.Post
+            .where((p) => p.isDeleted.eq(false));
+
+        if (targetPostId) {
+            postsQuery = postsQuery.where((p) => p.id.eq(targetPostId));
+        }
+
+        const posts = await postsQuery.all();
+        let correctedCount = 0;
+        const discrepancies: any[] = [];
+
+        for (const post of posts) {
+            const [likesAgg, bookmarksAgg, repostsAgg, quotesAgg, repliesAgg] = await Promise.all([
+                this.prismaService.client.orm.public.PostLike
+                    .where((l) => l.postId.eq(post.id))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.PostBookmark
+                    .where((b) => b.postId.eq(post.id))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.repostOfId.eq(post.id))
+                    .where((p) => p.isDeleted.eq(false))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.quotedPostId.eq(post.id))
+                    .where((p) => p.isDeleted.eq(false))
+                    .aggregate((agg) => ({ total: agg.count() })),
+                this.prismaService.client.orm.public.Post
+                    .where((p) => p.parentId.eq(post.id))
+                    .where((p) => p.isDeleted.eq(false))
+                    .aggregate((agg) => ({ total: agg.count() })),
+            ]);
+
+            const actualLikes = Number(likesAgg.total);
+            const actualBookmarks = Number(bookmarksAgg.total);
+            const actualReposts = Number(repostsAgg.total);
+            const actualQuotes = Number(quotesAgg.total);
+            const actualReplies = Number(repliesAgg.total);
+
+            const hasDiscrepancy =
+                post.likeCount !== actualLikes ||
+                post.bookmarkCount !== actualBookmarks ||
+                post.repostCount !== actualReposts ||
+                post.quoteCount !== actualQuotes ||
+                post.replyCount !== actualReplies;
+
+            if (hasDiscrepancy) {
+                correctedCount++;
+                discrepancies.push({
+                    postId: post.id,
+                    before: {
+                        likeCount: post.likeCount,
+                        bookmarkCount: post.bookmarkCount,
+                        repostCount: post.repostCount,
+                        quoteCount: post.quoteCount,
+                        replyCount: post.replyCount,
+                    },
+                    after: {
+                        likeCount: actualLikes,
+                        bookmarkCount: actualBookmarks,
+                        repostCount: actualReposts,
+                        quoteCount: actualQuotes,
+                        replyCount: actualReplies,
+                    },
+                });
+
+                await this.prismaService.client.orm.public.Post
+                    .where({ id: post.id })
+                    .update({
+                        likeCount: actualLikes,
+                        bookmarkCount: actualBookmarks,
+                        repostCount: actualReposts,
+                        quoteCount: actualQuotes,
+                        replyCount: actualReplies,
+                    });
+            }
+        }
+
+        return {
+            totalScanned: posts.length,
+            correctedCount,
+            discrepancies,
+        };
     }
 }
