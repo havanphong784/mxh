@@ -10,6 +10,7 @@ import {UsersModule} from "./users/users.module.js";
 import {PostsModule} from "./posts/posts.module.js";
 import {EventEmitterModule} from "@nestjs/event-emitter";
 import {NotificationsModule} from "./notifications/notifications.module.js";
+import {GatewayModule} from "./gateway/gateway.module.js";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import {NotificationsModule} from "./notifications/notifications.module.js";
     AuthModule,
     MediaModule,
     UsersModule,
+    GatewayModule,
     ThrottlerModule.forRoot([
       {
         name: "default",

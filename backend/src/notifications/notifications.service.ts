@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { NotificationPaginationDto } from './dto/notification-pagination.dto.js';
+import {Injectable, NotFoundException} from "@nestjs/common";
+import {PrismaService} from "../prisma/prisma.service.js";
+import {NotificationPaginationDto} from "./dto/notification-pagination.dto.js";
+import {EventsGateway} from "../gateway/events.gateway.js";
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventsGateway: EventsGateway,
+  ) {}
 
   async getNotifications(userId: string, query: NotificationPaginationDto) {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
@@ -13,7 +17,7 @@ export class NotificationsService {
     if (query.cursor) {
       try {
         const decoded = JSON.parse(
-          Buffer.from(query.cursor, 'base64').toString('utf8'),
+          Buffer.from(query.cursor, "base64").toString("utf8"),
         );
         cursor = {
           createdAt: new Date(decoded.createdAt),
@@ -24,9 +28,9 @@ export class NotificationsService {
       }
     }
 
-    let q = this.prisma.client.orm.public.Notification
-      .where((n) => n.recipientId.eq(userId))
-      .orderBy([(n) => n.createdAt.desc(), (n) => n.id.desc()]);
+    let q = this.prisma.client.orm.public.Notification.where((n) =>
+      n.recipientId.eq(userId),
+    ).orderBy([(n) => n.createdAt.desc(), (n) => n.id.desc()]);
 
     if (cursor) {
       q = q.cursor({
@@ -36,8 +40,8 @@ export class NotificationsService {
     }
 
     const items = await q
-      .include('actor')
-      .include('post')
+      .include("actor")
+      .include("post")
       .limit(limit + 1)
       .all();
 
@@ -49,7 +53,7 @@ export class NotificationsService {
       const last = dataItems[dataItems.length - 1];
       nextCursor = Buffer.from(
         JSON.stringify({ createdAt: last.createdAt, id: last.id }),
-      ).toString('base64');
+      ).toString("base64");
     }
 
     const formattedData = dataItems.map((item: any) => ({
@@ -68,9 +72,7 @@ export class NotificationsService {
       post: item.post
         ? {
             id: item.post.id,
-            content: item.post.content
-              ? item.post.content.slice(0, 100)
-              : null,
+            content: item.post.content ? item.post.content.slice(0, 100) : null,
           }
         : null,
     }));
@@ -83,8 +85,9 @@ export class NotificationsService {
   }
 
   async getUnreadCount(userId: string) {
-    const agg = await this.prisma.client.orm.public.Notification
-      .where((n) => n.recipientId.eq(userId))
+    const agg = await this.prisma.client.orm.public.Notification.where((n) =>
+      n.recipientId.eq(userId),
+    )
       .where((n) => n.isRead.eq(false))
       .aggregate((a) => ({ count: a.count() }));
 
@@ -94,18 +97,25 @@ export class NotificationsService {
   }
 
   async markAsRead(userId: string, notificationId: string) {
-    const notification = await this.prisma.client.orm.public.Notification
-      .where({ id: notificationId })
-      .first();
+    const notification = await this.prisma.client.orm.public.Notification.where(
+      { id: notificationId },
+    ).first();
 
     if (!notification || notification.recipientId !== userId) {
-      throw new NotFoundException('Thông báo không tồn tại');
+      throw new NotFoundException("Thông báo không tồn tại");
     }
 
     if (!notification.isRead) {
-      await this.prisma.client.orm.public.Notification
-        .where({ id: notificationId })
-        .update({ isRead: true });
+      await this.prisma.client.orm.public.Notification.where({
+        id: notificationId,
+      }).update({ isRead: true });
+
+      const unread = await this.getUnreadCount(userId);
+      this.eventsGateway.pushToUser(
+        userId,
+        "notification:unread-count",
+        unread,
+      );
     }
 
     return {
@@ -125,6 +135,10 @@ export class NotificationsService {
 
     const affected = await this.prisma.client.transaction(async (tx) => {
       return await tx.execute(rawPlan);
+    });
+
+    this.eventsGateway.pushToUser(userId, "notification:unread-count", {
+      count: 0,
     });
 
     return {
