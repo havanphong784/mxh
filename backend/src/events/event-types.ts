@@ -1,4 +1,5 @@
 export const POST_EVENTS = {
+    CREATED: 'post.created',
     LIKED: 'post.liked',
     REPLIED: 'post.replied',
     REPOSTED: 'post.reposted',
@@ -8,6 +9,12 @@ export const POST_EVENTS = {
 export const USER_EVENTS = {
     FOLLOWED: 'user.followed',
 } as const;
+
+export interface PostCreatedEvent {
+    authorId: string;
+    postId: string;
+    isRootPost: boolean;
+}
 
 export interface PostLikedEvent {
     actorId: string;       // Người bấm like

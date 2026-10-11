@@ -4,6 +4,7 @@ import {PrismaService} from "../prisma/prisma.service.js";
 import {EventsGateway} from "../gateway/events.gateway.js";
 import {
   POST_EVENTS,
+  PostCreatedEvent,
   PostLikedEvent,
   PostQuotedEvent,
   PostRepliedEvent,
@@ -20,6 +21,30 @@ export class NotificationsListener {
     private readonly prisma: PrismaService,
     private readonly eventsGateway: EventsGateway,
   ) {}
+
+  @OnEvent(POST_EVENTS.CREATED)
+  async handlePostCreated(event: PostCreatedEvent) {
+    if (!event.isRootPost) return;
+
+    try {
+      const followers = await this.prisma.client.orm.public.Follow.where((f) =>
+          f.followingId.eq(event.authorId),
+      ).all();
+
+      if (!followers || followers.length === 0) return;
+
+      for (const follow of followers) {
+        if (this.eventsGateway.isUserOnline(follow.followerId)) {
+          this.eventsGateway.pushToUser(follow.followerId, "feed:new-post", {
+            authorId: event.authorId,
+            postId: event.postId,
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error("Lỗi khi bắn event feed:new-post:", error);
+    }
+  }
 
   @OnEvent(POST_EVENTS.LIKED)
   async handlePostLiked(event: PostLikedEvent) {

@@ -8,6 +8,7 @@ import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
 import {OffsetPaginationDto} from "./dto/offset-pagination.dto.js";
 import {
     POST_EVENTS,
+    PostCreatedEvent,
     PostLikedEvent,
     PostQuotedEvent,
     PostRepliedEvent,
@@ -161,6 +162,14 @@ export class PostsService {
                 quotedPostId: dto.quotedPostId,
                 quotedPostAuthorId: quotedPost.authorId,
             } satisfies PostQuotedEvent);
+        }
+
+        if (!dto.parentId && visibility !== 'PRIVATE') {
+            this.eventEmitter.emit(POST_EVENTS.CREATED, {
+                authorId: userId,
+                postId: result.id,
+                isRootPost: true,
+            } satisfies PostCreatedEvent);
         }
 
         return result;
