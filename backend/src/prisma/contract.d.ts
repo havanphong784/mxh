@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'cce7b9ec5a1025d8cb035cdbf84a371d3cbb3746c87512785bc8ad7dd365427e'>;
+  StorageHashBase<'aa9ce6715a4ffa80ebe35b1d1f30f163b27112dd1336741a6fe8040cf53af693'>;
 export type ExecutionHash =
-  ExecutionHashBase<'19dd077835984622498a913ae0c766fe7598ceae1694cdef2b14ea63a02b7285'>;
+  ExecutionHashBase<'16cb1653aedf30259fef97d0465ff69761d7a1c63f1a5e3d39c853749ce5f148'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -247,6 +247,15 @@ export type FieldOutputTypes = {
       readonly followingId: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
+    readonly Notification: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly recipientId: CodecTypes['pg/text@1']['output'];
+      readonly actorId: CodecTypes['pg/text@1']['output'];
+      readonly type: 'LIKE' | 'REPLY' | 'REPOST' | 'QUOTE' | 'FOLLOW';
+      readonly postId: CodecTypes['pg/text@1']['output'] | null;
+      readonly isRead: CodecTypes['pg/bool@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
     readonly OtpVerification: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
@@ -332,6 +341,15 @@ export type FieldInputTypes = {
     readonly Follow: {
       readonly followerId: CodecTypes['pg/text@1']['input'];
       readonly followingId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly Notification: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly recipientId: CodecTypes['pg/text@1']['input'];
+      readonly actorId: CodecTypes['pg/text@1']['input'];
+      readonly type: 'LIKE' | 'REPLY' | 'REPOST' | 'QUOTE' | 'FOLLOW';
+      readonly postId: CodecTypes['pg/text@1']['input'] | null;
+      readonly isRead: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly OtpVerification: {
@@ -421,6 +439,15 @@ export type StorageColumnTypes = {
       readonly followerId: CodecTypes['pg/text@1']['output'];
       readonly followingId: CodecTypes['pg/text@1']['output'];
     };
+    readonly notification: {
+      readonly actorId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly isRead: CodecTypes['pg/bool@1']['output'];
+      readonly postId: CodecTypes['pg/text@1']['output'] | null;
+      readonly recipientId: CodecTypes['pg/text@1']['output'];
+      readonly type: 'LIKE' | 'REPLY' | 'REPOST' | 'QUOTE' | 'FOLLOW';
+    };
     readonly otpVerification: {
       readonly attempts: CodecTypes['pg/int4@1']['output'];
       readonly codeHash: CodecTypes['pg/text@1']['output'];
@@ -507,6 +534,15 @@ export type StorageColumnInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly followerId: CodecTypes['pg/text@1']['input'];
       readonly followingId: CodecTypes['pg/text@1']['input'];
+    };
+    readonly notification: {
+      readonly actorId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly isRead: CodecTypes['pg/bool@1']['input'];
+      readonly postId: CodecTypes['pg/text@1']['input'] | null;
+      readonly recipientId: CodecTypes['pg/text@1']['input'];
+      readonly type: 'LIKE' | 'REPLY' | 'REPOST' | 'QUOTE' | 'FOLLOW';
     };
     readonly otpVerification: {
       readonly attempts: CodecTypes['pg/int4@1']['input'];
@@ -607,13 +643,23 @@ export namespace Models {
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     followers: public_Follow[];
     following: public_Follow[];
+    notificationActions: public_Notification[];
+    notifications: public_Notification[];
     otpCodes: public_OtpVerification[];
     postBookmarks: public_PostBookmark[];
     postLikes: public_PostLike[];
     posts: public_Post[];
     sessions: public_Session[];
     readonly [RelationKeys]?:
-      'followers' | 'following' | 'otpCodes' | 'postBookmarks' | 'postLikes' | 'posts' | 'sessions';
+      | 'followers'
+      | 'following'
+      | 'notificationActions'
+      | 'notifications'
+      | 'otpCodes'
+      | 'postBookmarks'
+      | 'postLikes'
+      | 'posts'
+      | 'sessions';
   };
   export type public_Session = {
     id: CodecTypes['pg/text@1']['output'];
@@ -670,6 +716,7 @@ export namespace Models {
     bookmarks: public_PostBookmark[];
     likes: public_PostLike[];
     media: public_PostMedia[];
+    notifications: public_Notification[];
     parent: public_Post | null;
     quotedPost: public_Post | null;
     quotes: public_Post[];
@@ -683,6 +730,7 @@ export namespace Models {
       | 'bookmarks'
       | 'likes'
       | 'media'
+      | 'notifications'
       | 'parent'
       | 'quotedPost'
       | 'quotes'
@@ -722,6 +770,19 @@ export namespace Models {
     user: public_User;
     readonly [RelationKeys]?: 'post' | 'user';
   };
+  export type public_Notification = {
+    id: CodecTypes['pg/text@1']['output'];
+    recipientId: CodecTypes['pg/text@1']['output'];
+    actorId: CodecTypes['pg/text@1']['output'];
+    type: 'LIKE' | 'REPLY' | 'REPOST' | 'QUOTE' | 'FOLLOW';
+    postId: CodecTypes['pg/text@1']['output'] | null;
+    isRead: CodecTypes['pg/bool@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    actor: public_User;
+    post: public_Post | null;
+    recipient: public_User;
+    readonly [RelationKeys]?: 'actor' | 'post' | 'recipient';
+  };
 }
 
 export declare const models: {
@@ -734,6 +795,7 @@ export declare const models: {
     PostMedia: Models.public_PostMedia;
     PostLike: Models.public_PostLike;
     PostBookmark: Models.public_PostBookmark;
+    Notification: Models.public_Notification;
   };
 };
 
@@ -812,6 +874,122 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly notification: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly recipientId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly actorId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly type: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly postId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly isRead: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'notification_recipientId_isRead_createdAt_idx_f5035d6e';
+                  readonly prefix: 'notification_recipientId_isRead_createdAt_idx';
+                  readonly columns: readonly ['recipientId', 'isRead', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'notification_recipientId_createdAt_idx_4cb575bd';
+                  readonly prefix: 'notification_recipientId_createdAt_idx';
+                  readonly columns: readonly ['recipientId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'notification_recipientId_idx_c9527cf8';
+                  readonly prefix: 'notification_recipientId_idx';
+                  readonly columns: readonly ['recipientId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'notification_actorId_idx_a58f6b4b';
+                  readonly prefix: 'notification_actorId_idx';
+                  readonly columns: readonly ['actorId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'notification_postId_idx_a7a72715';
+                  readonly prefix: 'notification_postId_idx';
+                  readonly columns: readonly ['postId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'notification';
+                    readonly columns: readonly ['recipientId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'notification';
+                    readonly columns: readonly ['actorId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'notification';
+                    readonly columns: readonly ['postId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'post';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1545,6 +1723,10 @@ type ContractBase = Omit<
               readonly kind: 'valueSet';
               readonly values: readonly ['IMAGE', 'VIDEO', 'AUDIO'];
             };
+            readonly NotificationType: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['LIKE', 'REPLY', 'REPOST', 'QUOTE', 'FOLLOW'];
+            };
             readonly PostVisibility: {
               readonly kind: 'valueSet';
               readonly values: readonly ['PUBLIC', 'FOLLOWERS', 'PRIVATE'];
@@ -1573,6 +1755,10 @@ type ContractBase = Omit<
     readonly postBookmark: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'PostBookmark';
+    };
+    readonly notification: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'Notification';
     };
   };
   readonly domain: {
@@ -1623,6 +1809,83 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly followerId: { readonly column: 'followerId' };
                 readonly followingId: { readonly column: 'followingId' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly Notification: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recipientId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly actorId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly type: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly postId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly isRead: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly actor: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['actorId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly post: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Post' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['postId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly recipient: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['recipientId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'notification';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly recipientId: { readonly column: 'recipientId' };
+                readonly actorId: { readonly column: 'actorId' };
+                readonly type: { readonly column: 'type' };
+                readonly postId: { readonly column: 'postId' };
+                readonly isRead: { readonly column: 'isRead' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
             };
@@ -1810,6 +2073,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'PostMedia';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['postId'];
+                };
+              };
+              readonly notifications: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Notification';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -2243,6 +2517,28 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['followerId'];
                 };
               };
+              readonly notificationActions: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Notification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['actorId'];
+                };
+              };
+              readonly notifications: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Notification';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['recipientId'];
+                };
+              };
               readonly otpCodes: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2335,6 +2631,16 @@ type ContractBase = Omit<
               { readonly name: 'AUDIO'; readonly value: 'AUDIO' },
             ];
           };
+          readonly NotificationType: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'LIKE'; readonly value: 'LIKE' },
+              { readonly name: 'REPLY'; readonly value: 'REPLY' },
+              { readonly name: 'REPOST'; readonly value: 'REPOST' },
+              { readonly name: 'QUOTE'; readonly value: 'QUOTE' },
+              { readonly name: 'FOLLOW'; readonly value: 'FOLLOW' },
+            ];
+          };
         };
       };
     };
@@ -2362,6 +2668,14 @@ type ContractBase = Omit<
     readonly executionHash: ExecutionHash;
     readonly mutations: {
       readonly defaults: readonly [
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'notification';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'cuid2' };
+        },
         {
           readonly ref: {
             readonly namespace: 'public';

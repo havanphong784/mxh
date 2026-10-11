@@ -9,6 +9,7 @@ import {MediaModule} from "./media/media.module.js";
 import {UsersModule} from "./users/users.module.js";
 import {PostsModule} from "./posts/posts.module.js";
 import {EventEmitterModule} from "@nestjs/event-emitter";
+import {NotificationsModule} from "./notifications/notifications.module.js";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import {EventEmitterModule} from "@nestjs/event-emitter";
       },
     ]),
     PostsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [
