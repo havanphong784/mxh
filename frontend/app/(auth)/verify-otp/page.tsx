@@ -1,0 +1,37 @@
+'use client';
+
+import React, { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { VerifyOtpForm } from '@/features/auth/components/VerifyOtpForm';
+
+function OtpContent() {
+  const searchParams = useSearchParams();
+  const email = searchParams.get('email') || '';
+  const type = (searchParams.get('type') as 'REGISTER_VERIFY' | 'FORGOT_PASSWORD') || 'REGISTER_VERIFY';
+
+  if (!email) {
+    return (
+      <div className="text-center text-[13px] text-red-500">
+        Không tìm thấy địa chỉ email cần xác thực. Vui lòng quay lại đăng ký.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-[16px] font-semibold text-[#000000] mb-1 text-center">Xác thực tài khoản</h2>
+      <p className="text-[13px] text-[#969696] mb-4 text-center">
+        Nhập mã xác thực đã gửi tới <strong className="text-[#000000]">{email}</strong>
+      </p>
+      <VerifyOtpForm email={email} type={type} />
+    </div>
+  );
+}
+
+export default function VerifyOtpPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-center text-[13px] text-[#969696]">Đang tải...</div>}>
+      <OtpContent />
+    </Suspense>
+  );
+}
