@@ -6,8 +6,8 @@ import {UpdatePostDto} from "./dto/update-post.dto.js";
 import {MediaService} from "../media/media.service.js";
 import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
 import {OffsetPaginationDto} from "./dto/offset-pagination.dto.js";
-import {
-    POST_EVENTS,
+import { POST_EVENTS } from "../events/event-types.js";
+import type {
     PostCreatedEvent,
     PostLikedEvent,
     PostQuotedEvent,

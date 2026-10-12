@@ -4,12 +4,14 @@ import {PrismaService} from "../prisma/prisma.service.js";
 import {EventsGateway} from "../gateway/events.gateway.js";
 import {
   POST_EVENTS,
+  USER_EVENTS,
+} from "../events/event-types.js";
+import type {
   PostCreatedEvent,
   PostLikedEvent,
   PostQuotedEvent,
   PostRepliedEvent,
   PostRepostedEvent,
-  USER_EVENTS,
   UserFollowedEvent,
 } from "../events/event-types.js";
 
