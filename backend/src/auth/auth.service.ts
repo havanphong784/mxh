@@ -303,7 +303,12 @@ export class AuthService {
             const timeSinceRevoked = Date.now() - revokedAtMs;
 
             if (timeSinceRevoked <= GRACE_PERIOD_MS) {
-                throw new UnauthorizedException('Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.');
+                // Request refresh trùng có thể đến do nhiều tab hoặc request đồng thời.
+                // Token cũ đã bị rotate nên tuyệt đối không tái cấp session từ token này.
+                // Chỉ trả 401 trong grace period để không thu hồi nhầm các phiên hợp lệ khác.
+                throw new UnauthorizedException(
+                    'Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.',
+                );
             }
 
             await this.prisma.client.orm.public.Session
