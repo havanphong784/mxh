@@ -316,7 +316,7 @@ export class AuthService {
                 .update({ isRevoked: true });
 
             await this.prisma.client.orm.public.Session
-                .where({ id: session.id })
+                .where((s) => s.tokenHash.eq(tokenHash))
                 .delete();
 
             throw new ForbiddenException('Phát hiện dấu hiệu bất thường. Toàn bộ phiên đăng nhập đã bị hủy, vui lòng đăng nhập lại.');
@@ -336,7 +336,7 @@ export class AuthService {
         }
 
         await this.prisma.client.orm.public.Session
-            .where({ id: session.id })
+            .where((s) => s.tokenHash.eq(tokenHash))
             .update({ isRevoked: true });
 
         const newRefreshToken = await this.generateRefreshToken(user.id);
@@ -356,15 +356,9 @@ export class AuthService {
 
         const tokenHash = this.hashSha256(refreshToken);
 
-        const session = await this.prisma.client.orm.public.Session
+        await this.prisma.client.orm.public.Session
             .where((s) => s.tokenHash.eq(tokenHash))
-            .first();
-
-        if (session) {
-            await this.prisma.client.orm.public.Session
-                .where({ id: session.id })
-                .delete();
-        }
+            .delete();
 
         return {
             message: 'Đăng xuất thành công!',
@@ -495,7 +489,10 @@ export class AuthService {
 
     private async generateRefreshToken(userId: string): Promise<string> {
         return this.jwtService.signAsync(
-            { sub: userId },
+            {
+                sub: userId,
+                jti: crypto.randomUUID(),
+            },
             {
                 secret: process.env.JWT_REFRESH_SECRET,
                 expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any,

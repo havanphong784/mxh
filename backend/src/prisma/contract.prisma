@@ -39,7 +39,7 @@ model Session {
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  tokenHash    String    // Lưu mã băm SHA-256 của Refresh Token
+  tokenHash    String    @unique // Lưu mã băm SHA-256 của Refresh Token
   userAgent    String?   // Thông tin thiết bị/trình duyệt
   ipAddress    String?   // IP đăng nhập
   isRevoked    Boolean   @default(false)
@@ -49,7 +49,6 @@ model Session {
   updatedAt    temporal.updatedAt()
 
   @@index([userId])
-  @@index([tokenHash])
 }
 
 model OtpVerification {

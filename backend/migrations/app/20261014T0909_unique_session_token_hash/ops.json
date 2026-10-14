@@ -1,0 +1,118 @@
+[
+  {
+    "id": "data.session.deduplicate-token-hashes",
+    "label": "Keep one session for each duplicated refresh-token hash",
+    "summary": "Removes legacy duplicate sessions before enforcing tokenHash uniqueness",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "check for duplicated session token hashes",
+        "sql": "SELECT EXISTS (\n              SELECT 1\n              FROM \"public\".\"session\"\n              GROUP BY \"tokenHash\"\n              HAVING COUNT(*) > 1\n            ) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "remove duplicate sessions while keeping the newest active session",
+        "sql": "WITH ranked_sessions AS (\n              SELECT\n                \"id\",\n                ROW_NUMBER() OVER (\n                  PARTITION BY \"tokenHash\"\n                  ORDER BY \"isRevoked\" ASC, \"updatedAt\" DESC, \"createdAt\" DESC, \"id\" DESC\n                ) AS row_number\n              FROM \"public\".\"session\"\n            )\n            DELETE FROM \"public\".\"session\" AS session_to_delete\n            USING ranked_sessions\n            WHERE session_to_delete.\"id\" = ranked_sessions.\"id\"\n              AND ranked_sessions.row_number > 1",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify session token hashes are unique",
+        "sql": "SELECT NOT EXISTS (\n              SELECT 1\n              FROM \"public\".\"session\"\n              GROUP BY \"tokenHash\"\n              HAVING COUNT(*) > 1\n            ) AS \"result\"",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.session.session_tokenHash_idx_79b60c2b",
+    "label": "Drop index \"session_tokenHash_idx_79b60c2b\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "session_tokenHash_idx_79b60c2b",
+        "table": "session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"session_tokenHash_idx_79b60c2b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"session_tokenHash_idx_79b60c2b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"session_tokenHash_idx_79b60c2b\"",
+        "sql": "DROP INDEX \"public\".\"session_tokenHash_idx_79b60c2b\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"session_tokenHash_idx_79b60c2b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"session_tokenHash_idx_79b60c2b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.session.session_tokenHash_key",
+    "label": "Add unique constraint on \"session\" (tokenHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "session_tokenHash_key",
+        "table": "session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"session_tokenHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "session_tokenHash_key",
+          "public",
+          "\"public\".\"session\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"session_tokenHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"session\" ADD CONSTRAINT \"session_tokenHash_key\" UNIQUE (\"tokenHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"session_tokenHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "session_tokenHash_key",
+          "public",
+          "\"public\".\"session\""
+        ]
+      }
+    ]
+  }
+]
