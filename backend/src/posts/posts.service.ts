@@ -201,12 +201,25 @@ export class PostsService {
         }
 
         if (dto.visibility !== undefined) {
+            if (post.parentId) {
+                throw new BadRequestException(
+                    'Không thể thay đổi visibility của câu trả lời; câu trả lời kế thừa visibility từ bài viết gốc',
+                );
+            }
             updatePayload.visibility = dto.visibility;
         }
 
-        await this.prismaService.client.orm.public.Post
-            .where({ id: postId })
-            .update(updatePayload);
+        await this.prismaService.client.transaction(async (tx) => {
+            await tx.orm.public.Post
+                .where({ id: postId })
+                .update(updatePayload);
+
+            if (dto.visibility !== undefined) {
+                await tx.orm.public.Post
+                    .where((p) => p.rootId.eq(postId))
+                    .update({ visibility: dto.visibility });
+            }
+        });
 
         const updated = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
@@ -443,10 +456,22 @@ export class PostsService {
     }
 
     async canView(post: any, viewerId?: string): Promise<boolean> {
-        let author = post.author;
-        if (!author && post.authorId) {
+        let visibilitySource = post;
+        if (post.rootId) {
+            visibilitySource = await this.prismaService.client.orm.public.Post
+                .where({ id: post.rootId })
+                .include('author')
+                .first();
+
+            if (!visibilitySource) {
+                return false;
+            }
+        }
+
+        let author = visibilitySource.author;
+        if (!author && visibilitySource.authorId) {
             author = await this.prismaService.client.orm.public.User
-                .where((u) => u.id.eq(post.authorId))
+                .where((u) => u.id.eq(visibilitySource.authorId))
                 .first();
         }
 
@@ -454,23 +479,23 @@ export class PostsService {
             return false;
         }
 
-        if (viewerId && viewerId === post.authorId) {
+        if (viewerId && viewerId === visibilitySource.authorId) {
             return true;
         }
 
-        if (post.visibility === 'PUBLIC') {
+        if (visibilitySource.visibility === 'PUBLIC') {
             return true;
         }
 
-        if (post.visibility === 'PRIVATE') {
+        if (visibilitySource.visibility === 'PRIVATE') {
             return false;
         }
 
-        if (post.visibility === 'FOLLOWERS') {
+        if (visibilitySource.visibility === 'FOLLOWERS') {
             if (!viewerId) return false;
             const follow = await this.prismaService.client.orm.public.Follow
                 .where((f) => f.followerId.eq(viewerId))
-                .where((f) => f.followingId.eq(post.authorId))
+                .where((f) => f.followingId.eq(visibilitySource.authorId))
                 .first();
             return !!follow;
         }
@@ -1137,13 +1162,12 @@ export class PostsService {
             .include('quotedPost')
             .all();
 
-        const accessiblePosts = posts.filter((post: any) => {
-            if (post.authorId === userId) return true;
-            return post.visibility !== 'PRIVATE';
-        });
-
-        const hasNextPage = accessiblePosts.length > limit;
-        const items = hasNextPage ? accessiblePosts.slice(0, limit) : accessiblePosts;
+        const hasNextPage = posts.length > limit;
+        const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
+        const accessChecks = await Promise.all(
+            pageCandidates.map((post: any) => this.canView(post, userId)),
+        );
+        const items = pageCandidates.filter((_: any, index: number) => accessChecks[index]);
 
         let likedSet = new Set<string>();
         let repostedSet = new Set<string>();
@@ -1172,8 +1196,10 @@ export class PostsService {
             bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
         }
 
-        const lastItem = items[items.length - 1];
-        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+        const lastScannedPost = pageCandidates[pageCandidates.length - 1];
+        const nextCursor = hasNextPage && lastScannedPost
+            ? this.encodeCursor(lastScannedPost)
+            : null;
 
         return {
             items: items.map((post: any) =>
@@ -1349,30 +1375,13 @@ export class PostsService {
             throw new NotFoundException('Không tìm thấy người dùng');
         }
 
-        const isOwner = viewerId === targetUser.id;
-        let isFollowing = false;
-        if (viewerId && !isOwner) {
-            const follow = await this.prismaService.client.orm.public.Follow
-                .where((f) => f.followerId.eq(viewerId))
-                .where((f) => f.followingId.eq(targetUser.id))
-                .first();
-            isFollowing = !!follow;
-        }
-
         const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
         const cursor = this.decodeCursor(query.cursor);
-
-        const allowedVisibilities: ('PUBLIC' | 'FOLLOWERS' | 'PRIVATE')[] = isOwner
-            ? ['PUBLIC', 'FOLLOWERS', 'PRIVATE']
-            : isFollowing
-                ? ['PUBLIC', 'FOLLOWERS']
-                : ['PUBLIC'];
 
         let userRepliesQuery = this.prismaService.client.orm.public.Post
             .where((p) => p.authorId.eq(targetUser.id))
             .where((p) => p.parentId.isNotNull())
             .where((p) => p.isDeleted.eq(false))
-            .where((p) => p.visibility.in(allowedVisibilities))
             .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
 
         if (cursor) {
@@ -1391,7 +1400,11 @@ export class PostsService {
             .all();
 
         const hasNextPage = posts.length > limit;
-        const items = hasNextPage ? posts.slice(0, limit) : posts;
+        const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
+        const accessChecks = await Promise.all(
+            pageCandidates.map((post: any) => this.canView(post, viewerId)),
+        );
+        const items = pageCandidates.filter((_: any, index: number) => accessChecks[index]);
 
         let likedSet = new Set<string>();
         let repostedSet = new Set<string>();
@@ -1420,8 +1433,10 @@ export class PostsService {
             bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
         }
 
-        const lastItem = items[items.length - 1];
-        const nextCursor = hasNextPage && lastItem ? this.encodeCursor(lastItem) : null;
+        const lastScannedPost = pageCandidates[pageCandidates.length - 1];
+        const nextCursor = hasNextPage && lastScannedPost
+            ? this.encodeCursor(lastScannedPost)
+            : null;
 
         return {
             items: items.map((post: any) => {
