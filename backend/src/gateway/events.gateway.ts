@@ -1,7 +1,10 @@
 import {OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketServer,} from '@nestjs/websockets';
 import {Server, Socket} from 'socket.io';
 import {Logger} from '@nestjs/common';
-import {JwtService} from '@nestjs/jwt';
+import {OnEvent} from '@nestjs/event-emitter';
+import {AccessSessionService} from '../auth/access-session.service.js';
+import {AUTH_EVENTS} from '../events/event-types.js';
+import type {SessionRevokedEvent, UserSessionsRevokedEvent} from '../events/event-types.js';
 
 @WebSocketGateway({
     cors: {
@@ -16,7 +19,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private server!: Server;
     private readonly logger = new Logger(EventsGateway.name);
 
-    constructor(private readonly jwtService: JwtService) {}
+    constructor(private readonly accessSessionService: AccessSessionService) {}
 
     async handleConnection(client: Socket) {
         try {
@@ -33,12 +36,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 ? authHeader.slice(7)
                 : authHeader;
 
-            const payload = await this.jwtService.verifyAsync(token, {
-                secret: process.env.JWT_ACCESS_SECRET,
-            });
+            const payload = await this.accessSessionService.verifyAccessToken(token);
 
             const userId: string = payload.sub;
             client.data.userId = userId;
+            client.data.sessionId = payload.sessionId;
 
             await client.join(`user:${userId}`);
 
@@ -72,5 +74,26 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     isUserOnline(userId: string): boolean {
         return this.onlineUsers.has(userId);
+    }
+
+    @OnEvent(AUTH_EVENTS.SESSION_REVOKED)
+    handleSessionRevoked(event: SessionRevokedEvent) {
+        for (const socket of this.server.sockets.sockets.values()) {
+            if (socket.data.sessionId === event.sessionId) {
+                socket.disconnect(true);
+            }
+        }
+    }
+
+    @OnEvent(AUTH_EVENTS.USER_SESSIONS_REVOKED)
+    handleUserSessionsRevoked(event: UserSessionsRevokedEvent) {
+        for (const socket of this.server.sockets.sockets.values()) {
+            if (
+                socket.data.userId === event.userId &&
+                socket.data.sessionId !== event.exceptSessionId
+            ) {
+                socket.disconnect(true);
+            }
+        }
     }
 }

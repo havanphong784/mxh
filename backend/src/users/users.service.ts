@@ -6,8 +6,8 @@ import {ChangePasswordDto} from './dto/change-password.dto.js';
 import {FollowPaginationDto} from './dto/follow-pagination.dto.js';
 import * as argon2 from 'argon2';
 import {EventEmitter2} from '@nestjs/event-emitter';
-import {USER_EVENTS} from '../events/event-types.js';
-import type {UserFollowedEvent} from '../events/event-types.js';
+import {AUTH_EVENTS, USER_EVENTS} from '../events/event-types.js';
+import type {UserFollowedEvent, UserSessionsRevokedEvent} from '../events/event-types.js';
 
 @Injectable()
 export class UsersService {
@@ -220,6 +220,11 @@ export class UsersService {
               .update({ isRevoked: true });
         }
       }
+
+      this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
+        userId,
+        exceptSessionId: currentSessionId,
+      } satisfies UserSessionsRevokedEvent);
     }
 
     return {

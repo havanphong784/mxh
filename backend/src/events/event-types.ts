@@ -10,6 +10,11 @@ export const USER_EVENTS = {
     FOLLOWED: 'user.followed',
 } as const;
 
+export const AUTH_EVENTS = {
+    SESSION_REVOKED: 'auth.session.revoked',
+    USER_SESSIONS_REVOKED: 'auth.user-sessions.revoked',
+} as const;
+
 export interface PostCreatedEvent {
     authorId: string;
     postId: string;
@@ -45,4 +50,13 @@ export interface PostQuotedEvent {
 export interface UserFollowedEvent {
     followerId: string;   // Người bấm follow
     followingId: string;  // Người được follow
+}
+
+export interface SessionRevokedEvent {
+    sessionId: string;
+}
+
+export interface UserSessionsRevokedEvent {
+    userId: string;
+    exceptSessionId?: string;
 }

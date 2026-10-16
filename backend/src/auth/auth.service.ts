@@ -18,6 +18,9 @@ import {LoginDto} from "./dto/login.dto.js";
 import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
 import {ResetPasswordDto} from "./dto/reset-password.dto.js";
 import {Temporal} from '@js-temporal/polyfill';
+import {EventEmitter2} from '@nestjs/event-emitter';
+import {AUTH_EVENTS} from '../events/event-types.js';
+import type {SessionRevokedEvent, UserSessionsRevokedEvent} from '../events/event-types.js';
 
 export interface RequestMeta {
     userAgent?: string;
@@ -29,7 +32,8 @@ export class AuthService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly mailService: MailService,
-        private readonly jwtService: JwtService
+        private readonly jwtService: JwtService,
+        private readonly eventEmitter: EventEmitter2,
     ) {}
 
     async getMe(userId: string) {
@@ -315,6 +319,10 @@ export class AuthService {
                 .where((s) => s.userId.eq(session.userId))
                 .update({ isRevoked: true });
 
+            this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
+                userId: session.userId,
+            } satisfies UserSessionsRevokedEvent);
+
             await this.prisma.client.orm.public.Session
                 .where((s) => s.tokenHash.eq(tokenHash))
                 .delete();
@@ -339,6 +347,10 @@ export class AuthService {
             .where((s) => s.tokenHash.eq(tokenHash))
             .update({ isRevoked: true });
 
+        this.eventEmitter.emit(AUTH_EVENTS.SESSION_REVOKED, {
+            sessionId: session.id,
+        } satisfies SessionRevokedEvent);
+
         const newRefreshToken = await this.generateRefreshToken(user.id);
         const newSession = await this.createSession(user.id, newRefreshToken, meta);
         const newAccessToken = await this.generateAccessToken(user, newSession.id);
@@ -356,9 +368,19 @@ export class AuthService {
 
         const tokenHash = this.hashSha256(refreshToken);
 
+        const sessions = await this.prisma.client.orm.public.Session
+            .where((s) => s.tokenHash.eq(tokenHash))
+            .all();
+
         await this.prisma.client.orm.public.Session
             .where((s) => s.tokenHash.eq(tokenHash))
             .delete();
+
+        for (const session of sessions) {
+            this.eventEmitter.emit(AUTH_EVENTS.SESSION_REVOKED, {
+                sessionId: session.id,
+            } satisfies SessionRevokedEvent);
+        }
 
         return {
             message: 'Đăng xuất thành công!',
@@ -461,6 +483,10 @@ export class AuthService {
             await this.prisma.client.orm.public.Session
                 .where((s) => s.userId.eq(otpRecord.userId!))
                 .delete();
+
+            this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
+                userId: otpRecord.userId,
+            } satisfies UserSessionsRevokedEvent);
         }
 
         return {

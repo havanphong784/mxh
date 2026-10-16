@@ -1,10 +1,10 @@
 import {CanActivate, ExecutionContext, Injectable, UnauthorizedException,} from '@nestjs/common';
-import {JwtService} from '@nestjs/jwt';
 import type {FastifyRequest} from 'fastify';
+import {AccessSessionService} from '../access-session.service.js';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-    constructor(private readonly jwtService: JwtService) {}
+    constructor(private readonly accessSessionService: AccessSessionService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<FastifyRequest>();
@@ -16,13 +16,7 @@ export class JwtAuthGuard implements CanActivate {
 
         const token = authHeader.split(' ')[1];
 
-        try {
-            (request as any).user = await this.jwtService.verifyAsync(token, {
-                secret: process.env.JWT_ACCESS_SECRET,
-            });
-            return true;
-        } catch {
-            throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
-        }
+        (request as any).user = await this.accessSessionService.verifyAccessToken(token);
+        return true;
     }
 }
