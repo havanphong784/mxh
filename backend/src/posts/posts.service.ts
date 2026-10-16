@@ -576,7 +576,7 @@ export class PostsService {
                     .include('author')
                     .first();
 
-            if (rootPost && !rootPost.isDeleted) {
+            if (rootPost) {
                 const canViewRoot = await this.canView(rootPost, viewerId);
                 if (!canViewRoot) {
                     throw new ForbiddenException('Bạn không có quyền xem các câu trả lời trong chuỗi bài này');
@@ -680,11 +680,9 @@ export class PostsService {
 
         if (ancestorsList.length > 0) {
             const rootPost = ancestorsList[0];
-            if (!rootPost.isDeleted) {
-                const canViewRoot = await this.canView(rootPost, viewerId);
-                if (!canViewRoot) {
-                    throw new ForbiddenException('Bạn không có quyền xem chuỗi bài viết này');
-                }
+            const canViewRoot = await this.canView(rootPost, viewerId);
+            if (!canViewRoot) {
+                throw new ForbiddenException('Bạn không có quyền xem chuỗi bài viết này');
             }
         }
 

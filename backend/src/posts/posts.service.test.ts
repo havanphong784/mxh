@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PostsService } from './posts.service.js';
 
 const activeAuthor = (id: string) => ({
@@ -168,5 +168,72 @@ test('changing root visibility propagates to every reply in the thread', async (
             { id: 'direct-reply', visibility: 'PRIVATE' },
             { id: 'nested-reply', visibility: 'PRIVATE' },
         ],
+    );
+});
+
+test('a deleted followers-only root still protects its replies', async () => {
+    const root = postFixture({
+        id: 'root-id',
+        authorId: 'root-author',
+        author: activeAuthor('root-author'),
+        content: null,
+        parentId: null,
+        rootId: null,
+        isDeleted: true,
+    });
+    const reply = postFixture({ id: 'reply-id', parentId: 'root-id', rootId: 'root-id' });
+    const postTable = {
+        where(condition: { id: string } | ((fields: any) => unknown)) {
+            const query: any = {
+                include() { return query; },
+                orderBy() { return query; },
+                limit() { return query; },
+                async first() {
+                    return typeof condition === 'object' && condition.id === 'root-id' ? root : null;
+                },
+                async all() { return [reply]; },
+            };
+            return query;
+        },
+    };
+    const prisma = { client: { orm: { public: { Post: postTable } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    await assert.rejects(
+        service.getReplies('root-id', { limit: 20 }, undefined),
+        ForbiddenException,
+    );
+});
+
+test('a deleted followers-only root still protects the ancestor chain', async () => {
+    const root = postFixture({
+        id: 'root-id',
+        authorId: 'root-author',
+        author: activeAuthor('root-author'),
+        content: null,
+        parentId: null,
+        rootId: null,
+        isDeleted: true,
+    });
+    const reply = postFixture({ id: 'reply-id', parentId: 'root-id', rootId: 'root-id' });
+    const postTable = {
+        where(condition: { id: string }) {
+            const query: any = {
+                include() { return query; },
+                async first() {
+                    if (condition.id === 'reply-id') return reply;
+                    if (condition.id === 'root-id') return root;
+                    return null;
+                },
+            };
+            return query;
+        },
+    };
+    const prisma = { client: { orm: { public: { Post: postTable } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    await assert.rejects(
+        service.getAncestors('reply-id', undefined),
+        ForbiddenException,
     );
 });
