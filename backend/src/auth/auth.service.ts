@@ -343,16 +343,29 @@ export class AuthService {
             throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
         }
 
-        await this.prisma.client.orm.public.Session
-            .where((s) => s.tokenHash.eq(tokenHash))
-            .update({ isRevoked: true });
+        const newRefreshToken = await this.generateRefreshToken(user.id);
+        const newSessionData = this.createSessionData(user.id, newRefreshToken, meta);
+        const newSession = await this.prisma.client.transaction(async (tx) => {
+            const claimPlan = this.prisma.client.raw.sql`
+                UPDATE "session"
+                SET "isRevoked" = true
+                WHERE id = ${session.id} AND "isRevoked" = false
+            `.affectedCount().build();
+            const claimedCount = Number(await tx.execute(claimPlan));
+
+            if (claimedCount !== 1) {
+                throw new UnauthorizedException(
+                    'Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.',
+                );
+            }
+
+            return tx.orm.public.Session.create(newSessionData);
+        });
 
         this.eventEmitter.emit(AUTH_EVENTS.SESSION_REVOKED, {
             sessionId: session.id,
         } satisfies SessionRevokedEvent);
 
-        const newRefreshToken = await this.generateRefreshToken(user.id);
-        const newSession = await this.createSession(user.id, newRefreshToken, meta);
         const newAccessToken = await this.generateAccessToken(user, newSession.id);
         return {
             message: 'Làm mới phiên đăng nhập thành công!',
@@ -544,19 +557,22 @@ export class AuthService {
     }
 
     private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {
-        const tokenHash = this.hashSha256(refreshToken);
-        const expiresAt = Temporal.Instant.fromEpochMilliseconds(
-            Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 ngày
+        return await this.prisma.client.orm.public.Session.create(
+            this.createSessionData(userId, refreshToken, meta),
         );
+    }
 
-        return await this.prisma.client.orm.public.Session.create({
+    private createSessionData(userId: string, refreshToken: string, meta: RequestMeta) {
+        return {
             userId,
-            tokenHash,
+            tokenHash: this.hashSha256(refreshToken),
             userAgent: meta.userAgent ?? null,
             ipAddress: meta.ipAddress ?? null,
-            expiresAt,
+            expiresAt: Temporal.Instant.fromEpochMilliseconds(
+                Date.now() + 7 * 24 * 60 * 60 * 1000,
+            ),
             isRevoked: false,
-        });
+        };
     }
 
 }

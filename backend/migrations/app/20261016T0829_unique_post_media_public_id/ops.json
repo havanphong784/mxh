@@ -1,0 +1,44 @@
+[
+  {
+    "id": "unique.postMedia.postMedia_publicId_key",
+    "label": "Add unique constraint on \"postMedia\" (publicId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "postMedia_publicId_key",
+        "table": "postMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"postMedia_publicId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "postMedia_publicId_key",
+          "public",
+          "\"public\".\"postMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"postMedia_publicId_key\"",
+        "sql": "ALTER TABLE \"public\".\"postMedia\" ADD CONSTRAINT \"postMedia_publicId_key\" UNIQUE (\"publicId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"postMedia_publicId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "postMedia_publicId_key",
+          "public",
+          "\"public\".\"postMedia\""
+        ]
+      }
+    ]
+  }
+]

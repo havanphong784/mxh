@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as crypto from 'node:crypto';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PostsService } from './posts.service.js';
 
@@ -236,4 +237,328 @@ test('a deleted followers-only root still protects the ancestor chain', async ()
         service.getAncestors('reply-id', undefined),
         ForbiddenException,
     );
+});
+
+test('a quote stops exposing the original post after it becomes private', () => {
+    const quotedPost = postFixture({
+        id: 'quoted-id',
+        authorId: 'quoted-author',
+        author: activeAuthor('quoted-author'),
+        content: 'private content',
+        visibility: 'PRIVATE',
+        parentId: null,
+        rootId: null,
+    });
+    const quote = postFixture({
+        id: 'quote-id',
+        visibility: 'PUBLIC',
+        quotedPostId: 'quoted-id',
+        quotedPost,
+        parentId: null,
+        rootId: null,
+    });
+    const service = new PostsService({} as any, {} as any, {} as any);
+
+    const response = service.toPostResponse(quote);
+
+    assert.equal(response.quotedPost, null);
+    assert.equal(response.isQuotedPostDeleted, true);
+});
+
+test('bookmarks no longer return a followers-only post after the user unfollows its author', async () => {
+    const viewer = activeAuthor('viewer-id');
+    const restrictedPost = postFixture({
+        id: 'restricted-id',
+        authorId: 'root-author',
+        author: activeAuthor('root-author'),
+        parentId: null,
+        rootId: null,
+    });
+    let postQueryCount = 0;
+    const prisma = {
+        client: {
+            orm: {
+                public: {
+                    User: {
+                        where() { return this; },
+                        async first() { return viewer; },
+                    },
+                    PostBookmark: {
+                        where() {
+                            const query: any = {
+                                orderBy() { return query; },
+                                offset() { return query; },
+                                limit() { return query; },
+                                async all() { return [{ userId: 'viewer-id', postId: 'restricted-id' }]; },
+                                async aggregate() { return { total: 1 }; },
+                            };
+                            return query;
+                        },
+                    },
+                    Post: {
+                        where() {
+                            postQueryCount += 1;
+                            const query: any = {
+                                where() { return query; },
+                                include() { return query; },
+                                async all() { return postQueryCount === 1 ? [restrictedPost] : []; },
+                            };
+                            return query;
+                        },
+                    },
+                    PostLike: {
+                        where() {
+                            const query: any = { where() { return query; }, async all() { return []; } };
+                            return query;
+                        },
+                    },
+                    Follow: {
+                        where() {
+                            const query: any = { where() { return query; }, async first() { return null; } };
+                            return query;
+                        },
+                    },
+                },
+            },
+        },
+    };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    const response = await service.getBookmarks('viewer-id', { page: 1, limit: 20 });
+
+    assert.deepEqual(response.items, []);
+    assert.deepEqual(response.pagination, { page: 1, limit: 20, total: 0, totalPages: 0 });
+});
+
+test('a text-only post cannot be edited into an empty post', async () => {
+    const post = postFixture({ content: 'existing text', media: [] });
+    const postQuery: any = {
+        include() { return this; },
+        async first() { return post; },
+    };
+    const userQuery: any = {
+        where() { return this; },
+        async first() { return activeAuthor('reply-author'); },
+    };
+    const client: any = {
+        orm: { public: { User: userQuery, Post: { where: () => postQuery } } },
+        async transaction(callback: (tx: any) => Promise<unknown>) {
+            return callback({ orm: client.orm });
+        },
+    };
+    postQuery.update = async () => post;
+    const prisma = { client };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    await assert.rejects(
+        service.updatePost('reply-id', 'reply-author', { content: '   ' }),
+        BadRequestException,
+    );
+});
+
+test('an invalid post cursor is ignored instead of being sent to the database', async () => {
+    let cursorWasApplied = false;
+    const query: any = {
+        where() { return query; },
+        orderBy() { return query; },
+        cursor() { cursorWasApplied = true; return query; },
+        limit() { return query; },
+        include() { return query; },
+        async all() { return []; },
+    };
+    const prisma = { client: { orm: { public: { Post: query } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const invalidCursor = Buffer.from(JSON.stringify({ createdAt: 'not-a-date', id: null })).toString('base64url');
+
+    const response = await service.getExplore({ cursor: invalidCursor, limit: 20 });
+
+    assert.equal(cursorWasApplied, false);
+    assert.deepEqual(response, { items: [], nextCursor: null });
+});
+
+test('concurrent likes are idempotent instead of returning a unique-constraint error', async () => {
+    const state = { liked: false, likeCount: 0 };
+    let reads = 0;
+    let releaseReads!: () => void;
+    const bothRead = new Promise<void>((resolve) => { releaseReads = resolve; });
+    const post = postFixture({ id: 'post-id', visibility: 'PUBLIC', parentId: null, rootId: null });
+    const postTable = {
+        where() {
+            const query: any = {
+                async first() { return { ...post, likeCount: state.likeCount }; },
+            };
+            return query;
+        },
+    };
+    const postLikeTable = {
+        where() {
+            const query: any = {
+                where() { return query; },
+                async first() {
+                    reads += 1;
+                    if (reads === 2) releaseReads();
+                    await bothRead;
+                    return null;
+                },
+            };
+            return query;
+        },
+        async create() {
+            if (state.liked) throw Object.assign(new Error('duplicate key'), { code: '23505' });
+            state.liked = true;
+        },
+    };
+    const raw = {
+        sql(strings: TemplateStringsArray) {
+            return { affectedCount: () => ({ build: () => ({ text: strings.join('?') }) }) };
+        },
+    };
+    const client: any = {
+        raw,
+        orm: {
+            public: {
+                User: { where: () => ({ first: async () => activeAuthor('viewer-id') }) },
+                Post: postTable,
+                PostLike: postLikeTable,
+            },
+        },
+        async transaction(callback: (tx: any) => Promise<unknown>) {
+            return callback({
+                orm: client.orm,
+                async execute() { state.likeCount += 1; return 1; },
+            });
+        },
+    };
+    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any);
+
+    const results = await Promise.allSettled([
+        service.likePost('post-id', 'viewer-id'),
+        service.likePost('post-id', 'viewer-id'),
+    ]);
+
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 2);
+    assert.deepEqual(state, { liked: true, likeCount: 1 });
+});
+
+test('concurrent unlikes decrement the counter only when a like row is deleted', async () => {
+    const state = { liked: true, likeCount: 2 };
+    let reads = 0;
+    let releaseReads!: () => void;
+    const bothRead = new Promise<void>((resolve) => { releaseReads = resolve; });
+    const post = postFixture({ id: 'post-id', visibility: 'PUBLIC', parentId: null, rootId: null });
+    const postTable = {
+        where() {
+            return { async first() { return { ...post, likeCount: state.likeCount }; } };
+        },
+    };
+    const postLikeTable = {
+        where() {
+            const query: any = {
+                where() { return query; },
+                async first() {
+                    reads += 1;
+                    if (reads === 2) releaseReads();
+                    await bothRead;
+                    return { userId: 'viewer-id', postId: 'post-id' };
+                },
+                async delete() { state.liked = false; },
+            };
+            return query;
+        },
+    };
+    const raw = {
+        sql(strings: TemplateStringsArray) {
+            return { affectedCount: () => ({ build: () => ({ text: strings.join('?') }) }) };
+        },
+    };
+    const client: any = {
+        raw,
+        orm: {
+            public: {
+                User: { where: () => ({ first: async () => activeAuthor('viewer-id') }) },
+                Post: postTable,
+                PostLike: postLikeTable,
+            },
+        },
+        async transaction(callback: (tx: any) => Promise<unknown>) {
+            return callback({
+                orm: client.orm,
+                async execute(plan: { text: string }) {
+                    if (plan.text.includes('DELETE')) {
+                        if (!state.liked) return 0;
+                        state.liked = false;
+                        return 1;
+                    }
+                    state.likeCount = Math.max(0, state.likeCount - 1);
+                    return 1;
+                },
+            });
+        },
+    };
+    const service = new PostsService({ client } as any, {} as any, {} as any);
+
+    await Promise.all([
+        service.unlikePost('post-id', 'viewer-id'),
+        service.unlikePost('post-id', 'viewer-id'),
+    ]);
+
+    assert.deepEqual(state, { liked: false, likeCount: 1 });
+});
+
+test('the same Cloudinary asset cannot be attached more than once', async () => {
+    const previousSecret = process.env.CLOUDINARY_API_SECRET;
+    const previousCloud = process.env.CLOUDINARY_CLOUD_NAME;
+    process.env.CLOUDINARY_API_SECRET = 'test-secret';
+    process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
+    const publicId = 'mxh/user-id/posts/asset-id';
+    const version = '123';
+    const signature = crypto
+        .createHash('sha1')
+        .update(`public_id=${publicId}&version=${version}test-secret`)
+        .digest('hex');
+    const media = {
+        publicId,
+        version,
+        signature,
+        type: 'IMAGE' as const,
+        order: 0,
+    };
+    const createdPost = postFixture({
+        id: 'created-id',
+        authorId: 'user-id',
+        author: activeAuthor('user-id'),
+        content: 'post',
+        visibility: 'PUBLIC',
+        parentId: null,
+        rootId: null,
+    });
+    const postQuery: any = {
+        include() { return this; },
+        async first() { return createdPost; },
+    };
+    const client: any = {
+        orm: {
+            public: {
+                User: { where: () => ({ first: async () => activeAuthor('user-id') }) },
+                Post: { create: async () => createdPost, where: () => postQuery },
+                PostMedia: { create: async () => ({}) },
+            },
+        },
+        async transaction(callback: (tx: any) => Promise<unknown>) {
+            return callback({ orm: client.orm, execute: async () => 1 });
+        },
+    };
+    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any);
+
+    try {
+        await assert.rejects(
+            service.createPost('user-id', { content: 'post', media: [media, { ...media, order: 1 }] }),
+            BadRequestException,
+        );
+    } finally {
+        if (previousSecret === undefined) delete process.env.CLOUDINARY_API_SECRET;
+        else process.env.CLOUDINARY_API_SECRET = previousSecret;
+        if (previousCloud === undefined) delete process.env.CLOUDINARY_CLOUD_NAME;
+        else process.env.CLOUDINARY_CLOUD_NAME = previousCloud;
+    }
 });

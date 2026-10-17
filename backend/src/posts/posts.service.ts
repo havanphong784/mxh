@@ -93,58 +93,66 @@ export class PostsService {
 
         const verifiedMedia = hasMedia ? this.verifyMediaItems(userId, dto.media!) : [];
 
-        const result = await this.prismaService.client.transaction(async (tx) => {
-            const post = await tx.orm.public.Post.create({
-                authorId: userId,
-                content: content || null,
-                visibility,
-                parentId: dto.parentId || null,
-                rootId: rootId || null,
-                quotedPostId: dto.quotedPostId || null,
-            });
-
-            if (dto.parentId) {
-                const rawPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "replyCount" = "replyCount" + 1
-                    WHERE id = ${dto.parentId}
-                `
-                    .affectedCount()
-                    .build();
-                await tx.execute(rawPlan);
-            }
-
-            if (dto.quotedPostId) {
-                const rawPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "quoteCount" = "quoteCount" + 1
-                    WHERE id = ${dto.quotedPostId}
-                `.affectedCount().build();
-                await tx.execute(rawPlan);
-            }
-
-            for (const media of verifiedMedia) {
-                await tx.orm.public.PostMedia.create({
-                    postId: post.id,
-                    publicId: media.publicId,
-                    url: media.url,
-                    type: media.type,
-                    width: media.width,
-                    height: media.height,
-                    duration: media.duration,
-                    order: media.order,
+        let result: any;
+        try {
+            result = await this.prismaService.client.transaction(async (tx) => {
+                const post = await tx.orm.public.Post.create({
+                    authorId: userId,
+                    content: content || null,
+                    visibility,
+                    parentId: dto.parentId || null,
+                    rootId: rootId || null,
+                    quotedPostId: dto.quotedPostId || null,
                 });
+
+                if (dto.parentId) {
+                    const rawPlan = this.prismaService.client.raw.sql`
+                        UPDATE "post"
+                        SET "replyCount" = "replyCount" + 1
+                        WHERE id = ${dto.parentId}
+                    `
+                        .affectedCount()
+                        .build();
+                    await tx.execute(rawPlan);
+                }
+
+                if (dto.quotedPostId) {
+                    const rawPlan = this.prismaService.client.raw.sql`
+                        UPDATE "post"
+                        SET "quoteCount" = "quoteCount" + 1
+                        WHERE id = ${dto.quotedPostId}
+                    `.affectedCount().build();
+                    await tx.execute(rawPlan);
+                }
+
+                for (const media of verifiedMedia) {
+                    await tx.orm.public.PostMedia.create({
+                        postId: post.id,
+                        publicId: media.publicId,
+                        url: media.url,
+                        type: media.type,
+                        width: media.width,
+                        height: media.height,
+                        duration: media.duration,
+                        order: media.order,
+                    });
+                }
+
+                const fullPost = await tx.orm.public.Post
+                    .where({ id: post.id })
+                    .include('author')
+                    .include('media')
+                    .include('quotedPost')
+                    .first();
+
+                return this.toPostResponse(fullPost);
+            });
+        } catch (error) {
+            if (verifiedMedia.length > 0 && this.isUniqueConstraintError(error)) {
+                throw new BadRequestException('Media đã được sử dụng cho một bài viết khác');
             }
-
-            const fullPost = await tx.orm.public.Post
-                .where({ id: post.id })
-                .include('author')
-                .include('media')
-                .include('quotedPost')
-                .first();
-
-            return this.toPostResponse(fullPost);
-        });
+            throw error;
+        }
 
         if (dto.parentId && parentPost && parentPost.authorId !== userId) {
             this.eventEmitter.emit(POST_EVENTS.REPLIED, {
@@ -181,6 +189,7 @@ export class PostsService {
         const post = await this.prismaService.client.orm.public.Post
             .where({ id: postId })
             .include('author')
+            .include('media')
             .first();
 
         if (!post || post.isDeleted) {
@@ -197,6 +206,9 @@ export class PostsService {
 
         if (dto.content !== undefined) {
             const trimmed = dto.content.trim();
+            if (!trimmed && (!post.media || post.media.length === 0) && !post.repostOfId) {
+                throw new BadRequestException('Bài viết phải có nội dung hoặc ít nhất một media item');
+            }
             updatePayload.content = trimmed || null;
         }
 
@@ -374,7 +386,11 @@ export class PostsService {
         let isQuotedPostDeleted = false;
 
         if (post.quotedPostId) {
-            if (post.quotedPost && !post.quotedPost.isDeleted) {
+            if (
+                post.quotedPost &&
+                !post.quotedPost.isDeleted &&
+                post.quotedPost.visibility === 'PUBLIC'
+            ) {
                 quotedPostData = {
                     id: post.quotedPost.id,
                     content: post.quotedPost.content,
@@ -748,27 +764,41 @@ export class PostsService {
             };
         }
 
-        const result = await this.prismaService.client.transaction(async (tx) => {
-            await tx.orm.public.Post.create({
-                authorId: userId,
-                repostOfId: postId,
-                visibility: 'PUBLIC',
+        let result: { reposted: boolean; repostCount: number };
+        let inserted = false;
+        try {
+            result = await this.prismaService.client.transaction(async (tx) => {
+                await tx.orm.public.Post.create({
+                    authorId: userId,
+                    repostOfId: postId,
+                    visibility: 'PUBLIC',
+                });
+
+                const rawPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "repostCount" = "repostCount" + 1
+                    WHERE id = ${postId}
+                `.affectedCount().build();
+                await tx.execute(rawPlan);
+                inserted = true;
+
+                return {
+                    reposted: true,
+                    repostCount: targetPost.repostCount + 1,
+                };
             });
-
-            const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "repostCount" = "repostCount" + 1
-                WHERE id = ${postId}
-            `.affectedCount().build();
-            await tx.execute(rawPlan);
-
-            return {
+        } catch (error) {
+            if (!this.isUniqueConstraintError(error)) throw error;
+            const latestPost = await this.prismaService.client.orm.public.Post
+                .where({ id: postId })
+                .first();
+            result = {
                 reposted: true,
-                repostCount: targetPost.repostCount + 1,
+                repostCount: latestPost?.repostCount ?? targetPost.repostCount,
             };
-        });
+        }
 
-        if (targetPost.authorId !== userId) {
+        if (inserted && targetPost.authorId !== userId) {
             this.eventEmitter.emit(POST_EVENTS.REPOSTED, {
                 actorId: userId,
                 postId,
@@ -802,20 +832,25 @@ export class PostsService {
         }
 
         return this.prismaService.client.transaction(async (tx) => {
-            await tx.orm.public.Post
-                .where({ id: existingRepost.id })
-                .delete();
-
-            const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "repostCount" = GREATEST(0, "repostCount" - 1)
-                WHERE id = ${postId}
+            const deletePlan = this.prismaService.client.raw.sql`
+                DELETE FROM "post"
+                WHERE "authorId" = ${userId} AND "repostOfId" = ${postId}
             `.affectedCount().build();
-            await tx.execute(rawPlan);
+            const deletedCount = Number(await tx.execute(deletePlan));
 
+            if (deletedCount === 1) {
+                const decrementPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "repostCount" = GREATEST(0, "repostCount" - 1)
+                    WHERE id = ${postId}
+                `.affectedCount().build();
+                await tx.execute(decrementPlan);
+            }
+
+            const latestPost = await tx.orm.public.Post.where({ id: postId }).first();
             return {
                 reposted: false,
-                repostCount: Math.max(0, targetPost.repostCount - 1),
+                repostCount: latestPost?.repostCount ?? Math.max(0, targetPost.repostCount - deletedCount),
             };
         });
     }
@@ -848,26 +883,31 @@ export class PostsService {
             };
         }
 
-        const result = await this.prismaService.client.transaction(async (tx) => {
-            await tx.orm.public.PostLike.create({
-                userId,
-                postId,
+        let result: { liked: boolean; likeCount: number };
+        let inserted = false;
+        try {
+            result = await this.prismaService.client.transaction(async (tx) => {
+                await tx.orm.public.PostLike.create({ userId, postId });
+
+                const rawPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "likeCount" = "likeCount" + 1
+                    WHERE id = ${postId}
+                `.affectedCount().build();
+                await tx.execute(rawPlan);
+                inserted = true;
+
+                return { liked: true, likeCount: post.likeCount + 1 };
             });
+        } catch (error) {
+            if (!this.isUniqueConstraintError(error)) throw error;
+            const latestPost = await this.prismaService.client.orm.public.Post
+                .where({ id: postId })
+                .first();
+            result = { liked: true, likeCount: latestPost?.likeCount ?? post.likeCount };
+        }
 
-            const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "likeCount" = "likeCount" + 1
-                WHERE id = ${postId}
-            `.affectedCount().build();
-            await tx.execute(rawPlan);
-
-            return {
-                liked: true,
-                likeCount: post.likeCount + 1,
-            };
-        });
-
-        if (post.authorId !== userId) {
+        if (inserted && post.authorId !== userId) {
             this.eventEmitter.emit(POST_EVENTS.LIKED, {
                 actorId: userId,
                 postId,
@@ -902,21 +942,25 @@ export class PostsService {
         }
 
         return this.prismaService.client.transaction(async (tx) => {
-            await tx.orm.public.PostLike
-                .where((l) => l.userId.eq(userId))
-                .where((l) => l.postId.eq(postId))
-                .delete();
-
-            const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "likeCount" = GREATEST(0, "likeCount" - 1)
-                WHERE id = ${postId}
+            const deletePlan = this.prismaService.client.raw.sql`
+                DELETE FROM "postLike"
+                WHERE "userId" = ${userId} AND "postId" = ${postId}
             `.affectedCount().build();
-            await tx.execute(rawPlan);
+            const deletedCount = Number(await tx.execute(deletePlan));
 
+            if (deletedCount === 1) {
+                const decrementPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "likeCount" = GREATEST(0, "likeCount" - 1)
+                    WHERE id = ${postId}
+                `.affectedCount().build();
+                await tx.execute(decrementPlan);
+            }
+
+            const latestPost = await tx.orm.public.Post.where({ id: postId }).first();
             return {
                 liked: false,
-                likeCount: Math.max(0, post.likeCount - 1),
+                likeCount: latestPost?.likeCount ?? Math.max(0, post.likeCount - deletedCount),
             };
         });
     }
@@ -997,21 +1041,23 @@ export class PostsService {
             return { bookmarked: true };
         }
 
-        return this.prismaService.client.transaction(async (tx) => {
-            await tx.orm.public.PostBookmark.create({
-                userId,
-                postId,
+        try {
+            return await this.prismaService.client.transaction(async (tx) => {
+                await tx.orm.public.PostBookmark.create({ userId, postId });
+
+                const rawPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "bookmarkCount" = "bookmarkCount" + 1
+                    WHERE id = ${postId}
+                `.affectedCount().build();
+                await tx.execute(rawPlan);
+
+                return { bookmarked: true };
             });
-
-            const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "bookmarkCount" = "bookmarkCount" + 1
-                WHERE id = ${postId}
-            `.affectedCount().build();
-            await tx.execute(rawPlan);
-
+        } catch (error) {
+            if (!this.isUniqueConstraintError(error)) throw error;
             return { bookmarked: true };
-        });
+        }
     }
 
     async unbookmarkPost(postId: string, userId: string) {
@@ -1035,17 +1081,20 @@ export class PostsService {
         }
 
         return this.prismaService.client.transaction(async (tx) => {
-            await tx.orm.public.PostBookmark
-                .where((b) => b.userId.eq(userId))
-                .where((b) => b.postId.eq(postId))
-                .delete();
-
-            const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "bookmarkCount" = GREATEST(0, "bookmarkCount" - 1)
-                WHERE id = ${postId}
+            const deletePlan = this.prismaService.client.raw.sql`
+                DELETE FROM "postBookmark"
+                WHERE "userId" = ${userId} AND "postId" = ${postId}
             `.affectedCount().build();
-            await tx.execute(rawPlan);
+            const deletedCount = Number(await tx.execute(deletePlan));
+
+            if (deletedCount === 1) {
+                const decrementPlan = this.prismaService.client.raw.sql`
+                    UPDATE "post"
+                    SET "bookmarkCount" = GREATEST(0, "bookmarkCount" - 1)
+                    WHERE id = ${postId}
+                `.affectedCount().build();
+                await tx.execute(decrementPlan);
+            }
 
             return { bookmarked: false };
         });
@@ -1058,39 +1107,47 @@ export class PostsService {
         const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
         const skip = (page - 1) * limit;
 
-        const [bookmarks, totalAgg] = await Promise.all([
-            this.prismaService.client.orm.public.PostBookmark
-                .where((b) => b.userId.eq(userId))
-                .orderBy((b) => b.createdAt.desc())
-                .offset(skip)
-                .limit(limit)
-                .all(),
-            this.prismaService.client.orm.public.PostBookmark
-                .where((b) => b.userId.eq(userId))
-                .aggregate((agg) => ({ total: agg.count() })),
-        ]);
+        const bookmarks = await this.prismaService.client.orm.public.PostBookmark
+            .where((b) => b.userId.eq(userId))
+            .orderBy((b) => b.createdAt.desc())
+            .all();
+        const allPostIds = bookmarks.map((b: any) => b.postId);
 
-        const total = Number(totalAgg.total) || 0;
-        const postIds = bookmarks.map((b: any) => b.postId);
-
-        if (postIds.length === 0) {
+        if (allPostIds.length === 0) {
             return {
                 items: [],
-                pagination: { page, limit, total, totalPages: 0 },
+                pagination: { page, limit, total: 0, totalPages: 0 },
             };
         }
 
         const posts = await this.prismaService.client.orm.public.Post
-            .where((p) => p.id.in(postIds))
+            .where((p) => p.id.in(allPostIds))
             .include('author')
             .include('media')
             .include('quotedPost')
             .all();
 
         const postMap = new Map<string, any>(posts.map((p: any) => [p.id, p]));
+        const accessChecks = await Promise.all(
+            bookmarks.map(async (bookmark: any) => {
+                const post = postMap.get(bookmark.postId);
+                return post ? this.canView(post, userId) : false;
+            }),
+        );
+        const accessibleBookmarks = bookmarks.filter((_: any, index: number) => accessChecks[index]);
+        const total = accessibleBookmarks.length;
+        const pageBookmarks = accessibleBookmarks.slice(skip, skip + limit);
+        const postIds = pageBookmarks.map((bookmark: any) => bookmark.postId);
         const orderedPosts = postIds
             .map((id: string) => postMap.get(id))
             .filter(Boolean);
+
+        if (postIds.length === 0) {
+            return {
+                items: [],
+                pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+            };
+        }
 
         let likedSet = new Set<string>();
         let repostedSet = new Set<string>();
@@ -1556,6 +1613,14 @@ export class PostsService {
         return user;
     }
 
+    private isUniqueConstraintError(error: unknown): boolean {
+        if (typeof error !== 'object' || error === null) return false;
+        const candidate = error as { code?: string; message?: string };
+        return candidate.code === '23505' ||
+            candidate.message?.includes('duplicate key') === true ||
+            candidate.message?.includes('violates unique constraint') === true;
+    }
+
     private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
         const apiSecret = process.env.CLOUDINARY_API_SECRET;
         const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -1563,8 +1628,14 @@ export class PostsService {
             throw new Error('Chưa cấu hình Cloudinary environment variables');
         }
         const expectedPrefix = `mxh/${userId}/posts/`;
+        const seenPublicIds = new Set<string>();
 
         return mediaItems.map((item) => {
+            if (seenPublicIds.has(item.publicId)) {
+                throw new BadRequestException(`Media ${item.publicId} bị trùng lặp`);
+            }
+            seenPublicIds.add(item.publicId);
+
             if (!item.publicId.startsWith(expectedPrefix)) {
                 throw new BadRequestException(
                     `Media ${item.publicId} không hợp lệ hoặc không thuộc quyền sở hữu của bạn`,
@@ -1605,8 +1676,21 @@ export class PostsService {
         try {
             const decoded = Buffer.from(cursor, 'base64url').toString('utf-8');
             const parsed = JSON.parse(decoded);
+            if (
+                typeof parsed !== 'object' ||
+                parsed === null ||
+                typeof parsed.createdAt !== 'string' ||
+                typeof parsed.id !== 'string' ||
+                parsed.id.length === 0
+            ) {
+                return null;
+            }
+            const createdAt = new Date(parsed.createdAt);
+            if (!Number.isFinite(createdAt.getTime())) {
+                return null;
+            }
             return {
-                createdAt: new Date(parsed.createdAt),
+                createdAt,
                 id: parsed.id,
             };
         } catch {

@@ -154,7 +154,7 @@ model PostMedia {
   postId      String
   post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  publicId    String    // Cloudinary Public ID (phải có prefix mxh/{userId}/posts/)
+  publicId    String    @unique // Cloudinary Public ID chỉ thuộc một PostMedia
   url         String    // Cloudinary Secure URL
   type        MediaType
   width       Int?

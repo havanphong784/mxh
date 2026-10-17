@@ -19,10 +19,18 @@ export class NotificationsService {
         const decoded = JSON.parse(
           Buffer.from(query.cursor, "base64").toString("utf8"),
         );
-        cursor = {
-          createdAt: new Date(decoded.createdAt),
-          id: decoded.id,
-        };
+        if (
+          typeof decoded === "object" &&
+          decoded !== null &&
+          typeof decoded.createdAt === "string" &&
+          typeof decoded.id === "string" &&
+          decoded.id.length > 0
+        ) {
+          const createdAt = new Date(decoded.createdAt);
+          if (Number.isFinite(createdAt.getTime())) {
+            cursor = { createdAt, id: decoded.id };
+          }
+        }
       } catch {
         // Cursor không hợp lệ thì bỏ qua
       }
