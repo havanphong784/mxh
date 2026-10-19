@@ -265,6 +265,121 @@ test('a quote stops exposing the original post after it becomes private', () => 
     assert.equal(response.isQuotedPostDeleted, true);
 });
 
+test('a pure repost response embeds the original public post', () => {
+    const original = postFixture({
+        id: 'original-id',
+        authorId: 'original-author',
+        author: activeAuthor('original-author'),
+        content: 'original content',
+        visibility: 'PUBLIC',
+        parentId: null,
+        rootId: null,
+        media: [{
+            id: 'media-id',
+            publicId: 'mxh/original-author/posts/media-id',
+            url: 'https://example.com/media.jpg',
+            type: 'IMAGE',
+            width: 100,
+            height: 100,
+            duration: null,
+            order: 0,
+        }],
+    });
+    const repost = postFixture({
+        id: 'repost-id',
+        authorId: 'reposter-id',
+        author: activeAuthor('reposter-id'),
+        content: null,
+        visibility: 'PUBLIC',
+        parentId: null,
+        rootId: null,
+        repostOfId: original.id,
+        repostOf: original,
+    });
+    const service = new PostsService({} as any, {} as any, {} as any);
+
+    const response = service.toPostResponse(repost);
+
+    assert.equal(response.repostOf?.id, 'original-id');
+    assert.equal(response.repostOf?.content, 'original content');
+    assert.equal(response.repostOf?.author.username, 'original-author');
+    assert.deepEqual(response.repostOf?.media, [{
+        id: 'media-id',
+        publicId: 'mxh/original-author/posts/media-id',
+        url: 'https://example.com/media.jpg',
+        type: 'IMAGE',
+        width: 100,
+        height: 100,
+        duration: null,
+        order: 0,
+    }]);
+});
+
+test('updating a pure repost reloads the embedded original post', async () => {
+    const original = postFixture({
+        id: 'original-id',
+        authorId: 'original-author',
+        author: activeAuthor('original-author'),
+        content: 'original content',
+        visibility: 'PUBLIC',
+        parentId: null,
+        rootId: null,
+    });
+    const repost = postFixture({
+        id: 'repost-id',
+        authorId: 'reposter-id',
+        author: activeAuthor('reposter-id'),
+        content: null,
+        visibility: 'PUBLIC',
+        parentId: null,
+        rootId: null,
+        repostOfId: original.id,
+        repostOf: undefined,
+    });
+    const postTable = {
+        where() {
+            let includeRepost = false;
+            const relationQuery: any = {
+                include() { return relationQuery; },
+            };
+            const query: any = {
+                include(name: string, refine?: (relation: any) => unknown) {
+                    if (name === 'repostOf') {
+                        includeRepost = true;
+                        refine?.(relationQuery);
+                    }
+                    return query;
+                },
+                async first() {
+                    return {
+                        ...repost,
+                        repostOf: includeRepost ? original : undefined,
+                    };
+                },
+                async update(payload: Record<string, unknown>) {
+                    Object.assign(repost, payload);
+                },
+            };
+            return query;
+        },
+    };
+    const userTable = {
+        where() { return this; },
+        async first() { return activeAuthor('reposter-id'); },
+    };
+    const client: any = {
+        orm: { public: { User: userTable, Post: postTable } },
+        async transaction(callback: (tx: any) => Promise<unknown>) {
+            return callback({ orm: client.orm });
+        },
+    };
+    const service = new PostsService({ client } as any, {} as any, {} as any);
+
+    const response = await service.updatePost('repost-id', 'reposter-id', {});
+
+    assert.equal(response.repostOf?.id, 'original-id');
+});
+
 test('bookmarks no longer return a followers-only post after the user unfollows its author', async () => {
     const viewer = activeAuthor('viewer-id');
     const restrictedPost = postFixture({

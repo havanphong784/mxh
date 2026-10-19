@@ -5,10 +5,14 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --watch --import @swc-node/register/esm-register src/index.ts",
-    "test": "npm run test:posts && npm run test:auth && npm run test:notifications",
+    "test": "npm run test:posts && npm run test:auth && npm run test:notifications && npm run test:media && npm run test:mail && npm run test:users && npm run test:gateway",
     "test:auth": "node --import @swc-node/register/esm-register src/auth/auth.service.test.ts",
+    "test:gateway": "node --import @swc-node/register/esm-register src/gateway/events.gateway.test.ts",
+    "test:mail": "node --import @swc-node/register/esm-register src/mail/mail.service.test.ts",
+    "test:media": "node --import @swc-node/register/esm-register src/media/media.service.test.ts",
     "test:notifications": "node --import @swc-node/register/esm-register src/notifications/notifications.service.test.ts",
     "test:posts": "node --import @swc-node/register/esm-register src/posts/posts.service.test.ts",
+    "test:users": "node --import @swc-node/register/esm-register src/users/users.service.test.ts",
     "contract:emit": "prisma contract emit",
     "reconcile:counters": "node --import @swc-node/register/esm-register src/scripts/reconcile-counters.ts"
   },

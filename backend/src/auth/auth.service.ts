@@ -224,7 +224,7 @@ export class AuthService {
             Date.now() + 5 * 60 * 1000 // 5 phút
         );
 
-        await this.prisma.client.orm.public.OtpVerification.create({
+        const createdOtp = await this.prisma.client.orm.public.OtpVerification.create({
             email: user.email,
             codeHash,
             type: 'REGISTER_VERIFY',
@@ -233,7 +233,15 @@ export class AuthService {
             userId: user.id,
         });
 
-        await this.mailService.sendOtpEmail(user.email, otpCode);
+        const isSent = await this.mailService.sendOtpEmail(user.email, otpCode);
+        if (!isSent) {
+            await this.prisma.client.orm.public.OtpVerification
+                .where({ id: createdOtp.id })
+                .delete();
+            throw new BadRequestException(
+                'Hệ thống tạm thời không thể gửi email xác thực. Vui lòng thử lại sau.',
+            );
+        }
 
         return {
             email: user.email,

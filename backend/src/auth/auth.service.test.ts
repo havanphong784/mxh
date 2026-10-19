@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 
 test('only one concurrent refresh request can rotate the same session', async () => {
@@ -100,4 +101,55 @@ test('only one concurrent refresh request can rotate the same session', async ()
     assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
     assert.equal(results.filter((result) => result.status === 'rejected').length, 1);
     assert.equal(createdSessions.length, 1);
+});
+
+test('resend OTP removes the unusable code and reports a delivery failure', async () => {
+    const user = {
+        id: 'user-id',
+        email: 'user@example.com',
+        isEmailVerified: false,
+    };
+    let createdOtp: any = null;
+    let deletedOtpId: string | null = null;
+    const otpTable = {
+        where(condition: any) {
+            const query: any = {
+                where() { return query; },
+                orderBy() { return query; },
+                async first() { return null; },
+                async delete() { deletedOtpId = condition.id; },
+            };
+            return query;
+        },
+        async create(data: any) {
+            createdOtp = { id: 'otp-id', ...data };
+            return createdOtp;
+        },
+    };
+    const prisma = {
+        client: {
+            orm: {
+                public: {
+                    User: {
+                        where() {
+                            return { async first() { return user; } };
+                        },
+                    },
+                    OtpVerification: otpTable,
+                },
+            },
+        },
+    };
+    const service = new AuthService(
+        prisma as any,
+        { async sendOtpEmail() { return false; } } as any,
+        {} as any,
+        {} as any,
+    );
+
+    await assert.rejects(
+        service.resendOtp({ email: user.email }),
+        BadRequestException,
+    );
+    assert.equal(deletedOtpId, createdOtp.id);
 });

@@ -143,6 +143,9 @@ export class PostsService {
                     .include('author')
                     .include('media')
                     .include('quotedPost')
+                    .include('repostOf', (repost) =>
+                        repost.include('author').include('media').include('quotedPost'),
+                    )
                     .first();
 
                 return this.toPostResponse(fullPost);
@@ -237,6 +240,10 @@ export class PostsService {
             .where({ id: postId })
             .include('author')
             .include('media')
+            .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .first();
 
         return this.toPostResponse(updated);
@@ -258,7 +265,13 @@ export class PostsService {
             throw new ForbiddenException('Bạn không có quyền xóa bài viết này');
         }
 
-        const publicIdsToDelete: string[] = (post.media || []).map((m: any) => m.publicId);
+        const mediaToDelete: Array<{
+            publicId: string;
+            type: 'IMAGE' | 'VIDEO' | 'AUDIO';
+        }> = (post.media || []).map((media: any) => ({
+            publicId: media.publicId,
+            type: media.type,
+        }));
 
         await this.prismaService.client.transaction(async (tx) => {
             const repliesCountAgg = await tx.orm.public.Post
@@ -343,8 +356,12 @@ export class PostsService {
             }
         });
 
-        if (publicIdsToDelete.length > 0) {
-            Promise.all(publicIdsToDelete.map((id) => this.mediaService.deleteFile(id)))
+        if (mediaToDelete.length > 0) {
+            Promise.all(
+                mediaToDelete.map((media) =>
+                    this.mediaService.deleteFile(media.publicId, media.type),
+                ),
+            )
                 .catch((err) => this.logger.error('Lỗi khi xóa media trên Cloudinary:', err));
         }
 
@@ -361,7 +378,7 @@ export class PostsService {
             repostedSet?: Set<string>;
             bookmarkedSet?: Set<string>;
         },
-    ) {
+    ): any {
         if (post.isDeleted) {
             return {
                 id: post.id,
@@ -431,6 +448,12 @@ export class PostsService {
             parentId: post.parentId ?? null,
             rootId: post.rootId ?? null,
             repostOfId: post.repostOfId ?? null,
+            repostOf:
+                post.repostOf &&
+                !post.repostOf.isDeleted &&
+                post.repostOf.visibility === 'PUBLIC'
+                    ? this.toPostResponse(post.repostOf)
+                    : null,
             quotedPostId: post.quotedPostId ?? null,
             quotedPost: quotedPostData,
             isQuotedPostDeleted,
@@ -525,6 +548,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .first();
 
         if (!post) {
@@ -619,6 +645,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .all();
 
         const hasNextPage = replies.length > limit;
@@ -686,6 +715,9 @@ export class PostsService {
                 .include('author')
                 .include('media')
                 .include('quotedPost')
+                .include('repostOf', (repost) =>
+                    repost.include('author').include('media').include('quotedPost'),
+                )
                 .first();
 
             if (!parent) break;
@@ -1125,6 +1157,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .all();
 
         const postMap = new Map<string, any>(posts.map((p: any) => [p.id, p]));
@@ -1215,6 +1250,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .all();
 
         const hasNextPage = posts.length > limit;
@@ -1288,6 +1326,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .all();
 
         const hasNextPage = posts.length > limit;
@@ -1378,6 +1419,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .all();
 
         const hasNextPage = posts.length > limit;
@@ -1451,6 +1495,9 @@ export class PostsService {
             .include('author')
             .include('media')
             .include('quotedPost')
+            .include('repostOf', (repost) =>
+                repost.include('author').include('media').include('quotedPost'),
+            )
             .include('parent')
             .all();
 

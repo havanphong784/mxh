@@ -123,31 +123,25 @@ export class UsersService {
       throw new BadRequestException('bannerPublicId không hợp lệ hoặc không thuộc quyền sở hữu của bạn');
     }
 
-    if (
+    const avatarPublicIdToDelete = (
       currentUser.avatarPublicId &&
       dto.avatarPublicId !== undefined &&
       dto.avatarPublicId !== currentUser.avatarPublicId
-    ) {
-      if (
+      && (
         currentUser.avatarPublicId.startsWith(expectedAvatarPrefix) ||
         currentUser.avatarPublicId.startsWith('mxh/avatars/')
-      ) {
-        await this.mediaService.deleteFile(currentUser.avatarPublicId);
-      }
-    }
+      )
+    ) ? currentUser.avatarPublicId : null;
 
-    if (
+    const bannerPublicIdToDelete = (
       currentUser.bannerPublicId &&
       dto.bannerPublicId !== undefined &&
       dto.bannerPublicId !== currentUser.bannerPublicId
-    ) {
-      if (
+      && (
         currentUser.bannerPublicId.startsWith(expectedBannerPrefix) ||
         currentUser.bannerPublicId.startsWith('mxh/banners/')
-      ) {
-        await this.mediaService.deleteFile(currentUser.bannerPublicId);
-      }
-    }
+      )
+    ) ? currentUser.bannerPublicId : null;
 
     const updatePayload: Record<string, any> = {};
     if (dto.displayName !== undefined) updatePayload.displayName = dto.displayName;
@@ -162,6 +156,11 @@ export class UsersService {
         .where((u) => u.id.eq(userId))
         .update(updatePayload);
     }
+
+    await Promise.all([
+      this.mediaService.deleteFile(avatarPublicIdToDelete),
+      this.mediaService.deleteFile(bannerPublicIdToDelete),
+    ]);
 
     const updatedUser = await this.prisma.client.orm.public.User
       .where((u) => u.id.eq(userId))

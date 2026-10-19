@@ -42,12 +42,16 @@ export class MediaService {
     };
   }
 
-  async deleteFile(publicId?: string | null): Promise<void> {
+  async deleteFile(
+    publicId?: string | null,
+    mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO' = 'IMAGE',
+  ): Promise<void> {
     if (!publicId) return;
 
     try {
-      await cloudinary.uploader.destroy(publicId);
-      this.logger.log(`Đã xóa ảnh cũ trên Cloudinary: ${publicId}`);
+      const resourceType = mediaType === 'IMAGE' ? 'image' : 'video';
+      await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+      this.logger.log(`Đã xóa media cũ trên Cloudinary: ${publicId}`);
     } catch (error) {
       this.logger.error(`Lỗi khi xóa file ${publicId}:`, error);
     }
