@@ -1,14 +1,16 @@
 import { apiClient } from '@/lib/axios';
 import axios from 'axios';
+import type { UploadedMedia, UploadSignature } from '@/types/api';
+import { toUploadedMedia, type CloudinaryUploadResponse } from './cloudinary';
 
 export const mediaApi = {
   // 1. Gọi backend để lấy chữ ký HMAC an toàn
-  getUploadSignature: (folder: 'posts' | 'avatars' | 'banners', mediaType: 'IMAGE' | 'VIDEO') =>
-    apiClient.get(`/media/upload-signature?folder=${folder}&mediaType=${mediaType}`),
+  getUploadSignature: (folder: 'posts' | 'avatars' | 'banners', mediaType: 'image' | 'video') =>
+    apiClient.get<UploadSignature>('/media/upload-signature', { params: { folder, mediaType } }),
 
   // 2. Upload file trực tiếp lên Cloudinary bằng FormData
-  uploadToCloudinary: async (signatureData: any, file: File) => {
-    const { cloudName, apiKey, timestamp, signature, folder, publicId } = signatureData;
+  uploadToCloudinary: async (signatureData: UploadSignature, file: File): Promise<UploadedMedia> => {
+    const { cloudName, apiKey, timestamp, signature, folder } = signatureData;
     const isVideo = file.type.startsWith('video');
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`;
 
@@ -18,20 +20,9 @@ export const mediaApi = {
     formData.append('timestamp', timestamp.toString());
     formData.append('signature', signature);
     formData.append('folder', folder);
-    formData.append('public_id', publicId);
 
-    const res = await axios.post(url, formData);
+    const res = await axios.post<CloudinaryUploadResponse>(url, formData);
 
-    return {
-      publicId: res.data.public_id,
-      version: res.data.version,
-      signature,
-      type: isVideo ? ('VIDEO' as const) : ('IMAGE' as const),
-      order: 0,
-      width: res.data.width || null,
-      height: res.data.height || null,
-      duration: res.data.duration || null,
-      url: res.data.secure_url,
-    };
+    return toUploadedMedia(res.data, isVideo);
   },
 };

@@ -6,11 +6,14 @@ import { useMediaUpload } from '@/features/media/hooks/useMediaUpload';
 import { postsApi } from '../api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PostComposerUI } from './PostComposerUI';
+import type { UploadedMedia } from '@/types/api';
+import { toPostMediaInput } from '@/features/media/cloudinary';
+import { getApiErrorMessage } from '@/lib/api-error';
 
-export const PostComposer: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
+export const PostComposer: React.FC<{ onSuccess?: () => void; parentId?: string; placeholder?: string }> = ({ onSuccess, parentId, placeholder }) => {
   const user = useAuthStore((s) => s.user);
   const [content, setContent] = useState('');
-  const [mediaList, setMediaList] = useState<any[]>([]);
+  const [mediaList, setMediaList] = useState<UploadedMedia[]>([]);
   const { upload, isUploading } = useMediaUpload();
   const queryClient = useQueryClient();
 
@@ -19,7 +22,7 @@ export const PostComposer: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }
     onSuccess: () => {
       setContent('');
       setMediaList([]);
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
       onSuccess?.();
     },
   });
@@ -34,7 +37,7 @@ export const PostComposer: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }
       try {
         const uploaded = await upload(files[i], 'posts');
         setMediaList((prev) => [...prev, uploaded]);
-      } catch (err) {
+      } catch {
         alert('Upload ảnh thất bại. Vui lòng thử lại.');
       }
     }
@@ -48,7 +51,8 @@ export const PostComposer: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }
     createMutation.mutate({
       content: content.trim() || null,
       visibility: 'PUBLIC',
-      media: mediaList,
+      media: mediaList.map(toPostMediaInput),
+      parentId: parentId ?? null,
     });
   };
 
@@ -66,6 +70,8 @@ export const PostComposer: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }
       onSubmit={handleSubmit}
       isSubmitting={createMutation.isPending}
       isUploading={isUploading}
+      errorMessage={createMutation.isError ? getApiErrorMessage(createMutation.error, 'Không thể đăng bài. Vui lòng thử lại.') : undefined}
+      placeholder={placeholder}
     />
   );
 };

@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../api';
 import { Button } from '@/components/ui/Button';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { normalizeOtp } from '../validation';
 
 interface VerifyOtpFormProps {
   email: string;
-  type?: 'REGISTER_VERIFY' | 'FORGOT_PASSWORD';
 }
 
-export function VerifyOtpForm({ email, type = 'REGISTER_VERIFY' }: VerifyOtpFormProps) {
+export function VerifyOtpForm({ email }: VerifyOtpFormProps) {
   const { verifyOtp, isVerifying } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,9 +31,9 @@ export function VerifyOtpForm({ email, type = 'REGISTER_VERIFY' }: VerifyOtpForm
     e.preventDefault();
     setError(null);
     try {
-      await verifyOtp({ email, code: code.trim(), type });
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.');
+      await verifyOtp({ email, code });
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Mã xác thực không hợp lệ hoặc đã hết hạn.'));
     }
   };
 
@@ -42,11 +43,11 @@ export function VerifyOtpForm({ email, type = 'REGISTER_VERIFY' }: VerifyOtpForm
     setError(null);
     setResendSuccess(false);
     try {
-      await authApi.resendOtp({ email, type });
+      await authApi.resendOtp({ email });
       setResendSuccess(true);
       setResendCooldown(60);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể gửi lại mã OTP lúc này.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Không thể gửi lại mã OTP lúc này.'));
     } finally {
       setIsResending(false);
     }
@@ -71,7 +72,9 @@ export function VerifyOtpForm({ email, type = 'REGISTER_VERIFY' }: VerifyOtpForm
         <input
           type="text"
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => setCode(normalizeOtp(e.target.value))}
+          inputMode="numeric"
+          autoComplete="one-time-code"
           placeholder="123456"
           maxLength={6}
           required

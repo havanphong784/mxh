@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { initSocket, disconnectSocket } from '@/lib/socket';
 import { useQueryClient } from '@tanstack/react-query';
-import type { NotificationItem } from '@/types/api';
+import type { CursorDataPage, NotificationItem } from '@/types/api';
+import type { InfiniteData } from '@tanstack/react-query';
+import { notificationsApi } from '@/features/notifications/api';
 
 export function useSocket() {
   const { accessToken, isAuthenticated } = useAuthStore();
-  const { setUnreadCount } = useNotificationStore();
+  const { setUnreadCount, showNewFeedPosts } = useNotificationStore();
   const queryClient = useQueryClient();
-  const [hasNewFeedPosts, setHasNewFeedPosts] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -20,6 +21,7 @@ export function useSocket() {
     }
 
     const socket = initSocket(accessToken);
+    notificationsApi.unreadCount().then((response) => setUnreadCount(response.data.count)).catch(() => undefined);
 
     // 1. Cập nhật số lượng thông báo chưa đọc
     socket.on('notification:unread-count', (data: { count: number }) => {
@@ -28,11 +30,11 @@ export function useSocket() {
 
     // 2. Nhận thông báo mới: chèn vào đầu cache danh sách thông báo
     socket.on('notification:new', (notif: NotificationItem) => {
-      queryClient.setQueryData(['notifications'], (old: any) => {
+      queryClient.setQueryData<InfiniteData<CursorDataPage<NotificationItem>>>(['notifications'], (old) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any, idx: number) => {
+          pages: old.pages.map((page, idx) => {
             if (idx === 0) {
               return { ...page, data: [notif, ...page.data] };
             }
@@ -44,15 +46,11 @@ export function useSocket() {
 
     // 3. Có bài viết mới trên feed: bật cờ hiển thị banner (không tự chèn làm giật giao diện)
     socket.on('feed:new-post', () => {
-      setHasNewFeedPosts(true);
+      showNewFeedPosts();
     });
 
     return () => {
       disconnectSocket();
     };
-  }, [isAuthenticated, accessToken, setUnreadCount, queryClient]);
-
-  const clearNewFeedNotice = () => setHasNewFeedPosts(false);
-
-  return { hasNewFeedPosts, clearNewFeedNotice };
+  }, [isAuthenticated, accessToken, setUnreadCount, showNewFeedPosts, queryClient]);
 }

@@ -4,7 +4,7 @@ import React, { useRef } from 'react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 
-interface MediaItemPreview {
+export interface MediaItemPreview {
   url: string;
   type: 'IMAGE' | 'VIDEO';
 }
@@ -21,6 +21,7 @@ interface PostComposerUIProps {
   isSubmitting: boolean;
   isUploading: boolean;
   placeholder?: string;
+  errorMessage?: string;
 }
 
 export const PostComposerUI: React.FC<PostComposerUIProps> = ({
@@ -35,6 +36,7 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
   isSubmitting,
   isUploading,
   placeholder = 'Bạn đang nghĩ gì?',
+  errorMessage,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +78,8 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
                   {m.type === 'VIDEO' ? (
                     <video src={m.url} className="w-full h-32 object-cover" />
                   ) : (
+                    // This blob/remote preview URL is transient and cannot be optimized by Next Image.
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={m.url} alt="Xem trước" className="w-full h-32 object-cover" />
                   )}
                   <button
@@ -90,6 +94,8 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
               ))}
             </div>
           )}
+
+          {errorMessage && <p role="alert" className="my-2 text-[13px] text-red-600">{errorMessage}</p>}
 
           {/* Thanh công cụ dưới khung nhập */}
           <div className="flex items-center justify-between pt-3 border-t border-[#efefef]">

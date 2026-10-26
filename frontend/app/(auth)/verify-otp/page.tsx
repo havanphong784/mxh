@@ -7,7 +7,6 @@ import { VerifyOtpForm } from '@/features/auth/components/VerifyOtpForm';
 function OtpContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
-  const type = (searchParams.get('type') as 'REGISTER_VERIFY' | 'FORGOT_PASSWORD') || 'REGISTER_VERIFY';
 
   if (!email) {
     return (
@@ -23,7 +22,7 @@ function OtpContent() {
       <p className="text-[13px] text-[#969696] mb-4 text-center">
         Nhập mã xác thực đã gửi tới <strong className="text-[#000000]">{email}</strong>
       </p>
-      <VerifyOtpForm email={email} type={type} />
+      <VerifyOtpForm email={email} />
     </div>
   );
 }

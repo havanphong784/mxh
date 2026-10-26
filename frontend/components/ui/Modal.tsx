@@ -12,7 +12,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="bg-[#ffffff] rounded-[18px] border border-[#d5d5d5] max-w-lg w-full p-6 relative shadow-xs">
+      <div className="bg-[#ffffff] rounded-[18px] border border-[#d5d5d5] max-w-lg w-full p-6 relative">
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#d5d5d5]">
           <h2 className="font-semibold text-[15px] text-[#000000]">{title}</h2>
           <button

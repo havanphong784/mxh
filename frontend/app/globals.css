@@ -12,6 +12,18 @@
 
   --background: var(--color-paper);
   --foreground: var(--color-ink);
+  --page-max-width: 600px;
+  --radius-card: 18px;
+  --radius-media: 8px;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-paper);
 }
 
 body {
@@ -20,6 +32,23 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-verified-indigo);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-hover-mist);
 }
 
 /* Custom scrollbar for clean threads feel */

@@ -14,3 +14,9 @@ coverage/
 /docs/
 /docs/mxh_posts_api.postman_collection.json
 /docs/posts.http
+*.test.ts
+/.superpowers/
+/.prowl/
+/.codex/
+/.claude/
+/.agents/

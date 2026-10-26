@@ -1,10 +1,12 @@
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { RealtimeBridge } from '@/features/realtime/components/RealtimeBridge';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#fafafa]">
+      <RealtimeBridge />
       {/* 1. Sidebar cố định bên trái (80px trên desktop, ẩn trên mobile) */}
       <Sidebar />
 

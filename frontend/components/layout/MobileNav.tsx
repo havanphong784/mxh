@@ -4,15 +4,19 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useAuthStore } from '@/stores/authStore';
+import { Avatar } from '@/components/ui/Avatar';
 
 export function MobileNav() {
   const pathname = usePathname();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const user = useAuthStore((s) => s.user);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[52px] bg-[#ffffff] border-t border-[#d5d5d5] flex items-center justify-around z-30 select-none">
       <Link
         href="/feed"
+        aria-label="Trang chủ"
         className={`p-2 transition-colors ${pathname === '/feed' ? 'text-[#000000]' : 'text-[#969696]'}`}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,6 +26,7 @@ export function MobileNav() {
 
       <Link
         href="/explore"
+        aria-label="Khám phá"
         className={`p-2 transition-colors ${pathname === '/explore' ? 'text-[#000000]' : 'text-[#969696]'}`}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,6 +36,7 @@ export function MobileNav() {
 
       <Link
         href="/notifications"
+        aria-label="Thông báo"
         className={`p-2 relative transition-colors ${pathname === '/notifications' ? 'text-[#000000]' : 'text-[#969696]'}`}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,11 +49,26 @@ export function MobileNav() {
 
       <Link
         href="/bookmarks"
+        aria-label="Đã lưu"
         className={`p-2 transition-colors ${pathname === '/bookmarks' ? 'text-[#000000]' : 'text-[#969696]'}`}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
         </svg>
+      </Link>
+
+      <Link
+        href={user ? `/${user.username}` : '/login'}
+        aria-label={user ? 'Hồ sơ' : 'Đăng nhập'}
+        className="p-2"
+      >
+        {user ? (
+          <Avatar src={user.avatarUrl} displayName={user.displayName} size={24} />
+        ) : (
+          <svg className="h-6 w-6 text-[#969696]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.1a7.5 7.5 0 0115 0" />
+          </svg>
+        )}
       </Link>
     </nav>
   );

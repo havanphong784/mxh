@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 export function RegisterForm() {
   const { register, isRegistering } = useAuth();
@@ -18,8 +19,8 @@ export function RegisterForm() {
     setError(null);
     try {
       await register({ email, username, displayName, password });
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Đăng ký không thành công. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Đăng ký không thành công. Vui lòng thử lại.'));
     }
   };
 
@@ -38,6 +39,7 @@ export function RegisterForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           required
+          autoComplete="email"
           className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
         />
       </div>
@@ -49,6 +51,10 @@ export function RegisterForm() {
           onChange={(e) => setUsername(e.target.value)}
           placeholder="vd: nguyenvana"
           required
+          minLength={3}
+          maxLength={30}
+          pattern="[A-Za-z0-9_]+"
+          autoComplete="username"
           className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
         />
       </div>
@@ -60,6 +66,8 @@ export function RegisterForm() {
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="vd: Nguyễn Văn A"
           required
+          minLength={2}
+          maxLength={80}
           className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
         />
       </div>
@@ -69,9 +77,11 @@ export function RegisterForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Tối thiểu 6 ký tự"
+          placeholder="Ít nhất 8 ký tự, có chữ hoa và số"
           required
-          minLength={6}
+          minLength={8}
+          maxLength={100}
+          autoComplete="new-password"
           className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
         />
       </div>

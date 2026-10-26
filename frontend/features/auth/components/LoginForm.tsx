@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 export function LoginForm() {
   const { login, isLoggingIn } = useAuth();
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -15,9 +16,9 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     try {
-      await login({ identifier, password });
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Đăng nhập không thành công. Vui lòng kiểm tra lại.');
+      await login({ email, password });
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Đăng nhập không thành công. Vui lòng kiểm tra lại.'));
     }
   };
 
@@ -30,13 +31,14 @@ export function LoginForm() {
       )}
       <div>
         <label className="block text-[12px] font-semibold text-[#424242] mb-1">
-          Email hoặc Username
+          Email
         </label>
         <input
-          type="text"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          placeholder="Nhập email hoặc tên tài khoản"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="ban@example.com"
+          autoComplete="email"
           required
           className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
         />
@@ -51,12 +53,18 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
           required
+          autoComplete="current-password"
           className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
         />
       </div>
       <Button type="submit" className="w-full mt-2" isLoading={isLoggingIn}>
         Đăng nhập
       </Button>
+      <div className="text-right">
+        <Link href="/forgot-password" className="text-[12px] font-semibold text-[#385898] hover:underline">
+          Quên mật khẩu?
+        </Link>
+      </div>
       <div className="text-center mt-4 text-[13px] text-[#969696]">
         Chưa có tài khoản?{' '}
         <Link href="/register" className="text-[#385898] hover:underline font-semibold">

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { PostCounters, PostInteractions } from '@/types/api';
+import Link from 'next/link';
 
 interface PostActionBarProps {
   counters: PostCounters;
@@ -10,6 +11,7 @@ interface PostActionBarProps {
   onReply?: () => void;
   onRepost?: () => void;
   onBookmark?: () => void;
+  replyHref?: string;
 }
 
 export const PostActionBar: React.FC<PostActionBarProps> = ({
@@ -19,6 +21,7 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
   onReply,
   onRepost,
   onBookmark,
+  replyHref,
 }) => {
   return (
     <div className="flex items-center space-x-6 py-1 mt-2 text-[#424242] text-[13px] select-none">
@@ -51,7 +54,10 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
       </button>
 
       {/* 2. Nút Bình luận (Reply) */}
-      <button
+      {replyHref ? <Link href={replyHref} className="flex items-center space-x-2 transition-colors hover:text-[#385898] group" title="Bình luận">
+        <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+        <span className="text-[12px]">{counters.replyCount}</span>
+      </Link> : <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -74,7 +80,7 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
           />
         </svg>
         <span className="text-[12px]">{counters.replyCount}</span>
-      </button>
+      </button>}
 
       {/* 3. Nút Đăng lại (Repost) */}
       <button

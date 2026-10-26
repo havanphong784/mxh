@@ -1,5 +1,7 @@
-import axios, {AxiosError, InternalAxiosRequestConfig} from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {useAuthStore} from '@/stores/authStore';
+import type { Author, RefreshResponse } from '@/types/api';
+import { shouldAttemptRefresh } from './refresh-policy';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -46,7 +48,7 @@ apiClient.interceptors.response.use(
     async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-        if (!error.response || error.response.status !== 401 || originalRequest?._retry) {
+        if (!shouldAttemptRefresh(error.response?.status, originalRequest?.url, Boolean(originalRequest?._retry))) {
             return Promise.reject(error);
         }
 
@@ -62,10 +64,13 @@ apiClient.interceptors.response.use(
         isRefreshing = true;
 
         try {
-            const response = await refreshClient.post('/auth/refresh');
-            const { accessToken, user } = response.data;
+            const response = await refreshClient.post<RefreshResponse>('/auth/refresh');
+            const { accessToken } = response.data;
+            const meResponse = await refreshClient.get<Author>('/auth/me', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
 
-            useAuthStore.getState().setAuth(user, accessToken);
+            useAuthStore.getState().setAuth(meResponse.data, accessToken);
             processQueue(null);
 
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -74,7 +79,9 @@ apiClient.interceptors.response.use(
             processQueue(refreshError as Error);
             useAuthStore.getState().clearAuth();
             if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-                window.location.href = '/login';
+                // Interceptors execute outside React; a hard navigation also clears protected caches.
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+                window.location.assign('/login');
             }
             return Promise.reject(refreshError);
         } finally {

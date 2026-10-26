@@ -17,6 +17,8 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   if (src) {
     return (
+      // Avatars are user-supplied remote URLs from Cloudinary; dimensions are fixed here.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
         alt={displayName}

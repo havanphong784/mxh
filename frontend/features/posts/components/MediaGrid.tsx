@@ -27,6 +27,8 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ media }) => {
         }
 
         return (
+          // User media URLs are dynamic and may not share a configured Next Image host.
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             key={item.id || item.publicId}
             src={item.url}

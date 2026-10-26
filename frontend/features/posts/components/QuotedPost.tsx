@@ -1,18 +1,17 @@
 import React from 'react';
-import type { PostItem } from '@/types/api';
+import type { QuotedPostItem } from '@/types/api';
 import { Avatar } from '@/components/ui/Avatar';
 import { MediaGrid } from './MediaGrid';
-import Link from 'next/link';
 
 interface QuotedPostProps {
-  post: PostItem;
+  post: QuotedPostItem;
 }
 
 export const QuotedPost: React.FC<QuotedPostProps> = ({ post }) => {
-  if (post.isDeleted) {
+  if (!post.author) {
     return (
       <div className="mt-3 p-3 rounded-[12px] border border-[#d5d5d5] bg-[#fafafa] text-[#969696] text-[13px] italic">
-        Bài viết được trích dẫn đã bị xóa.
+        Bài viết được trích dẫn không còn khả dụng.
       </div>
     );
   }

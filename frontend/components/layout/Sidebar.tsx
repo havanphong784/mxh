@@ -14,7 +14,7 @@ export function Sidebar() {
 
   const navItems = [
     {
-      label: 'Home',
+      label: 'Trang chủ',
       href: '/feed',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -23,7 +23,7 @@ export function Sidebar() {
       ),
     },
     {
-      label: 'Explore',
+      label: 'Khám phá',
       href: '/explore',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,7 +32,7 @@ export function Sidebar() {
       ),
     },
     {
-      label: 'Notifications',
+      label: 'Thông báo',
       href: '/notifications',
       badge: unreadCount,
       icon: (
@@ -42,7 +42,7 @@ export function Sidebar() {
       ),
     },
     {
-      label: 'Bookmarks',
+      label: 'Đã lưu',
       href: '/bookmarks',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,8 +55,8 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col items-center justify-between w-[80px] h-screen sticky top-0 bg-[#ffffff] border-r border-[#d5d5d5] py-6 z-30 select-none">
       <div className="flex flex-col items-center space-y-6">
-        <Link href="/feed" className="text-[26px] font-black text-[#000000] hover:scale-105 transition-transform">
-          @
+        <Link href="/feed" aria-label="Trang chủ MXH" className="grid h-11 w-11 place-items-center rounded-full border border-[#000000] text-[15px] font-black tracking-[-0.08em] hover:bg-[#efefef] transition-colors">
+          MXH
         </Link>
         <nav className="flex flex-col space-y-4">
           {navItems.map((item) => {
@@ -69,6 +69,8 @@ export function Sidebar() {
                   isActive ? 'text-[#000000] bg-[#efefef]/60' : 'text-[#424242]'
                 }`}
                 title={item.label}
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
               >
                 {item.icon}
                 {item.badge && item.badge > 0 ? (
@@ -89,7 +91,7 @@ export function Sidebar() {
           </Link>
         ) : (
           <Link href="/login" className="text-[12px] font-semibold text-[#0095f6] hover:underline">
-            Login
+            Đăng nhập
           </Link>
         )}
       </div>

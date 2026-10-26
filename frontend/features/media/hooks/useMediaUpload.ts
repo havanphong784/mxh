@@ -7,7 +7,7 @@ export function useMediaUpload() {
   const upload = async (file: File, folder: 'posts' | 'avatars' | 'banners' = 'posts') => {
     setIsUploading(true);
     try {
-      const mediaType = file.type.startsWith('video') ? 'VIDEO' : 'IMAGE';
+      const mediaType = file.type.startsWith('video') ? 'video' : 'image';
       // Bước 1: Lấy chữ ký bảo mật từ Backend
       const sigRes = await mediaApi.getUploadSignature(folder, mediaType);
       // Bước 2: Upload trực tiếp lên Cloudinary

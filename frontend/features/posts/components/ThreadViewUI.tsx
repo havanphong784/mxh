@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { PostItem } from '@/types/api';
-import { PostCard } from './PostCard';
+import { InteractivePostCard } from './InteractivePostCard';
 import { useRouter } from 'next/navigation';
 
 interface ThreadViewUIProps {
@@ -12,6 +12,9 @@ interface ThreadViewUIProps {
   currentUserId?: string | null;
   isLoading: boolean;
   onLike: (id: string, isLiked: boolean) => void;
+  onRepost?: (id: string, active: boolean) => void;
+  onBookmark?: (id: string, active: boolean) => void;
+  onDelete?: (id: string) => void;
   replyComposerNode?: React.ReactNode;
 }
 
@@ -22,6 +25,9 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
   currentUserId,
   isLoading,
   onLike,
+  onRepost,
+  onBookmark,
+  onDelete,
   replyComposerNode,
 }) => {
   const router = useRouter();
@@ -54,7 +60,7 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
       {/* 2. Chuỗi các bài viết cha (Ancestors) nối bằng sợi chỉ dọc */}
       {ancestors.length > 0 && (
         <div className="relative">
-          {ancestors.map((ancestor, index) => (
+          {ancestors.map((ancestor) => (
             <div key={ancestor.id} className="relative">
               {/* Sợi chỉ dọc nối các avatar */}
               <div
@@ -64,10 +70,12 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
                 }}
               />
               <div className="relative z-1">
-                <PostCard
+                <InteractivePostCard
                   post={ancestor}
                   currentUserId={currentUserId}
-                  onLike={() => onLike(ancestor.id, ancestor.interactions.isLiked)}
+                  onLike={onLike}
+                  onRepost={onRepost}
+                  onBookmark={onBookmark}
                 />
               </div>
             </div>
@@ -77,10 +85,13 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
 
       {/* 3. Bài viết chính (Main Post) */}
       <div className="relative border-b-2 border-[#efefef]">
-        <PostCard
+        <InteractivePostCard
           post={post}
           currentUserId={currentUserId}
-          onLike={() => onLike(post.id, post.interactions.isLiked)}
+          onLike={onLike}
+          onRepost={onRepost}
+          onBookmark={onBookmark}
+          onDelete={onDelete}
         />
       </div>
 
@@ -99,11 +110,14 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
           </div>
         ) : (
           replies.map((reply) => (
-            <PostCard
+            <InteractivePostCard
               key={reply.id}
               post={reply}
               currentUserId={currentUserId}
-              onLike={() => onLike(reply.id, reply.interactions.isLiked)}
+              onLike={onLike}
+              onRepost={onRepost}
+              onBookmark={onBookmark}
+              onDelete={onDelete}
             />
           ))
         )}

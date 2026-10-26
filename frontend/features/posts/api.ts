@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/axios';
-import type { CursorPage, OffsetPage, PostItem } from '@/types/api';
+import type { BookmarkPage, CursorPage, PostItem, PostMediaInput } from '@/types/api';
 
 export const postsApi = {
   getFeed: (cursor?: string | null) =>
@@ -10,7 +10,7 @@ export const postsApi = {
 
   getPost: (id: string) => apiClient.get<PostItem>(`/posts/${id}`),
 
-  getAncestors: (id: string) => apiClient.get<PostItem[]>(`/posts/${id}/ancestors`),
+  getAncestors: (id: string) => apiClient.get<{ ancestors: PostItem[] }>(`/posts/${id}/ancestors`),
 
   getReplies: (id: string, cursor?: string | null) =>
     apiClient.get<CursorPage<PostItem>>(`/posts/${id}/replies`, { params: { limit: 20, cursor } }),
@@ -18,10 +18,13 @@ export const postsApi = {
   createPost: (data: {
     content?: string | null;
     visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
-    media?: any[];
+    media?: PostMediaInput[];
     parentId?: string | null;
     quotedPostId?: string | null;
   }) => apiClient.post<PostItem>('/posts', data),
+
+  updatePost: (id: string, data: { content?: string; visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE' }) =>
+    apiClient.patch<PostItem>(`/posts/${id}`, data),
 
   deletePost: (id: string) => apiClient.delete(`/posts/${id}`),
 
@@ -35,5 +38,5 @@ export const postsApi = {
   unbookmark: (id: string) => apiClient.delete(`/posts/${id}/bookmark`),
 
   getBookmarks: (page: number = 1, limit: number = 20) =>
-    apiClient.get<OffsetPage<PostItem>>('/posts/bookmarks', { params: { page, limit } }),
+    apiClient.get<BookmarkPage<PostItem>>('/posts/bookmarks', { params: { page, limit } }),
 };

@@ -30,6 +30,10 @@ export const PostCard: React.FC<PostCardProps> = ({
     return <TombstoneCard />;
   }
 
+  if (post.isUnavailable) {
+    return <TombstoneCard message="Bài viết này không còn khả dụng." />;
+  }
+
   const isOwner = currentUserId && currentUserId === post.author.id;
 
   return (
@@ -84,7 +88,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           {post.media && post.media.length > 0 && <MediaGrid media={post.media} />}
 
           {/* Bài viết trích dẫn (nếu có) */}
-          {post.quotedPost && <QuotedPost post={post.quotedPost} />}
+          {post.quotedPost ? <QuotedPost post={post.quotedPost} /> : post.isQuotedPostDeleted ? <div className="mt-3 rounded-[12px] border border-[#d5d5d5] bg-[#fafafa] p-3 text-[13px] italic text-[#969696]">Bài viết được trích dẫn không còn khả dụng.</div> : null}
 
           {/* Thanh tương tác dưới bài viết */}
           <PostActionBar
@@ -94,6 +98,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             onReply={onReply}
             onRepost={onRepost}
             onBookmark={onBookmark}
+            replyHref={`/post/${post.id}`}
           />
         </div>
       </div>
