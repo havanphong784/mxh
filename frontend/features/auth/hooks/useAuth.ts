@@ -47,5 +47,6 @@ export function useAuth() {
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
     isVerifying: verifyOtpMutation.isPending,
+    isLoggingOut: logoutMutation.isPending,
   };
 }

@@ -1140,23 +1140,34 @@ export class PostsService {
     }
 
     async getBookmarks(userId: string, query: CursorPaginationDto) {
+        return this.getMarkedPosts(userId, query, 'bookmark');
+    }
+
+    async getLikedPosts(userId: string, query: CursorPaginationDto) {
+        return this.getMarkedPosts(userId, query, 'like');
+    }
+
+    private async getMarkedPosts(userId: string, query: CursorPaginationDto, kind: 'bookmark' | 'like') {
         await this.ensureActiveUser(userId);
 
         const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
         const batchSize = Math.min(100, Math.max(20, limit * 2));
-        let scanCursor = this.decodeBookmarkCursor(query.cursor);
-        const accessible: Array<{ bookmark: any; post: any }> = [];
+        const markerTable: any = kind === 'bookmark'
+            ? this.prismaService.client.orm.public.PostBookmark
+            : this.prismaService.client.orm.public.PostLike;
+        let scanCursor = this.decodeMarkedCursor(query.cursor);
+        const accessible: Array<{ marker: any; post: any }> = [];
         let lastScanned: any = null;
         let hasMore = false;
 
         for (let batchIndex = 0; batchIndex < 3 && accessible.length <= limit; batchIndex++) {
-            let bookmarkQuery = this.prismaService.client.orm.public.PostBookmark
-                .where((b) => b.userId.eq(userId))
-                .orderBy([(b) => b.createdAt.desc(), (b) => b.postId.desc()]);
+            let markerQuery = markerTable
+                .where((b: any) => b.userId.eq(userId))
+                .orderBy([(b: any) => b.createdAt.desc(), (b: any) => b.postId.desc()]);
             if (scanCursor) {
-                bookmarkQuery = bookmarkQuery.cursor(scanCursor);
+                markerQuery = markerQuery.cursor(scanCursor);
             }
-            const batch = await bookmarkQuery.limit(batchSize).all();
+            const batch = await markerQuery.limit(batchSize).all();
             if (batch.length === 0) {
                 hasMore = false;
                 break;
@@ -1164,7 +1175,7 @@ export class PostsService {
             lastScanned = batch[batch.length - 1];
             hasMore = batch.length === batchSize;
 
-            const batchIds = batch.map((bookmark: any) => bookmark.postId);
+            const batchIds = batch.map((marker: any) => marker.postId);
             const posts = await this.prismaService.client.orm.public.Post
                 .where((p) => p.id.in(batchIds))
                 .include('author')
@@ -1175,13 +1186,13 @@ export class PostsService {
                 )
                 .all();
             const postMap = new Map<string, any>(posts.map((post: any) => [post.id, post]));
-            const accessChecks = await Promise.all(batch.map((bookmark: any) => {
-                const post = postMap.get(bookmark.postId);
+            const accessChecks = await Promise.all(batch.map((marker: any) => {
+                const post = postMap.get(marker.postId);
                 return post ? this.canView(post, userId) : false;
             }));
             for (let index = 0; index < batch.length; index++) {
                 if (accessChecks[index]) {
-                    accessible.push({ bookmark: batch[index], post: postMap.get(batch[index].postId) });
+                    accessible.push({ marker: batch[index], post: postMap.get(batch[index].postId) });
                 }
                 if (accessible.length > limit) break;
             }
@@ -1194,17 +1205,21 @@ export class PostsService {
         const postIds = orderedPosts.map((post: any) => post.id);
         if (postIds.length === 0) return {
             items: [],
-            nextCursor: hasMore && lastScanned ? this.encodeBookmarkCursor(lastScanned) : null,
+            nextCursor: hasMore && lastScanned ? this.encodeMarkedCursor(lastScanned) : null,
         };
 
-        let likedSet = new Set<string>();
+        let likedSet = new Set<string>(kind === 'like' ? postIds : []);
         let repostedSet = new Set<string>();
-        let bookmarkedSet = new Set<string>(postIds);
+        let bookmarkedSet = new Set<string>(kind === 'bookmark' ? postIds : []);
 
-        const [likes, reposts] = await Promise.all([
-            this.prismaService.client.orm.public.PostLike
+        const [likes, bookmarks, reposts] = await Promise.all([
+            kind === 'like' ? [] : this.prismaService.client.orm.public.PostLike
                 .where((l) => l.userId.eq(userId))
                 .where((l) => l.postId.in(postIds))
+                .all(),
+            kind === 'bookmark' ? [] : this.prismaService.client.orm.public.PostBookmark
+                .where((b) => b.userId.eq(userId))
+                .where((b) => b.postId.in(postIds))
                 .all(),
             this.prismaService.client.orm.public.Post
                 .where((p) => p.authorId.eq(userId))
@@ -1214,6 +1229,7 @@ export class PostsService {
         ]);
 
         likes.forEach((l: any) => likedSet.add(l.postId));
+        bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
         reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
 
         return {
@@ -1221,8 +1237,8 @@ export class PostsService {
                 this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet }),
             ),
             nextCursor: accessible.length > limit
-                ? this.encodeBookmarkCursor(page[page.length - 1].bookmark)
-                : hasMore && lastScanned ? this.encodeBookmarkCursor(lastScanned) : null,
+                ? this.encodeMarkedCursor(page[page.length - 1].marker)
+                : hasMore && lastScanned ? this.encodeMarkedCursor(lastScanned) : null,
         };
     }
 
@@ -1735,14 +1751,14 @@ export class PostsService {
         return Buffer.from(payload).toString('base64url');
     }
 
-    private encodeBookmarkCursor(item: { createdAt: any; postId: string }): string {
+    private encodeMarkedCursor(item: { createdAt: any; postId: string }): string {
         return Buffer.from(JSON.stringify({
             createdAt: item.createdAt.toString(),
             postId: item.postId,
         })).toString('base64url');
     }
 
-    private decodeBookmarkCursor(value?: string): { createdAt: Temporal.Instant; postId: string } | null {
+    private decodeMarkedCursor(value?: string): { createdAt: Temporal.Instant; postId: string } | null {
         if (!value) return null;
         try {
             const decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));

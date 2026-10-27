@@ -9,7 +9,7 @@ import { ThreadViewUI } from '@/features/posts/components/ThreadViewUI';
 import { PostComposer } from '@/features/posts/components/PostComposer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuthStore } from '@/stores/authStore';
-import { Button } from '@/components/ui/Button';
+import { InfiniteScrollTrigger } from '@/components/common/InfiniteScrollTrigger';
 import { isActivePost } from '@/features/posts/post-state';
 
 export default function PostPage() {
@@ -26,5 +26,5 @@ export default function PostPage() {
   const replies = repliesQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const canReply = isActivePost(postQuery.data);
 
-  return <><ThreadViewUI post={postQuery.data} ancestors={ancestorsQuery.data ?? []} replies={replies} repliesLoading={repliesQuery.isPending} repliesError={repliesQuery.isError} onRetryReplies={() => repliesQuery.refetch()} currentUserId={user?.id} isLoading={postQuery.isLoading} onLike={actions.toggleLike} onRepost={actions.toggleRepost} onBookmark={actions.toggleBookmark} onDelete={actions.deletePost} replyComposerNode={!canReply ? null : user ? <PostComposer parentId={id} placeholder="Viết phản hồi…" onSuccess={() => queryClient.invalidateQueries({ queryKey: ['posts', 'replies', id] })} /> : <div className="p-4 text-center text-[13px] text-[#8e8ca3]">Đăng nhập để tham gia thảo luận.</div>} />{ancestorsQuery.isError && <p className="p-4 text-center text-[13px] text-red-600">Không thể tải chuỗi bài viết trước đó.</p>}{repliesQuery.hasNextPage && <div className="p-4 text-center"><Button variant="ghost" onClick={() => repliesQuery.fetchNextPage()} isLoading={repliesQuery.isFetchingNextPage}>{repliesQuery.isFetchNextPageError ? 'Thử tải lại' : 'Xem thêm phản hồi'}</Button></div>}</>;
+  return <><ThreadViewUI post={postQuery.data} ancestors={ancestorsQuery.data ?? []} replies={replies} repliesLoading={repliesQuery.isPending} repliesError={repliesQuery.isError} onRetryReplies={() => repliesQuery.refetch()} currentUserId={user?.id} isLoading={postQuery.isLoading} onLike={actions.toggleLike} onRepost={actions.toggleRepost} onBookmark={actions.toggleBookmark} onDelete={actions.deletePost} replyComposerNode={!canReply ? null : user ? <PostComposer parentId={id} placeholder="Viết phản hồi…" onSuccess={() => queryClient.invalidateQueries({ queryKey: ['posts', 'replies', id] })} /> : <div className="p-4 text-center text-[13px] text-[#8e8ca3]">Đăng nhập để tham gia thảo luận.</div>} />{ancestorsQuery.isError && <p className="p-4 text-center text-[13px] text-red-600">Không thể tải chuỗi bài viết trước đó.</p>}<InfiniteScrollTrigger hasNextPage={Boolean(repliesQuery.hasNextPage)} isFetchingNextPage={repliesQuery.isFetchingNextPage} isFetchNextPageError={repliesQuery.isFetchNextPageError} fetchNextPage={repliesQuery.fetchNextPage} /></>;
 }

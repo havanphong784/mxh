@@ -1,11 +1,12 @@
 import React from 'react';
-import type { PostItem } from '@/types/api';
-import { Avatar } from '@/components/ui/Avatar';
-import { PostActionBar } from './PostActionBar';
-import { MediaGrid } from './MediaGrid';
-import { QuotedPost } from './QuotedPost';
-import { TombstoneCard } from './TombstoneCard';
+import type {PostItem} from '@/types/api';
+import {Avatar} from '@/components/ui/Avatar';
+import {PostActionBar} from './PostActionBar';
+import {MediaGrid} from './MediaGrid';
+import {QuotedPost} from './QuotedPost';
+import {TombstoneCard} from './TombstoneCard';
 import Link from 'next/link';
+import {TimeAgo} from '@/components/common/TimeAgo';
 
 interface PostCardProps {
   post: PostItem;
@@ -39,7 +40,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const isOwner = currentUserId && currentUserId === post.author.id;
 
   return (
-    <article className="feed-card p-5 transition-shadow sm:p-6">
+    <article className="feed-card p-2 transition-shadow sm:p-3">
       <div className="flex gap-3 sm:gap-4">
         {/* Cột Avatar tác giả */}
         <Link href={`/${post.author.username}`} className="shrink-0">
@@ -60,7 +61,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               <p className="mt-0.5 truncate text-[11px] font-semibold text-[#8e8ca3]">@{post.author.username}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <time className="text-[11px] font-semibold text-[#8e8ca3]" dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</time>
+              <TimeAgo value={post.createdAt} className="text-[11px] font-semibold text-[#8e8ca3]" />
             {isOwner && onEdit && <button onClick={onEdit} className="rounded-full px-2 py-1 text-[11px] font-bold text-[#7b78ff] hover:bg-[#eeedff]" aria-label="Chỉnh sửa bài viết">Sửa</button>}
             {isOwner && onDelete && (
               <button
@@ -81,7 +82,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           {post.visibility !== 'PUBLIC' && <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${post.visibility === 'FOLLOWERS' ? 'bg-[#e8f5ff] text-[#438dc4]' : 'bg-[#eeedff] text-[#6864dc]'}`}>{post.visibility === 'FOLLOWERS' ? 'Người theo dõi' : 'Riêng tư'}</span>}
 
           {/* Nội dung bài viết */}
-          <Link href={`/post/${post.id}`}>
+          <Link href={`/post/${post.id}`} scroll={false}>
             <p className="mt-3 whitespace-pre-wrap break-words text-[14px] leading-[1.65] text-[#4a4860]">
               {post.content}
             </p>

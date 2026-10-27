@@ -7,6 +7,7 @@ import { usePostList } from '../hooks/usePostList';
 import { InteractivePostCard } from './InteractivePostCard';
 import { PostComposer } from './PostComposer';
 import type { PostItem } from '@/types/api';
+import { InfiniteScrollTrigger } from '@/components/common/InfiniteScrollTrigger';
 
 interface ReplyThreadProps {
   reply: PostItem;
@@ -23,12 +24,12 @@ function ReplyChildren({ parentId, depth, currentUserId, onLike, onRepost, onBoo
   const replies = query.data?.pages.flatMap((page) => page.items) ?? [];
 
   if (query.isPending) return <p className="px-4 py-3 text-[12px] text-[#8e8ca3]">Đang tải phản hồi…</p>;
-  if (query.isError && replies.length === 0) return <div className="px-4 py-3 text-[12px] text-red-600">Không thể tải phản hồi. <button type="button" onClick={() => query.refetch()} className="font-bold underline">Thử lại</button></div>;
+  if (query.isError && replies.length === 0 && !query.isFetchNextPageError) return <div className="px-4 py-3 text-[12px] text-red-600">Không thể tải phản hồi. <button type="button" onClick={() => query.refetch()} className="font-bold underline">Thử lại</button></div>;
 
   return <div className="feed-stack">
-    {replies.length === 0 && <p className="px-4 py-3 text-[12px] text-[#8e8ca3]">Chưa có phản hồi.</p>}
+    {replies.length === 0 && !query.hasNextPage && <p className="px-4 py-3 text-[12px] text-[#8e8ca3]">Chưa có phản hồi.</p>}
     {replies.map((reply) => <ReplyThread key={reply.id} reply={reply} depth={depth} currentUserId={currentUserId} onLike={onLike} onRepost={onRepost} onBookmark={onBookmark} onDelete={onDelete} />)}
-    {query.hasNextPage && <button type="button" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} className="self-start px-4 py-2 text-[12px] font-bold text-[#6965e8] disabled:opacity-50">{query.isFetchNextPageError ? 'Thử tải lại' : query.isFetchingNextPage ? 'Đang tải…' : 'Xem thêm phản hồi'}</button>}
+    <InfiniteScrollTrigger hasNextPage={Boolean(query.hasNextPage)} isFetchingNextPage={query.isFetchingNextPage} isFetchNextPageError={query.isFetchNextPageError} fetchNextPage={query.fetchNextPage} />
   </div>;
 }
 

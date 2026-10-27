@@ -18,32 +18,31 @@ export class UsersService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async searchUsers(term: string) {
+  async searchUsers(term: string, cursor?: string, requestedLimit = 20) {
     const pattern = toContainsPattern(term);
+    const limit = Math.min(50, Math.max(1, Number(requestedLimit) || 20));
+    const matchingUsers = (field: 'username' | 'displayName') => {
+      let query = this.prisma.client.orm.public.User
+        .where((u) => u.isActive.eq(true))
+        .where((u) => u.isEmailVerified.eq(true))
+        .where((u) => u[field].ilike(pattern));
+      if (cursor) query = query.where((u) => u.username.gt(cursor));
+      return query.orderBy((u) => u.username.asc()).limit(limit + 1).all();
+    };
     const [byUsername, byDisplayName] = await Promise.all([
-      this.prisma.client.orm.public.User
-        .where((u) => u.isActive.eq(true))
-        .where((u) => u.isEmailVerified.eq(true))
-        .where((u) => u.username.ilike(pattern))
-        .orderBy((u) => u.username.asc())
-        .limit(20)
-        .all(),
-      this.prisma.client.orm.public.User
-        .where((u) => u.isActive.eq(true))
-        .where((u) => u.isEmailVerified.eq(true))
-        .where((u) => u.displayName.ilike(pattern))
-        .orderBy((u) => u.username.asc())
-        .limit(20)
-        .all(),
+      matchingUsers('username'),
+      matchingUsers('displayName'),
     ]);
-    const users = new Map([...byUsername, ...byDisplayName].map((user) => [user.id, user]));
-    return { items: [...users.values()].slice(0, 20).map((user) => ({
+    const users = [...new Map([...byUsername, ...byDisplayName].map((user) => [user.id, user])).values()]
+      .sort((a, b) => a.username < b.username ? -1 : a.username > b.username ? 1 : 0);
+    const page = users.slice(0, limit);
+    return { items: page.map((user) => ({
       id: user.id,
       username: user.username,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
-    })) };
+    })), nextCursor: users.length > limit ? page[page.length - 1].username : null };
   }
 
   async suggestUsers(viewerId?: string) {

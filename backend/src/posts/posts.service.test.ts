@@ -522,6 +522,36 @@ test('bookmark pages skip inaccessible posts without losing later accessible pos
     assert.ok(requestedLimits.every((value) => value <= 100));
 });
 
+test('liked posts return viewable posts with active like state', async () => {
+    const likedPost = postFixture({ id: 'liked-post', parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const marker = { userId: 'viewer', postId: 'liked-post', createdAt: Temporal.Instant.from('2026-01-02T00:00:00Z') };
+    const likeTable = {
+        where() {
+            const query: any = {
+                where() { return query; },
+                orderBy() { return query; },
+                limit() { return query; },
+                async all() { return [marker]; },
+            };
+            return query;
+        },
+    };
+    const postTable = { where() { const query: any = { where() { return query; }, include() { return query; }, async all() { return [likedPost]; } }; return query; } };
+    const prisma = { client: { orm: { public: {
+        User: { where() { return { async first() { return activeAuthor('viewer'); } }; } },
+        PostLike: likeTable,
+        PostBookmark: { where() { return { where() { return this; }, async all() { return []; } }; } },
+        Post: postTable,
+    } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    const response = await service.getLikedPosts('viewer', { limit: 20 });
+    assert.deepEqual(response.items.map((item: any) => item.id), ['liked-post']);
+    assert.equal(response.items[0].interactions.isLiked, true);
+    assert.equal(response.items[0].interactions.isBookmarked, false);
+    assert.equal(response.nextCursor, null);
+});
+
 test('bookmarks bound scanning when many saved posts are inaccessible', async () => {
     const bookmarks = Array.from({ length: 61 }, (_, index) => ({
         userId: 'viewer',

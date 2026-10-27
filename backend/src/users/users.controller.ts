@@ -39,7 +39,7 @@ export class UsersController {
   @Get('search')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   async searchUsers(@Query() query: SearchQueryDto) {
-    return this.usersService.searchUsers(query.q);
+    return this.usersService.searchUsers(query.q, query.cursor, query.limit);
   }
 
   @Get('suggestions')

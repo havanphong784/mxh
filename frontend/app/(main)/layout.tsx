@@ -4,6 +4,7 @@ import {MobileNav} from '@/components/layout/MobileNav';
 import {DiscoveryPanel} from '@/components/layout/DiscoveryPanel';
 import {RightPanel} from '@/components/layout/RightPanel';
 import {RealtimeBridge} from '@/features/realtime/components/RealtimeBridge';
+import {NavigationProvider} from '@/components/common/NavigationProvider';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,11 +14,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div className="grid grid-cols-1 md:h-full md:min-h-0 md:grid-cols-[64px_minmax(0,1fr)] xl:grid-cols-[64px_180px_minmax(0,1fr)_300px]">
           <Sidebar />
           <DiscoveryPanel />
-          <div className="min-w-0 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-4 sm:px-6 md:h-full md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pb-8 xl:px-7 xl:pt-5">
-            <TopBar />
-            <main className="mx-auto w-full max-w-[700px]">
-              {children}
-            </main>
+          <div id="main-scroll-region" className="min-w-0 px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-4 sm:px-6 md:h-full md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pb-8 xl:px-7 xl:pt-5">
+            <NavigationProvider>
+              <TopBar />
+              <main id="main-page-content" className="mx-auto w-full max-w-[700px]">
+                {children}
+              </main>
+            </NavigationProvider>
           </div>
           <RightPanel />
         </div>

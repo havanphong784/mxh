@@ -18,6 +18,9 @@ coverage/
 !backend/src/scripts/seed-data.test.ts
 !frontend/lib/single-flight.test.ts
 !frontend/lib/auth-session.test.ts
+!frontend/lib/page-title.test.ts
+!frontend/lib/utils.test.ts
+!frontend/lib/navigation-state.test.ts
 !backend/src/common/search.test.ts
 /.superpowers/
 /.prowl/

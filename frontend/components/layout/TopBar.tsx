@@ -1,54 +1,17 @@
 'use client';
 
-import React from 'react';
-import {useAuthStore} from '@/stores/authStore';
-import {useAuth} from '@/features/auth/hooks/useAuth';
-import Link from 'next/link';
-import {Button} from '@/components/ui/Button';
-import {usePathname} from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { pageTitle } from '@/components/common/page-title';
+import { useAppNavigation } from '@/components/common/NavigationProvider';
 
 export function TopBar() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { logout } = useAuth();
   const pathname = usePathname();
-  const title = pathname === '/feed'
-    ? 'Có gì mới?'
-    : pathname === '/explore'
-      ? 'Khám phá'
-      : pathname === '/notifications'
-        ? 'Thông báo'
-        : pathname === '/bookmarks'
-          ? 'Đã lưu'
-        : pathname === '/settings/security'
-          ? 'Bảo mật tài khoản'
-          : pathname.startsWith('/post/')
-            ? 'Thảo luận'
-            : 'Hồ sơ';
+  const { goBack, canGoBack } = useAppNavigation();
 
-  return (
-    <header className="relative z-20 mb-6 flex w-full items-center justify-between gap-4 pt-2 xl:mb-7">
-      <div className="min-w-0 flex-1">
-        <p className="eyebrow mb-2">MXH · Không gian của bạn</p>
-        <h1 className="text-[24px] font-extrabold leading-[1.15] tracking-[-0.05em] text-[#1c1b29] sm:text-[32px]">{title}<span className="ml-2 text-[#ff8da1]">✦</span></h1>
-        <p className="mt-2 hidden text-[12px] font-medium text-[#6d6a82] sm:block">Những câu chuyện nhỏ, những kết nối thật.</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
-        {!isAuthenticated ? (
-          <Link href="/login">
-            <Button variant="primary" className="px-4 py-2 text-[12px]">
-              Đăng nhập
-            </Button>
-          </Link>
-        ) : (
-          <button
-            onClick={() => logout()}
-            className="rounded-full bg-white px-3 py-2 text-[11px] font-bold text-[#6d6a82] shadow-[0_8px_20px_rgba(123,120,255,.08)] transition-colors hover:text-[#7b78ff]"
-            title="Đăng xuất"
-          >
-            Đăng xuất
-          </button>
-        )}
-      </div>
-    </header>
-  );
+  return <header className="mb-5 flex items-center gap-3 pt-2 xl:mb-7">
+    <button type="button" onClick={goBack} disabled={!canGoBack} aria-label="Quay lại" className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] bg-white text-[#7b78ff] transition-colors hover:bg-[#eeedff] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white">
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+    </button>
+    <h1 className="min-w-0 truncate text-[24px] font-extrabold leading-tight tracking-[-0.04em] text-[#1c1b29] sm:text-[30px]">{pageTitle(pathname)}</h1>
+  </header>;
 }

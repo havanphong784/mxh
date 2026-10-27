@@ -5,7 +5,7 @@ export type ProfileUpdate = Partial<Pick<OwnProfile, 'displayName' | 'bio' | 'av
 
 export const usersApi = {
   getProfile: (username: string) => apiClient.get<UserProfile>(`/users/${username}`),
-  search: (term: string) => apiClient.get<{ items: Author[] }>('/users/search', { params: { q: term } }),
+  search: (term: string, cursor?: string | null) => apiClient.get<CursorPage<Author>>('/users/search', { params: { q: term, cursor, limit: 20 } }),
   suggestions: () => apiClient.get<{ items: Author[] }>('/users/suggestions'),
   getMe: () => apiClient.get<OwnProfile>('/users/me'),
   updateMe: (data: ProfileUpdate) => apiClient.patch<OwnProfile>('/users/me', data),

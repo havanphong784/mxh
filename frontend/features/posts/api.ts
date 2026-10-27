@@ -42,4 +42,7 @@ export const postsApi = {
 
   getBookmarks: (cursor?: string | null) =>
     apiClient.get<CursorPage<PostItem>>('/posts/bookmarks', { params: { cursor, limit: 20 } }),
+
+  getLikedPosts: (cursor?: string | null) =>
+    apiClient.get<CursorPage<PostItem>>('/posts/liked', { params: { cursor, limit: 20 } }),
 };

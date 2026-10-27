@@ -78,6 +78,16 @@ export class PostsController {
     return this.postsService.getBookmarks(userId, query);
   }
 
+  @Get('liked')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async getLikedPosts(
+    @CurrentUser('sub') userId: string,
+    @Query() query: CursorPaginationDto,
+  ) {
+    return this.postsService.getLikedPosts(userId, query);
+  }
+
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { limit: 60, ttl: 60000 } })

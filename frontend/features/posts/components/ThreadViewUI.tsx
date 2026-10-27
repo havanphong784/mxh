@@ -4,7 +4,6 @@ import React from 'react';
 import type { PostItem } from '@/types/api';
 import { InteractivePostCard } from './InteractivePostCard';
 import { ReplyThread } from './ReplyThread';
-import { useRouter } from 'next/navigation';
 
 interface ThreadViewUIProps {
   post: PostItem;
@@ -37,7 +36,6 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
   onDelete,
   replyComposerNode,
 }) => {
-  const router = useRouter();
 
   if (isLoading) {
     return (
@@ -49,21 +47,6 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
 
   return (
     <div className="feed-stack">
-      {/* 1. Header có nút Quay lại */}
-      <div className="surface-card flex items-center gap-3 px-5 py-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="grid h-8 w-8 place-items-center rounded-[12px] bg-[#eeedff] text-[#7b78ff] transition-colors hover:bg-[#e4e2ff]"
-          title="Quay lại"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-        </button>
-        <h2 className="text-[15px] font-extrabold text-[#1c1b29]">Thảo luận</h2>
-      </div>
-
       {/* 2. Chuỗi các bài viết cha (Ancestors) nối bằng sợi chỉ dọc */}
       {ancestors.length > 0 && (
         <div className="feed-stack relative">
