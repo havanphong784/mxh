@@ -4,14 +4,19 @@
   "private": true,
   "packageManager": "npm@11.19.0",
   "scripts": {
-    "dev": "turbo run dev"
+    "dev": "turbo run dev",
+    "prepare": "husky"
   },
   "workspaces": [
     "backend",
     "frontend"
   ],
   "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@types/pg": "^8.23.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
     "prisma": "8.0.0-rc.15",
     "turbo": "^2.11.2"
   },

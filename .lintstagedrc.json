@@ -1,0 +1,11 @@
+{
+  "frontend/**/*.{ts,tsx,js,jsx}": [
+    "npm run lint --prefix frontend -- --fix",
+    "prettier --write"
+  ],
+  "backend/**/*.ts": [
+    "npm run lint --prefix backend -- --fix",
+    "prettier --write"
+  ],
+  "*.{json,md,yaml,yml}": ["prettier --write"]
+}
