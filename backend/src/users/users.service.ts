@@ -8,6 +8,7 @@ import * as argon2 from 'argon2';
 import {EventEmitter2} from '@nestjs/event-emitter';
 import {AUTH_EVENTS, USER_EVENTS} from '../events/event-types.js';
 import type {UserFollowedEvent, UserSessionsRevokedEvent} from '../events/event-types.js';
+import {toContainsPattern} from '../common/search.js';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +17,61 @@ export class UsersService {
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  async searchUsers(term: string) {
+    const pattern = toContainsPattern(term);
+    const [byUsername, byDisplayName] = await Promise.all([
+      this.prisma.client.orm.public.User
+        .where((u) => u.isActive.eq(true))
+        .where((u) => u.isEmailVerified.eq(true))
+        .where((u) => u.username.ilike(pattern))
+        .orderBy((u) => u.username.asc())
+        .limit(20)
+        .all(),
+      this.prisma.client.orm.public.User
+        .where((u) => u.isActive.eq(true))
+        .where((u) => u.isEmailVerified.eq(true))
+        .where((u) => u.displayName.ilike(pattern))
+        .orderBy((u) => u.username.asc())
+        .limit(20)
+        .all(),
+    ]);
+    const users = new Map([...byUsername, ...byDisplayName].map((user) => [user.id, user]));
+    return { items: [...users.values()].slice(0, 20).map((user) => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+    })) };
+  }
+
+  async suggestUsers(viewerId?: string) {
+    const candidates = await this.prisma.client.orm.public.User
+      .where((u) => u.isActive.eq(true))
+      .where((u) => u.isEmailVerified.eq(true))
+      .orderBy((u) => u.createdAt.desc())
+      .limit(24)
+      .all();
+    const candidateIds = candidates.map((user) => user.id);
+    const follows = viewerId && candidateIds.length > 0
+      ? await this.prisma.client.orm.public.Follow
+          .where((f) => f.followerId.eq(viewerId))
+          .where((f) => f.followingId.in(candidateIds))
+          .all()
+      : [];
+    const followedIds = new Set(follows.map((follow) => follow.followingId));
+    return { items: candidates
+      .filter((user) => user.id !== viewerId && !followedIds.has(user.id))
+      .slice(0, 6)
+      .map((user) => ({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        bio: user.bio,
+      })) };
+  }
 
   async getMyProfile(userId: string) {
     const user = await this.prisma.client.orm.public.User

@@ -266,6 +266,18 @@ test('a quote stops exposing the original post after it becomes private', () => 
     assert.equal(response.isQuotedPostDeleted, true);
 });
 
+test('a deleted reply keeps its reply count so descendants can be opened', () => {
+    const deletedReply = postFixture({ id: 'deleted-reply', isDeleted: true, replyCount: 2 });
+    const service = new PostsService({} as any, {} as any, {} as any);
+
+    assert.deepEqual(service.toPostResponse(deletedReply), {
+        id: 'deleted-reply',
+        isDeleted: true,
+        createdAt: deletedReply.createdAt,
+        replyCount: 2,
+    });
+});
+
 test('a pure repost response embeds the original public post', () => {
     const original = postFixture({
         id: 'original-id',
@@ -394,6 +406,7 @@ test('bookmarks no longer return a followers-only post after the user unfollows 
         rootId: null,
     });
     let postQueryCount = 0;
+    let requestedBookmarkLimit = 0;
     const prisma = {
         client: {
             orm: {
@@ -407,7 +420,7 @@ test('bookmarks no longer return a followers-only post after the user unfollows 
                             const query: any = {
                                 orderBy() { return query; },
                                 offset() { return query; },
-                                limit() { return query; },
+                                limit(value: number) { requestedBookmarkLimit = value; return query; },
                                 async all() { return [{ userId: 'viewer-id', postId: 'restricted-id' }]; },
                                 async aggregate() { return { total: 1 }; },
                             };
@@ -443,10 +456,159 @@ test('bookmarks no longer return a followers-only post after the user unfollows 
     };
     const service = new PostsService(prisma as any, {} as any, {} as any);
 
-    const response = await service.getBookmarks('viewer-id', { page: 1, limit: 20 });
+    const response = await service.getBookmarks('viewer-id', { limit: 20 });
 
     assert.deepEqual(response.items, []);
-    assert.deepEqual(response.pagination, { page: 1, limit: 20, total: 0, totalPages: 0 });
+    assert.equal(response.nextCursor, null);
+    assert.ok(requestedBookmarkLimit > 0 && requestedBookmarkLimit <= 100);
+});
+
+test('bookmark pages skip inaccessible posts without losing later accessible posts', async () => {
+    const bookmarks = [
+        { userId: 'viewer', postId: 'first', createdAt: Temporal.Instant.from('2026-01-03T00:00:00Z') },
+        { userId: 'viewer', postId: 'hidden', createdAt: Temporal.Instant.from('2026-01-02T00:00:00Z') },
+        { userId: 'viewer', postId: 'last', createdAt: Temporal.Instant.from('2026-01-01T00:00:00Z') },
+    ];
+    const posts = [
+        postFixture({ id: 'first', parentId: null, rootId: null, visibility: 'PUBLIC' }),
+        postFixture({ id: 'hidden', parentId: null, rootId: null, visibility: 'PRIVATE' }),
+        postFixture({ id: 'last', parentId: null, rootId: null, visibility: 'PUBLIC' }),
+    ];
+    const requestedLimits: number[] = [];
+    const bookmarkTable = {
+        where() {
+            let cursor: { createdAt: Temporal.Instant; postId: string } | null = null;
+            let limit = Infinity;
+            const query: any = {
+                where() { return query; },
+                orderBy() { return query; },
+                cursor(value: typeof cursor) { cursor = value; return query; },
+                limit(value: number) { limit = value; requestedLimits.push(value); return query; },
+                async all() {
+                    const available = cursor
+                        ? bookmarks.filter((item) => item.createdAt.epochMilliseconds < cursor!.createdAt.epochMilliseconds)
+                        : bookmarks;
+                    return available.slice(0, limit);
+                },
+            };
+            return query;
+        },
+    };
+    const postTable = {
+        where() {
+            const query: any = {
+                where() { return query; },
+                include() { return query; },
+                async all() { return posts; },
+            };
+            return query;
+        },
+    };
+    const prisma = { client: { orm: { public: {
+        User: { where() { return { async first() { return activeAuthor('viewer'); } }; } },
+        PostBookmark: bookmarkTable,
+        Post: postTable,
+        PostLike: { where() { return { where() { return this; }, async all() { return []; } }; } },
+    } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    const firstPage = await service.getBookmarks('viewer', { limit: 1 });
+    const secondPage = await service.getBookmarks('viewer', { limit: 1, cursor: firstPage.nextCursor! });
+
+    assert.deepEqual(firstPage.items.map((item: any) => item.id), ['first']);
+    assert.ok(firstPage.nextCursor);
+    assert.deepEqual(secondPage.items.map((item: any) => item.id), ['last']);
+    assert.equal(secondPage.nextCursor, null);
+    assert.ok(requestedLimits.every((value) => value <= 100));
+});
+
+test('bookmarks bound scanning when many saved posts are inaccessible', async () => {
+    const bookmarks = Array.from({ length: 61 }, (_, index) => ({
+        userId: 'viewer',
+        postId: `post-${index}`,
+        createdAt: Temporal.Instant.fromEpochMilliseconds(61 - index),
+    }));
+    const posts = bookmarks.map((bookmark, index) => postFixture({
+        id: bookmark.postId,
+        authorId: 'another-user',
+        author: activeAuthor('another-user'),
+        parentId: null,
+        rootId: null,
+        visibility: index === 60 ? 'PUBLIC' : 'PRIVATE',
+    }));
+    let reads = 0;
+    const bookmarkTable = {
+        where() {
+            let cursor: { createdAt: Temporal.Instant } | null = null;
+            let limit = 0;
+            const query: any = {
+                orderBy() { return query; },
+                cursor(value: typeof cursor) { cursor = value; return query; },
+                limit(value: number) { limit = value; return query; },
+                async all() {
+                    reads += 1;
+                    const remaining = cursor
+                        ? bookmarks.filter((bookmark) => bookmark.createdAt.epochMilliseconds < cursor!.createdAt.epochMilliseconds)
+                        : bookmarks;
+                    return remaining.slice(0, limit);
+                },
+            };
+            return query;
+        },
+    };
+    const postTable = { where() { const query: any = { where() { return query; }, include() { return query; }, async all() { return posts; } }; return query; } };
+    const prisma = { client: { orm: { public: {
+        User: { where() { return { async first() { return activeAuthor('viewer'); } }; } },
+        PostBookmark: bookmarkTable,
+        Post: postTable,
+        PostLike: { where() { return { where() { return this; }, async all() { return []; } }; } },
+    } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+
+    const firstPage = await service.getBookmarks('viewer', { limit: 1 });
+    assert.equal(reads, 3);
+    assert.deepEqual(firstPage.items, []);
+    assert.ok(firstPage.nextCursor);
+
+    const secondPage = await service.getBookmarks('viewer', { limit: 1, cursor: firstPage.nextCursor! });
+    assert.deepEqual(secondPage.items.map((item: any) => item.id), ['post-60']);
+    assert.equal(secondPage.nextCursor, null);
+});
+
+test('searching media posts keeps public root filtering and escapes the search term', async () => {
+    const filters: string[] = [];
+    const fields: any = {
+        visibility: { eq(value: string) { filters.push(`visibility:${value}`); return true; } },
+        parentId: { isNull() { filters.push('root-only'); return true; } },
+        isDeleted: { eq(value: boolean) { filters.push(`deleted:${value}`); return true; } },
+        author: { some(callback: (value: any) => unknown) {
+            callback({ isActive: { eq: () => true }, isEmailVerified: { eq: () => true } });
+            return true;
+        } },
+        content: { ilike(value: string) { filters.push(`content:${value}`); return true; } },
+        media: { some(callback: (value: any) => unknown) {
+            callback({ type: { in(values: string[]) { filters.push(`media:${values.join(',')}`); return true; } } });
+            return true;
+        } },
+        createdAt: { desc: () => true },
+        id: { desc: () => true },
+    };
+    const postQuery: any = {
+        where(callback: (value: any) => unknown) { callback(fields); return postQuery; },
+        orderBy() { return postQuery; },
+        limit() { return postQuery; },
+        include() { return postQuery; },
+        async all() { return []; },
+    };
+    const service = new PostsService({ client: { orm: { public: { Post: postQuery } } } } as any, {} as any, {} as any);
+
+    await service.getExplore({ limit: 20, mediaOnly: 'true' }, undefined, '100%');
+
+    assert.ok(filters.includes('visibility:PUBLIC'));
+    assert.ok(filters.includes('root-only'));
+    assert.ok(filters.includes('deleted:false'));
+    assert.ok(filters.includes('content:%100\\%%'));
+    assert.ok(filters.includes('media:IMAGE,VIDEO'));
 });
 
 test('a text-only post cannot be edited into an empty post', async () => {

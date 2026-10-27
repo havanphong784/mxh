@@ -5,8 +5,12 @@ export type ProfileUpdate = Partial<Pick<OwnProfile, 'displayName' | 'bio' | 'av
 
 export const usersApi = {
   getProfile: (username: string) => apiClient.get<UserProfile>(`/users/${username}`),
+  search: (term: string) => apiClient.get<{ items: Author[] }>('/users/search', { params: { q: term } }),
+  suggestions: () => apiClient.get<{ items: Author[] }>('/users/suggestions'),
   getMe: () => apiClient.get<OwnProfile>('/users/me'),
   updateMe: (data: ProfileUpdate) => apiClient.patch<OwnProfile>('/users/me', data),
+  changePassword: (data: { oldPassword: string; newPassword: string; logoutOtherDevices: boolean }) =>
+    apiClient.post<ApiMessageResponse>('/users/change-password', data),
   follow: (id: string) => apiClient.post<ApiMessageResponse>(`/users/${id}/follow`),
   unfollow: (id: string) => apiClient.delete<ApiMessageResponse>(`/users/${id}/follow`),
   getFollowers: (username: string, page = 1) => apiClient.get<OffsetPage<Author>>(`/users/${username}/followers`, { params: { page, limit: 20 } }),

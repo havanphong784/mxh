@@ -447,7 +447,7 @@ export class AuthService {
             Date.now() + 5 * 60 * 1000
         );
 
-        await this.prisma.client.orm.public.OtpVerification.create({
+        const createdOtp = await this.prisma.client.orm.public.OtpVerification.create({
             email: user.email,
             codeHash,
             type: 'FORGOT_PASSWORD',
@@ -456,7 +456,12 @@ export class AuthService {
             userId: user.id,
         });
 
-        await this.mailService.sendResetPasswordEmail(user.email, otpCode);
+        const sent = await this.mailService.sendResetPasswordEmail(user.email, otpCode);
+        if (!sent) {
+            await this.prisma.client.orm.public.OtpVerification
+                .where({ id: createdOtp.id })
+                .delete();
+        }
 
         return {
             message: 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.',

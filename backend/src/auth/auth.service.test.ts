@@ -153,3 +153,34 @@ test('resend OTP removes the unusable code and reports a delivery failure', asyn
     );
     assert.equal(deletedOtpId, createdOtp.id);
 });
+
+test('forgot password removes an OTP that could not be delivered', async () => {
+    const user = { id: 'user-id', email: 'user@example.com', isActive: true };
+    let deletedOtpId: string | null = null;
+    const otpTable = {
+        where(condition: any) {
+            const query: any = {
+                where() { return query; },
+                orderBy() { return query; },
+                async first() { return null; },
+                async delete() { deletedOtpId = condition.id; },
+            };
+            return query;
+        },
+        async create(data: any) { return { id: 'reset-otp', ...data }; },
+    };
+    const service = new AuthService(
+        { client: { orm: { public: {
+            User: { where() { return { async first() { return user; } }; } },
+            OtpVerification: otpTable,
+        } } } } as any,
+        { async sendResetPasswordEmail() { return false; } } as any,
+        {} as any,
+        {} as any,
+    );
+
+    const response = await service.forgotPassword({ email: user.email });
+
+    assert.equal(deletedOtpId, 'reset-otp');
+    assert.match(response.message, /Nếu email tồn tại/);
+});

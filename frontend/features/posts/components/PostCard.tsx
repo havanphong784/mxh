@@ -15,6 +15,7 @@ interface PostCardProps {
   onRepost?: () => void;
   onBookmark?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -25,6 +26,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   onRepost,
   onBookmark,
   onDelete,
+  onEdit,
 }) => {
   if (post.isDeleted) {
     return <TombstoneCard />;
@@ -59,6 +61,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <time className="text-[11px] font-semibold text-[#8e8ca3]" dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</time>
+            {isOwner && onEdit && <button onClick={onEdit} className="rounded-full px-2 py-1 text-[11px] font-bold text-[#7b78ff] hover:bg-[#eeedff]" aria-label="Chỉnh sửa bài viết">Sửa</button>}
             {isOwner && onDelete && (
               <button
                 onClick={(e) => {
@@ -98,7 +101,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             onReply={onReply}
             onRepost={onRepost}
             onBookmark={onBookmark}
-            replyHref={`/post/${post.id}`}
+            replyHref={onReply ? undefined : `/post/${post.id}`}
           />
         </div>
       </div>

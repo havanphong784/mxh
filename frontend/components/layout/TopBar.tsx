@@ -19,6 +19,8 @@ export function TopBar() {
         ? 'Thông báo'
         : pathname === '/bookmarks'
           ? 'Đã lưu'
+        : pathname === '/settings/security'
+          ? 'Bảo mật tài khoản'
           : pathname.startsWith('/post/')
             ? 'Thảo luận'
             : 'Hồ sơ';

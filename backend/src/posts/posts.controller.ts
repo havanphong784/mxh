@@ -20,6 +20,8 @@ import {OptionalJwtAuthGuard} from '../auth/guards/optional-jwt-auth.guard.js';
 import {CurrentUser} from '../auth/decorators/current-user.decorator.js';
 import {CursorPaginationDto} from "./dto/cursor-pagination.dto.js";
 import {OffsetPaginationDto} from "./dto/offset-pagination.dto.js";
+import {SearchQueryDto} from '../common/dto/search-query.dto.js';
+import {ExploreQueryDto} from './dto/explore-query.dto.js';
 
 @Controller('posts')
 export class PostsController {
@@ -50,10 +52,20 @@ export class PostsController {
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   async getExplore(
-    @Query() query: CursorPaginationDto,
+    @Query() query: ExploreQueryDto,
     @CurrentUser('sub') viewerId?: string,
   ) {
     return this.postsService.getExplore(query, viewerId);
+  }
+
+  @Get('search')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  async searchPosts(
+    @Query() query: SearchQueryDto,
+    @CurrentUser('sub') viewerId?: string,
+  ) {
+    return this.postsService.getExplore(query, viewerId, query.q);
   }
 
   @Get('bookmarks')
@@ -61,7 +73,7 @@ export class PostsController {
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   async getBookmarks(
       @CurrentUser('sub') userId: string,
-      @Query() query: OffsetPaginationDto,
+      @Query() query: CursorPaginationDto,
   ) {
     return this.postsService.getBookmarks(userId, query);
   }

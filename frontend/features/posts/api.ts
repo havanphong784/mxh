@@ -1,12 +1,15 @@
 import { apiClient } from '@/lib/axios';
-import type { BookmarkPage, CursorPage, PostItem, PostMediaInput } from '@/types/api';
+import type { CursorPage, PostItem, PostMediaInput } from '@/types/api';
 
 export const postsApi = {
   getFeed: (cursor?: string | null) =>
     apiClient.get<CursorPage<PostItem>>('/posts/feed', { params: { limit: 20, cursor } }),
 
-  getExplore: (cursor?: string | null) =>
-    apiClient.get<CursorPage<PostItem>>('/posts/explore', { params: { limit: 20, cursor } }),
+  getExplore: (cursor?: string | null, mediaOnly = false) =>
+    apiClient.get<CursorPage<PostItem>>('/posts/explore', { params: { limit: 20, cursor, mediaOnly } }),
+
+  searchPosts: (term: string, cursor?: string | null, mediaOnly = false) =>
+    apiClient.get<CursorPage<PostItem>>('/posts/search', { params: { q: term, limit: 20, cursor, mediaOnly } }),
 
   getPost: (id: string) => apiClient.get<PostItem>(`/posts/${id}`),
 
@@ -37,6 +40,6 @@ export const postsApi = {
   bookmark: (id: string) => apiClient.post(`/posts/${id}/bookmark`),
   unbookmark: (id: string) => apiClient.delete(`/posts/${id}/bookmark`),
 
-  getBookmarks: (page: number = 1, limit: number = 20) =>
-    apiClient.get<BookmarkPage<PostItem>>('/posts/bookmarks', { params: { page, limit } }),
+  getBookmarks: (cursor?: string | null) =>
+    apiClient.get<CursorPage<PostItem>>('/posts/bookmarks', { params: { cursor, limit: 20 } }),
 };

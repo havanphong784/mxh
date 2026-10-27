@@ -18,6 +18,7 @@ import {UpdateProfileDto} from './dto/update-profile.dto.js';
 import {ChangePasswordDto} from './dto/change-password.dto.js';
 import {FollowPaginationDto} from './dto/follow-pagination.dto.js';
 import {CursorPaginationDto} from '../posts/dto/cursor-pagination.dto.js';
+import {SearchQueryDto} from '../common/dto/search-query.dto.js';
 import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard.js';
 import {OptionalJwtAuthGuard} from '../auth/guards/optional-jwt-auth.guard.js';
 import {CurrentUser} from '../auth/decorators/current-user.decorator.js';
@@ -33,6 +34,18 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async getMyProfile(@CurrentUser('sub') userId: string) {
     return this.usersService.getMyProfile(userId);
+  }
+
+  @Get('search')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  async searchUsers(@Query() query: SearchQueryDto) {
+    return this.usersService.searchUsers(query.q);
+  }
+
+  @Get('suggestions')
+  @UseGuards(OptionalJwtAuthGuard)
+  async suggestUsers(@CurrentUser('sub') viewerId?: string) {
+    return this.usersService.suggestUsers(viewerId);
   }
 
   @Get(':username')

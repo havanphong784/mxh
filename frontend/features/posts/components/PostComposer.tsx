@@ -6,13 +6,14 @@ import { useMediaUpload } from '@/features/media/hooks/useMediaUpload';
 import { postsApi } from '../api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PostComposerUI } from './PostComposerUI';
-import type { UploadedMedia } from '@/types/api';
+import type { PostVisibility, UploadedMedia } from '@/types/api';
 import { toPostMediaInput } from '@/features/media/cloudinary';
 import { getApiErrorMessage } from '@/lib/api-error';
 
 export const PostComposer: React.FC<{ onSuccess?: () => void; parentId?: string; placeholder?: string }> = ({ onSuccess, parentId, placeholder }) => {
   const user = useAuthStore((s) => s.user);
   const [content, setContent] = useState('');
+  const [visibility, setVisibility] = useState<PostVisibility>('PUBLIC');
   const [mediaList, setMediaList] = useState<UploadedMedia[]>([]);
   const { upload, isUploading } = useMediaUpload();
   const queryClient = useQueryClient();
@@ -21,6 +22,7 @@ export const PostComposer: React.FC<{ onSuccess?: () => void; parentId?: string;
     mutationFn: postsApi.createPost,
     onSuccess: () => {
       setContent('');
+      setVisibility('PUBLIC');
       setMediaList([]);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       onSuccess?.();
@@ -50,7 +52,7 @@ export const PostComposer: React.FC<{ onSuccess?: () => void; parentId?: string;
   const handleSubmit = () => {
     createMutation.mutate({
       content: content.trim() || null,
-      visibility: 'PUBLIC',
+      visibility: parentId ? undefined : visibility,
       media: mediaList.map(toPostMediaInput),
       parentId: parentId ?? null,
     });
@@ -64,6 +66,9 @@ export const PostComposer: React.FC<{ onSuccess?: () => void; parentId?: string;
       userDisplayName={user.displayName}
       content={content}
       onContentChange={setContent}
+      visibility={visibility}
+      onVisibilityChange={setVisibility}
+      isReply={Boolean(parentId)}
       mediaList={mediaList}
       onRemoveMedia={handleRemoveMedia}
       onSelectFiles={handleSelectFiles}

@@ -29,11 +29,15 @@ apiClient.interceptors.request.use(
 
 // Providers và các request bị 401 phải dùng chung đúng một lần xoay refresh cookie.
 export const refreshSession = singleFlight(async (): Promise<string> => {
+    const sessionVersion = useAuthStore.getState().sessionVersion;
     const response = await refreshClient.post<RefreshResponse>('/auth/refresh');
     const { accessToken } = response.data;
     const meResponse = await refreshClient.get<Author>('/auth/me', {
         headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (useAuthStore.getState().sessionVersion !== sessionVersion) {
+        throw new Error('Phiên đăng nhập đã thay đổi');
+    }
     useAuthStore.getState().setAuth(meResponse.data, accessToken);
     return accessToken;
 });

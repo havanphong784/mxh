@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import type { PostItem } from '@/types/api';
 import { isActivePost } from '../post-state';
 import { PostCard } from './PostCard';
+import { EditPostModal } from './EditPostModal';
 
 interface InteractivePostCardProps {
   post: PostItem;
@@ -11,15 +13,22 @@ interface InteractivePostCardProps {
   onRepost?: (id: string, active: boolean) => void;
   onBookmark?: (id: string, active: boolean) => void;
   onDelete?: (id: string) => void;
+  onReply?: () => void;
 }
 
-export function InteractivePostCard({ post, currentUserId, onLike, onRepost, onBookmark, onDelete }: InteractivePostCardProps) {
+export function InteractivePostCard({ post, currentUserId, onLike, onRepost, onBookmark, onDelete, onReply }: InteractivePostCardProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const actions = isActivePost(post) ? {
     onLike: () => onLike?.(post.id, post.interactions.isLiked),
     onRepost: () => onRepost?.(post.id, post.interactions.isReposted),
     onBookmark: () => onBookmark?.(post.id, post.interactions.isBookmarked),
     onDelete: () => onDelete?.(post.id),
+    onEdit: () => setIsEditing(true),
+    onReply,
   } : {};
 
-  return <PostCard post={post} currentUserId={currentUserId} {...actions} />;
+  return <>
+    <PostCard post={post} currentUserId={currentUserId} {...actions} />
+    {isEditing && isActivePost(post) && <EditPostModal post={post} onClose={() => setIsEditing(false)} />}
+  </>;
 }

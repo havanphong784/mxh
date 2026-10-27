@@ -21,15 +21,18 @@ export function useSocket() {
     }
 
     const socket = initSocket(accessToken);
-    notificationsApi.unreadCount().then((response) => setUnreadCount(response.data.count)).catch(() => undefined);
+    notificationsApi.unreadCount().then((response) => {
+      if (useAuthStore.getState().accessToken === accessToken) setUnreadCount(response.data.count);
+    }).catch(() => undefined);
 
     // 1. Cập nhật số lượng thông báo chưa đọc
     socket.on('notification:unread-count', (data: { count: number }) => {
-      setUnreadCount(data.count);
+      if (useAuthStore.getState().accessToken === accessToken) setUnreadCount(data.count);
     });
 
     // 2. Nhận thông báo mới: chèn vào đầu cache danh sách thông báo
     socket.on('notification:new', (notif: NotificationItem) => {
+      if (useAuthStore.getState().accessToken !== accessToken) return;
       queryClient.setQueryData<InfiniteData<CursorDataPage<NotificationItem>>>(['notifications'], (old) => {
         if (!old) return old;
         return {
@@ -46,7 +49,7 @@ export function useSocket() {
 
     // 3. Có bài viết mới trên feed: bật cờ hiển thị banner (không tự chèn làm giật giao diện)
     socket.on('feed:new-post', () => {
-      showNewFeedPosts();
+      if (useAuthStore.getState().accessToken === accessToken) showNewFeedPosts();
     });
 
     return () => {

@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
+import type { PostVisibility } from '@/types/api';
 
 export interface MediaItemPreview {
   url: string;
@@ -14,6 +15,9 @@ interface PostComposerUIProps {
   userDisplayName?: string;
   content: string;
   onContentChange: (val: string) => void;
+  visibility: PostVisibility;
+  onVisibilityChange: (value: PostVisibility) => void;
+  isReply?: boolean;
   mediaList: MediaItemPreview[];
   onRemoveMedia: (index: number) => void;
   onSelectFiles: (files: FileList) => void;
@@ -29,6 +33,9 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
   userDisplayName = 'User',
   content,
   onContentChange,
+  visibility,
+  onVisibilityChange,
+  isReply = false,
   mediaList,
   onRemoveMedia,
   onSelectFiles,
@@ -127,7 +134,18 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
                   />
                 </svg>
               </button>
-              <span className="hidden rounded-full bg-[#f4f2fa] px-3 py-1.5 text-[10px] font-bold text-[#6d6a82] sm:inline-flex">◎ Mọi người</span>
+              {isReply ? (
+                <span className="text-[11px] font-semibold text-[#6d6a82]">Theo quyền xem của bài gốc</span>
+              ) : (
+                <label className="text-[11px] font-semibold text-[#6d6a82]">
+                  <span className="hidden sm:inline">Ai có thể xem </span>
+                  <select aria-label="Ai có thể xem bài viết" value={visibility} onChange={(event) => onVisibilityChange(event.target.value as PostVisibility)} className="rounded-full bg-[#f4f2fa] px-2 py-1.5 text-[11px] font-bold text-[#4a4860]">
+                    <option value="PUBLIC">Mọi người</option>
+                    <option value="FOLLOWERS">Người theo dõi</option>
+                    <option value="PRIVATE">Chỉ mình tôi</option>
+                  </select>
+                </label>
+              )}
               {isUploading && (
                 <span className="text-[12px] text-[#8e8ca3] animate-pulse">
                   Đang tải lên media...

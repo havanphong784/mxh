@@ -17,6 +17,8 @@ coverage/
 *.test.ts
 !backend/src/scripts/seed-data.test.ts
 !frontend/lib/single-flight.test.ts
+!frontend/lib/auth-session.test.ts
+!backend/src/common/search.test.ts
 /.superpowers/
 /.prowl/
 /.codex/

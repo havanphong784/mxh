@@ -7,6 +7,11 @@ export class MailService {
     private transporter: nodemailer.Transporter;
 
     constructor() {
+        if (process.env.NODE_ENV === 'production' &&
+            (!process.env.SMTP_USER?.trim() || process.env.SMTP_USER.includes('your-email') ||
+                !process.env.SMTP_PASS?.trim() || process.env.SMTP_PASS.includes('your-gmail-app-password'))) {
+            throw new Error('SMTP_USER và SMTP_PASS phải được cấu hình trong production');
+        }
         const port = Number(process.env.SMTP_PORT) || 465;
         const secure = process.env.SMTP_SECURE === undefined
             ? port === 465
@@ -57,7 +62,9 @@ export class MailService {
             return true;
         } catch (error) {
             this.logger.error(`❌ Gửi email OTP tới ${toEmail} thất bại:`, error);
-            this.logger.warn(`👉 MÃ OTP BACKUP: ${otpCode}`);
+            if (process.env.NODE_ENV !== 'production') {
+                this.logger.warn(`👉 MÃ OTP BACKUP: ${otpCode}`);
+            }
             return false;
         }
     }
@@ -97,7 +104,9 @@ export class MailService {
             return true;
         } catch (error) {
             this.logger.error(`❌ Gửi email Reset Password tới ${toEmail} thất bại:`, error);
-            this.logger.warn(`👉 MÃ OTP BACKUP: ${otpCode}`);
+            if (process.env.NODE_ENV !== 'production') {
+                this.logger.warn(`👉 MÃ OTP BACKUP: ${otpCode}`);
+            }
             return false;
         }
     }

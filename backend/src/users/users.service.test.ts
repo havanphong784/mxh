@@ -46,3 +46,29 @@ test('a failed profile database update keeps the currently referenced media', as
   );
   assert.deepEqual(deletedPublicIds, []);
 });
+
+test('user search returns unique public profile fields and filters inactive accounts', async () => {
+  const filters: string[] = [];
+  const matchingUser = { id: 'a', email: 'private@example.test', username: 'alice', displayName: 'Alice', avatarUrl: null, bio: 'Hello' };
+  const fields: any = {
+    isActive: { eq(value: boolean) { filters.push(`active:${value}`); return true; } },
+    isEmailVerified: { eq(value: boolean) { filters.push(`verified:${value}`); return true; } },
+    username: { ilike(value: string) { filters.push(`username:${value}`); return true; }, asc: () => true },
+    displayName: { ilike(value: string) { filters.push(`display:${value}`); return true; } },
+  };
+  const query: any = {
+    where(callback: (value: any) => unknown) { callback(fields); return query; },
+    orderBy() { return query; },
+    limit() { return query; },
+    async all() { return [matchingUser]; },
+  };
+  const service = new UsersService({ client: { orm: { public: { User: query } } } } as any, {} as any, {} as any);
+
+  const response = await service.searchUsers('ali');
+
+  assert.deepEqual(response.items, [{ id: 'a', username: 'alice', displayName: 'Alice', avatarUrl: null, bio: 'Hello' }]);
+  assert.ok(filters.includes('active:true'));
+  assert.ok(filters.includes('verified:true'));
+  assert.ok(filters.includes('username:%ali%'));
+  assert.ok(filters.includes('display:%ali%'));
+});

@@ -15,7 +15,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     hasNewFeedPosts: false,
     setUnreadCount: (count) => set({ unreadCount: Math.max(0, count) }),
     increment: () => set((state) => ({ unreadCount: state.unreadCount + 1 })),
-    reset: () => set({ unreadCount: 0 }),
+    reset: () => set({ unreadCount: 0, hasNewFeedPosts: false }),
     showNewFeedPosts: () => set({ hasNewFeedPosts: true }),
     clearNewFeedPosts: () => set({ hasNewFeedPosts: false }),
 }));

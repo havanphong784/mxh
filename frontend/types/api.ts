@@ -104,6 +104,7 @@ export interface DeletedPostItem {
     createdAt: string;
     isDeleted: true;
     isUnavailable?: false;
+    replyCount?: number;
 }
 
 export interface UnavailablePostItem {
@@ -113,6 +114,7 @@ export interface UnavailablePostItem {
     rootId?: string | null;
     isDeleted?: false;
     isUnavailable: true;
+    replyCount?: number;
 }
 
 export type PostItem = ActivePostItem | DeletedPostItem | UnavailablePostItem;
@@ -148,16 +150,6 @@ export interface CursorDataPage<T> {
 export interface OffsetPage<T> {
     items: T[];
     meta: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
-}
-
-export interface BookmarkPage<T> {
-    items: T[];
-    pagination: {
         total: number;
         page: number;
         limit: number;
