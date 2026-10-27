@@ -24,7 +24,7 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
   replyHref,
 }) => {
   return (
-    <div className="flex items-center space-x-6 py-1 mt-2 text-[#424242] text-[13px] select-none">
+    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#efedf7] pt-4 text-[12px] font-bold text-[#8e8ca3] select-none sm:gap-x-7">
       {/* 1. Nút Thích (Like) */}
       <button
         type="button"
@@ -32,10 +32,12 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
           e.stopPropagation();
           onLike?.();
         }}
-        className={`flex items-center space-x-2 transition-colors cursor-pointer group ${
-          interactions.isLiked ? 'text-red-500' : 'hover:text-[#385898]'
+        className={`post-action post-action-like group flex items-center gap-1.5 transition-colors ${
+          interactions.isLiked ? 'text-[#ed7791]' : 'hover:text-[#ed7791]'
         }`}
         title="Thích"
+        aria-label="Thích bài viết"
+        aria-pressed={interactions.isLiked}
       >
         <svg
           className="w-5 h-5 transition-transform group-hover:scale-110"
@@ -54,7 +56,7 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
       </button>
 
       {/* 2. Nút Bình luận (Reply) */}
-      {replyHref ? <Link href={replyHref} className="flex items-center space-x-2 transition-colors hover:text-[#385898] group" title="Bình luận">
+      {replyHref ? <Link href={replyHref} className="post-action post-action-reply group flex items-center gap-1.5 transition-colors hover:text-[#58a5e9]" title="Bình luận" aria-label="Xem bình luận">
         <svg className="w-5 h-5 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
         <span className="text-[12px]">{counters.replyCount}</span>
       </Link> : <button
@@ -63,8 +65,9 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
           e.stopPropagation();
           onReply?.();
         }}
-        className="flex items-center space-x-2 transition-colors hover:text-[#385898] cursor-pointer group"
+        className="post-action post-action-reply group flex items-center gap-1.5 transition-colors hover:text-[#58a5e9]"
         title="Bình luận"
+        aria-label="Bình luận"
       >
         <svg
           className="w-5 h-5 transition-transform group-hover:scale-110"
@@ -89,10 +92,12 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
           e.stopPropagation();
           onRepost?.();
         }}
-        className={`flex items-center space-x-2 transition-colors cursor-pointer group ${
-          interactions.isReposted ? 'text-green-600' : 'hover:text-[#385898]'
+        className={`post-action post-action-repost group flex items-center gap-1.5 transition-colors ${
+          interactions.isReposted ? 'text-[#42b88c]' : 'hover:text-[#42b88c]'
         }`}
         title="Đăng lại"
+        aria-label="Đăng lại bài viết"
+        aria-pressed={interactions.isReposted}
       >
         <svg
           className="w-5 h-5 transition-transform group-hover:scale-110"
@@ -117,10 +122,12 @@ export const PostActionBar: React.FC<PostActionBarProps> = ({
           e.stopPropagation();
           onBookmark?.();
         }}
-        className={`flex items-center space-x-2 transition-colors cursor-pointer group ${
-          interactions.isBookmarked ? 'text-[#0095f6]' : 'hover:text-[#385898]'
+        className={`post-action post-action-bookmark group flex items-center gap-1.5 transition-colors ${
+          interactions.isBookmarked ? 'text-[#7773eb]' : 'hover:text-[#7773eb]'
         }`}
         title="Lưu bài viết"
+        aria-label="Lưu bài viết"
+        aria-pressed={interactions.isBookmarked}
       >
         <svg
           className="w-5 h-5 transition-transform group-hover:scale-110"

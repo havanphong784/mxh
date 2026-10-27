@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button';
 import type { UserProfile } from '@/types/api';
 
 export function ProfileHeader({ profile, isOwner, onFollow, onEdit, isFollowPending }: { profile: UserProfile; isOwner: boolean; onFollow: () => void; onEdit: () => void; isFollowPending: boolean }) {
-  return <section className="border-b border-[#d5d5d5] bg-white">
-    <div className="h-32 bg-[#efefef] bg-cover bg-center sm:h-40" style={profile.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})` } : undefined} />
-    <div className="px-4 pb-4">
-      <div className="-mt-10 flex items-end justify-between"><Avatar src={profile.avatarUrl} displayName={profile.displayName} size={80} className="border-4 border-white" />{isOwner ? <Button variant="outlined" onClick={onEdit}>Chỉnh sửa hồ sơ</Button> : <Button variant="outlined" onClick={onFollow} isLoading={isFollowPending}>{profile.isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</Button>}</div>
-      <h2 className="mt-3 text-[18px] font-bold">{profile.displayName}</h2><p className="text-[13px] text-[#969696]">@{profile.username}</p>
-      {profile.bio && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-5">{profile.bio}</p>}
-      <div className="mt-4 flex gap-5 text-[13px]"><Link href={`/${profile.username}/followers`}><b>{profile.followersCount}</b> <span className="text-[#969696]">người theo dõi</span></Link><Link href={`/${profile.username}/following`}><b>{profile.followingCount}</b> <span className="text-[#969696]">đang theo dõi</span></Link></div>
+  return <section className="surface-card overflow-hidden">
+    <div className="h-32 bg-[linear-gradient(135deg,#b9b4ff,#f5c9dc_58%,#afe4ff)] bg-cover bg-center sm:h-40" style={profile.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})` } : undefined} />
+    <div className="px-5 pb-6 sm:px-6">
+      <div className="-mt-10 flex flex-wrap items-end justify-between gap-3"><Avatar src={profile.avatarUrl} displayName={profile.displayName} size={80} className="border-4 border-white" />{isOwner ? <Button variant="outlined" onClick={onEdit}>Chỉnh sửa hồ sơ</Button> : <Button variant="outlined" onClick={onFollow} isLoading={isFollowPending}>{profile.isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</Button>}</div>
+      <h2 className="mt-3 text-[20px] font-extrabold text-[#1c1b29]">{profile.displayName}</h2><p className="text-[12px] font-semibold text-[#8e8ca3]">@{profile.username}</p>
+      {profile.bio && <p className="mt-4 whitespace-pre-wrap text-[14px] leading-6 text-[#4a4860]">{profile.bio}</p>}
+      <div className="mt-5 flex flex-wrap gap-3 text-[12px]"><Link href={`/${profile.username}/followers`} className="rounded-full bg-[#f4f2fa] px-3 py-2"><b className="text-[#1c1b29]">{profile.followersCount}</b> <span className="text-[#6d6a82]">người theo dõi</span></Link><Link href={`/${profile.username}/following`} className="rounded-full bg-[#f4f2fa] px-3 py-2"><b className="text-[#1c1b29]">{profile.followingCount}</b> <span className="text-[#6d6a82]">đang theo dõi</span></Link></div>
     </div>
   </section>;
 }

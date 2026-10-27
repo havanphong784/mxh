@@ -27,12 +27,12 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-50 text-red-600 rounded-[8px] text-[13px] border border-red-200">
+        <div className="p-3 bg-red-50 text-red-600 rounded-[16px] text-[13px] border border-red-200">
           {error}
         </div>
       )}
       <div>
-        <label className="block text-[12px] font-semibold text-[#424242] mb-1">Email</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Email</label>
         <input
           type="email"
           value={email}
@@ -40,11 +40,11 @@ export function RegisterForm() {
           placeholder="your@email.com"
           required
           autoComplete="email"
-          className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
+          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
         />
       </div>
       <div>
-        <label className="block text-[12px] font-semibold text-[#424242] mb-1">Tên tài khoản (username)</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Tên tài khoản (username)</label>
         <input
           type="text"
           value={username}
@@ -55,11 +55,11 @@ export function RegisterForm() {
           maxLength={30}
           pattern="[A-Za-z0-9_]+"
           autoComplete="username"
-          className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
+          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
         />
       </div>
       <div>
-        <label className="block text-[12px] font-semibold text-[#424242] mb-1">Tên hiển thị</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Tên hiển thị</label>
         <input
           type="text"
           value={displayName}
@@ -68,11 +68,11 @@ export function RegisterForm() {
           required
           minLength={2}
           maxLength={80}
-          className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
+          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
         />
       </div>
       <div>
-        <label className="block text-[12px] font-semibold text-[#424242] mb-1">Mật khẩu</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Mật khẩu</label>
         <input
           type="password"
           value={password}
@@ -82,15 +82,15 @@ export function RegisterForm() {
           minLength={8}
           maxLength={100}
           autoComplete="new-password"
-          className="w-full border border-[#d5d5d5] rounded-[8px] px-3 py-2 text-[14px] bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
+          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
         />
       </div>
       <Button type="submit" className="w-full mt-2" isLoading={isRegistering}>
         Tiếp tục xác thực OTP
       </Button>
-      <div className="text-center mt-4 text-[13px] text-[#969696]">
+      <div className="text-center mt-4 text-[13px] text-[#8e8ca3]">
         Đã có tài khoản?{' '}
-        <Link href="/login" className="text-[#385898] hover:underline font-semibold">
+        <Link href="/login" className="text-[#7b78ff] hover:underline font-semibold">
           Đăng nhập
         </Link>
       </div>

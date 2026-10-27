@@ -10,22 +10,22 @@ interface QuotedPostProps {
 export const QuotedPost: React.FC<QuotedPostProps> = ({ post }) => {
   if (!post.author) {
     return (
-      <div className="mt-3 p-3 rounded-[12px] border border-[#d5d5d5] bg-[#fafafa] text-[#969696] text-[13px] italic">
+      <div className="mt-4 rounded-[18px] bg-[#f4f2fa] p-4 text-[13px] italic text-[#8e8ca3]">
         Bài viết được trích dẫn không còn khả dụng.
       </div>
     );
   }
 
   return (
-    <div className="mt-3 p-3.5 rounded-[12px] border border-[#d5d5d5] bg-[#ffffff] hover:bg-[#fafafa]/60 transition-colors">
+    <div className="mt-4 rounded-[18px] bg-[#f4f2fa] p-4 transition-colors hover:bg-[#eeedff]">
       <div className="flex items-center space-x-2">
         <Avatar src={post.author.avatarUrl} displayName={post.author.displayName} size={20} />
-        <span className="font-semibold text-[13px] text-[#000000]">{post.author.displayName}</span>
-        <span className="text-[12px] text-[#969696]">@{post.author.username}</span>
+        <span className="font-semibold text-[13px] text-[#1c1b29]">{post.author.displayName}</span>
+        <span className="text-[12px] text-[#8e8ca3]">@{post.author.username}</span>
       </div>
 
       {post.content && (
-        <p className="mt-1.5 text-[14px] text-[#000000] leading-relaxed line-clamp-3">
+        <p className="mt-1.5 text-[14px] text-[#1c1b29] leading-relaxed line-clamp-3">
           {post.content}
         </p>
       )}

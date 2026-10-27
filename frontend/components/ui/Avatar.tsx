@@ -24,7 +24,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         alt={displayName}
         width={size}
         height={size}
-        className={`rounded-full object-cover border border-[#d5d5d5] ${className}`}
+        className={`rounded-full border-2 border-white object-cover shadow-[0_4px_12px_rgba(123,120,255,.15)] ${className}`}
         style={{ width: `${size}px`, height: `${size}px` }}
       />
     );
@@ -32,7 +32,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
-      className={`rounded-full bg-[#efefef] text-[#424242] flex items-center justify-center font-semibold text-[13px] border border-[#d5d5d5] select-none ${className}`}
+      className={`flex items-center justify-center rounded-full border-2 border-white bg-[linear-gradient(135deg,#ffdae5,#d7d3ff)] text-[13px] font-extrabold text-[#5954ad] shadow-[0_4px_12px_rgba(123,120,255,.15)] select-none ${className}`}
       style={{ width: `${size}px`, height: `${size}px` }}
     >
       {initials}

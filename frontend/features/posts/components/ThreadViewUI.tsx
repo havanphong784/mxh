@@ -34,41 +34,35 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
 
   if (isLoading) {
     return (
-      <div className="p-8 text-center text-[#969696] text-[13px]">
+      <div className="p-8 text-center text-[#8e8ca3] text-[13px]">
         Đang tải cuộc thảo luận...
       </div>
     );
   }
 
   return (
-    <div className="bg-[#ffffff]">
+    <div className="feed-stack">
       {/* 1. Header có nút Quay lại */}
-      <div className="h-[48px] px-4 border-b border-[#d5d5d5] flex items-center space-x-4 sticky top-[56px] bg-[#ffffff]/90 backdrop-blur-md z-10">
+      <div className="surface-card flex items-center gap-3 px-5 py-4">
         <button
           type="button"
           onClick={() => router.back()}
-          className="p-1 rounded-full hover:bg-[#efefef] transition-colors cursor-pointer text-[#000000]"
+          className="grid h-8 w-8 place-items-center rounded-[12px] bg-[#eeedff] text-[#7b78ff] transition-colors hover:bg-[#e4e2ff]"
           title="Quay lại"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
-        <h2 className="font-bold text-[15px] text-[#000000]">Thảo luận</h2>
+        <h2 className="text-[15px] font-extrabold text-[#1c1b29]">Thảo luận</h2>
       </div>
 
       {/* 2. Chuỗi các bài viết cha (Ancestors) nối bằng sợi chỉ dọc */}
       {ancestors.length > 0 && (
-        <div className="relative">
+        <div className="feed-stack relative">
           {ancestors.map((ancestor) => (
             <div key={ancestor.id} className="relative">
               {/* Sợi chỉ dọc nối các avatar */}
-              <div
-                className="absolute left-[34px] top-[50px] bottom-0 w-[1.5px] bg-[#d5d5d5] z-0"
-                style={{
-                  height: 'calc(100% - 10px)',
-                }}
-              />
               <div className="relative z-1">
                 <InteractivePostCard
                   post={ancestor}
@@ -84,7 +78,7 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
       )}
 
       {/* 3. Bài viết chính (Main Post) */}
-      <div className="relative border-b-2 border-[#efefef]">
+      <div className="relative">
         <InteractivePostCard
           post={post}
           currentUserId={currentUserId}
@@ -97,15 +91,15 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
 
       {/* 4. Khung nhập phản hồi (Reply Composer) */}
       {replyComposerNode && (
-        <div className="border-b border-[#d5d5d5] bg-[#fafafa]/50">
+        <div>
           {replyComposerNode}
         </div>
       )}
 
       {/* 5. Danh sách các bài trả lời (Replies) */}
-      <div className="divide-y divide-[#efefef]">
+      <div className="feed-stack">
         {replies.length === 0 ? (
-          <div className="p-8 text-center text-[#969696] text-[13px]">
+          <div className="p-8 text-center text-[#8e8ca3] text-[13px]">
             Chưa có phản hồi nào. Hãy là người đầu tiên trả lời!
           </div>
         ) : (

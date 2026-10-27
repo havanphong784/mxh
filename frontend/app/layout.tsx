@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'MXH — Quiet Social Feed',
-  description: 'Mạng xã hội tối giản phong cách Threads',
+  title: 'MXH — Kết nối mỗi ngày',
+  description: 'Một không gian thân thiện để chia sẻ và kết nối.',
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="min-h-screen bg-[#fafafa] text-[#000000] selection:bg-[#efefef]">
+      <body className="min-h-screen">
         <Providers>{children}</Providers>
       </body>
     </html>

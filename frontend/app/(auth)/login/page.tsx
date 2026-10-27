@@ -7,7 +7,7 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <div>
-      <h2 className="text-[16px] font-semibold text-[#000000] mb-4 text-center">Đăng nhập</h2>
+      <h2 className="text-[16px] font-semibold text-[#1c1b29] mb-4 text-center">Đăng nhập</h2>
       <LoginForm />
     </div>
   );

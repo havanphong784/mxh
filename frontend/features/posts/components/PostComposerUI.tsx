@@ -51,20 +51,22 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
   const canSubmit = (content.trim().length > 0 || mediaList.length > 0) && !isOverLimit;
 
   return (
-    <div className="p-4 border-b border-[#d5d5d5] bg-[#ffffff]">
-      <div className="flex space-x-3">
+    <div className="composer-card p-5 sm:p-6">
+      <p className="eyebrow mb-4">Chia sẻ một điều thú vị</p>
+      <div className="flex gap-3 sm:gap-4">
         {/* Avatar người đăng */}
-        <Avatar src={userAvatarUrl} displayName={userDisplayName} size={36} />
+        <Avatar src={userAvatarUrl} displayName={userDisplayName} size={42} />
 
         {/* Khung nhập nội dung */}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <textarea
             value={content}
             onChange={(e) => onContentChange(e.target.value)}
             placeholder={placeholder}
-            rows={3}
+            rows={2}
             maxLength={2200}
-            className="w-full resize-none outline-none text-[15px] placeholder-[#969696] leading-relaxed"
+            className="min-h-[72px] w-full resize-none bg-transparent text-[14px] leading-relaxed text-[#1c1b29] outline-none placeholder:text-[#8e8ca3]"
+            aria-label="Nội dung bài viết"
           />
 
           {/* Xem trước danh sách ảnh / video đã upload */}
@@ -73,7 +75,7 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
               {mediaList.map((m, idx) => (
                 <div
                   key={idx}
-                  className="relative rounded-[8px] overflow-hidden border border-[#d5d5d5] bg-[#fafafa]"
+                  className="relative overflow-hidden rounded-[20px] bg-[#f4f2fa]"
                 >
                   {m.type === 'VIDEO' ? (
                     <video src={m.url} className="w-full h-32 object-cover" />
@@ -98,8 +100,8 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
           {errorMessage && <p role="alert" className="my-2 text-[13px] text-red-600">{errorMessage}</p>}
 
           {/* Thanh công cụ dưới khung nhập */}
-          <div className="flex items-center justify-between pt-3 border-t border-[#efefef]">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between gap-2 border-t border-[#efedf7] pt-4">
+            <div className="flex min-w-0 items-center gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -112,8 +114,9 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading || isSubmitting}
-                className="text-[#424242] hover:text-[#000000] p-1.5 rounded-full hover:bg-[#efefef] transition-colors cursor-pointer disabled:opacity-50"
+                className="grid h-9 w-9 place-items-center rounded-[13px] bg-[#eef7ff] text-[#64b5f6] transition-colors hover:bg-[#dff0ff] disabled:opacity-50"
                 title="Đính kèm ảnh/video"
+                aria-label="Đính kèm ảnh hoặc video"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -124,17 +127,18 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
                   />
                 </svg>
               </button>
+              <span className="hidden rounded-full bg-[#f4f2fa] px-3 py-1.5 text-[10px] font-bold text-[#6d6a82] sm:inline-flex">◎ Mọi người</span>
               {isUploading && (
-                <span className="text-[12px] text-[#969696] animate-pulse">
+                <span className="text-[12px] text-[#8e8ca3] animate-pulse">
                   Đang tải lên media...
                 </span>
               )}
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <span
                 className={`text-[12px] ${
-                  isOverLimit ? 'text-red-500 font-bold' : 'text-[#969696]'
+                  isOverLimit ? 'text-red-500 font-bold' : 'text-[#8e8ca3]'
                 }`}
               >
                 {content.length}/2000
@@ -144,6 +148,7 @@ export const PostComposerUI: React.FC<PostComposerUIProps> = ({
                 onClick={onSubmit}
                 isLoading={isSubmitting || isUploading}
                 disabled={!canSubmit || isSubmitting || isUploading}
+                className="min-h-10 rounded-[20px_6px_20px_6px] px-5"
               >
                 Đăng
               </Button>

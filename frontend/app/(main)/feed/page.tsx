@@ -50,7 +50,7 @@ export default function FeedPage() {
   };
 
   return (
-    <div>
+    <div className="feed-stack">
       {/* Khung đăng bài mới */}
       <PostComposer onSuccess={() => refetch()} />
 
@@ -59,13 +59,13 @@ export default function FeedPage() {
 
       {/* Danh sách bài viết */}
       {!isAuthenticated ? (
-        <div className="px-6 py-16 text-center"><h2 className="text-[15px] font-semibold">Đăng nhập để xem bảng tin</h2><p className="mt-1 text-[13px] text-[#969696]">Bảng tin hiển thị bài viết của những người bạn theo dõi.</p><Link href="/login" className="mt-4 inline-flex rounded-full bg-black px-4 py-2 text-[13px] font-semibold text-white">Đăng nhập</Link></div>
+        <div className="surface-card px-6 py-14 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-[#fff0f3] text-[25px] text-[#ff8da1]">♡</span><h2 className="mt-5 text-[18px] font-extrabold">Đăng nhập để xem bảng tin</h2><p className="mt-2 text-[13px] text-[#6d6a82]">Bảng tin hiển thị bài viết của những người bạn theo dõi.</p><Link href="/login" className="mt-5 inline-flex rounded-full bg-[#7b78ff] px-5 py-2.5 text-[13px] font-bold text-white">Đăng nhập</Link></div>
       ) : isLoading ? (
-        <div className="p-8 text-center text-[#969696] text-[13px]">Đang tải bảng tin...</div>
+        <div className="surface-card p-8 text-center text-[13px] text-[#8e8ca3]">Đang tải bảng tin...</div>
       ) : isError ? (
-        <div className="px-6 py-16 text-center"><h2 className="text-[15px] font-semibold">Không thể tải bảng tin</h2><p className="mt-1 text-[13px] text-[#969696]">Kiểm tra kết nối rồi thử lại.</p><button onClick={() => refetch()} className="mt-4 rounded-full border border-[#0095f6] px-4 py-2 text-[13px] font-semibold text-[#0095f6]">Thử lại</button></div>
+        <div className="surface-card px-6 py-14 text-center"><h2 className="text-[18px] font-extrabold">Không thể tải bảng tin</h2><p className="mt-2 text-[13px] text-[#6d6a82]">Kiểm tra kết nối rồi thử lại.</p><button onClick={() => refetch()} className="mt-5 rounded-full bg-[#eeedff] px-5 py-2.5 text-[13px] font-bold text-[#7b78ff]">Thử lại</button></div>
       ) : (
-        <div>
+        <div className="feed-stack">
           {data?.pages
             .flatMap((page) => page.items)
             .map((post) => (
@@ -81,7 +81,7 @@ export default function FeedPage() {
             ))}
 
           {/* Sentinel phần tử đáy trang kích hoạt tải thêm */}
-          <div ref={sentinelRef} className="py-6 text-center text-[13px] text-[#969696]">
+          <div ref={sentinelRef} className="py-6 text-center text-[13px] text-[#8e8ca3]">
             {isFetchingNextPage
               ? 'Đang tải thêm bài viết...'
               : !hasNextPage

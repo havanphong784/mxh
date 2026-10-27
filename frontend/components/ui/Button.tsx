@@ -14,13 +14,13 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const base =
-    'inline-flex items-center justify-center font-semibold text-[13px] rounded-full transition-colors cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center gap-1 font-bold text-[13px] rounded-full transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    primary: 'bg-[#000000] text-white hover:bg-[#222222] px-4 py-2',
+    primary: 'bg-[#7b78ff] text-white shadow-[0_8px_18px_rgba(123,120,255,.22)] hover:bg-[#6763eb] hover:-translate-y-0.5 px-5 py-2.5',
     outlined:
-      'border border-[#0095f6] text-[#0095f6] hover:bg-[#0095f6] hover:text-white px-4 py-1.5',
-    ghost: 'text-[#424242] hover:bg-[#efefef] hover:text-[#000000] p-2',
+      'bg-[#eeedff] text-[#6663dd] hover:bg-[#e3e1ff] px-5 py-2.5',
+    ghost: 'text-[#6d6a82] hover:bg-[#f0effa] hover:text-[#7b78ff] px-4 py-2',
   };
 
   return (

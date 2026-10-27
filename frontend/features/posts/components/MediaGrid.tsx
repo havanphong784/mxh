@@ -10,7 +10,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ media }) => {
 
   return (
     <div
-      className={`mt-3 grid gap-2 rounded-[8px] overflow-hidden ${
+      className={`mt-4 grid gap-2 overflow-hidden rounded-[20px] ${
         media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
       }`}
     >
@@ -21,7 +21,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ media }) => {
               key={item.id || item.publicId}
               src={item.url}
               controls
-              className="w-full h-auto max-h-[420px] object-cover rounded-[8px] border border-[#d5d5d5] bg-black"
+              className="max-h-[420px] w-full rounded-[20px] bg-[#1c1b29] object-cover shadow-[0_14px_24px_-6px_rgba(28,27,41,.18)]"
             />
           );
         }
@@ -34,7 +34,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ media }) => {
             src={item.url}
             alt="Đính kèm bài viết"
             loading="lazy"
-            className="w-full h-auto max-h-[420px] object-cover rounded-[8px] border border-[#d5d5d5] hover:opacity-95 transition-opacity"
+            className="max-h-[420px] w-full rounded-[20px] object-cover shadow-[0_14px_24px_-6px_rgba(28,27,41,.18)] transition-opacity hover:opacity-95"
           />
         );
       })}

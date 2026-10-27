@@ -1,71 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --color-ink: #000000;
-  --color-paper: #fafafa;
-  --color-concrete: #d5d5d5;
-  --color-graphite: #969696;
-  --color-charcoal: #424242;
-  --color-hover-mist: #efefef;
-  --color-verified-indigo: #385898;
-  --color-signal-blue: #0095f6;
+@theme {
+  --color-ink: #1c1b29;
+  --color-body: #4a4860;
+  --color-muted: #8e8ca3;
+  --color-canvas: #f4f2fa;
+  --color-surface: #ffffff;
+  --color-primary: #7b78ff;
+  --color-pink: #ff8da1;
+  --color-cyan: #64b5f6;
+  --color-gold: #ffd166;
+  --color-mint: #6ee7b7;
+}
 
-  --background: var(--color-paper);
-  --foreground: var(--color-ink);
-  --page-max-width: 600px;
-  --radius-card: 18px;
-  --radius-media: 8px;
+:root {
+  --color-ink: #1c1b29;
+  --color-body: #4a4860;
+  --color-muted: #8e8ca3;
+  --color-muted-strong: #6d6a82;
+  --color-canvas: #f4f2fa;
+  --color-surface: #ffffff;
+  --color-primary: #7b78ff;
+  --color-pink: #ff8da1;
+  --color-cyan: #64b5f6;
+  --color-gold: #ffd166;
+  --color-mint: #6ee7b7;
+  --color-line: #efedf7;
+  --font-sans: "Plus Jakarta Sans", "Nunito", "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --shadow-shell: 0 30px 60px -12px rgba(90, 75, 140, 0.18);
+  --shadow-card: 0 12px 32px -4px rgba(123, 120, 255, 0.08);
+  --shadow-media: 0 14px 24px -6px rgba(28, 27, 41, 0.18);
   color-scheme: light;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  background: var(--color-paper);
-}
-
+* { box-sizing: border-box; }
+html { background: #f3e7f8; }
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   min-width: 320px;
+  background: linear-gradient(135deg, #f3e7f8 0%, #e3e4fa 100%);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+::selection { background: #e3e1ff; }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
+.dashboard-shell { box-shadow: var(--shadow-shell); }
+.surface-card { background: var(--color-surface); border-radius: 24px; box-shadow: var(--shadow-card); }
+.feed-stack { display: flex; flex-direction: column; gap: 16px; }
+.feed-card { background: var(--color-surface); border-radius: 24px; box-shadow: var(--shadow-card); }
+.feed-card:hover { box-shadow: 0 16px 36px -4px rgba(123, 120, 255, 0.13); }
+.composer-card { background: var(--color-surface); border-radius: 24px; box-shadow: var(--shadow-card); overflow: hidden; }
+.soft-list-row { background: var(--color-surface); border-radius: 20px; box-shadow: var(--shadow-card); }
+.eyebrow { color: var(--color-primary); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.post-action svg { width: 32px; height: 32px; padding: 7px; border-radius: 999px; }
+.post-action-like svg { background: #fff0f3; color: #ed7791; }
+.post-action-reply svg { background: #eef7ff; color: #58a5e9; }
+.post-action-repost svg { background: #e9f9f2; color: #42b88c; }
+.post-action-bookmark svg { background: #f2f1ff; color: #7773eb; }
 
-:focus-visible {
-  outline: 2px solid var(--color-verified-indigo);
-  outline-offset: 2px;
+.auth-card input:not([type="file"]), .auth-card textarea,
+.profile-form input:not([type="file"]), .profile-form textarea {
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  padding: 12px 14px;
 }
+.auth-card input:focus, .profile-form input:focus, .profile-form textarea:focus {
+  border-color: var(--color-primary);
+  background: white;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(123, 120, 255, .12);
+}
+.auth-card h2 { font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: var(--color-ink); }
 
-::selection {
-  background: var(--color-hover-mist);
-}
-
-/* Custom scrollbar for clean threads feel */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-concrete);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-graphite);
-}
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d8d3eb; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #b7b2cc; }

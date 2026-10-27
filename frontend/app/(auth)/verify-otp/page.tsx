@@ -18,9 +18,9 @@ function OtpContent() {
 
   return (
     <div>
-      <h2 className="text-[16px] font-semibold text-[#000000] mb-1 text-center">Xác thực tài khoản</h2>
-      <p className="text-[13px] text-[#969696] mb-4 text-center">
-        Nhập mã xác thực đã gửi tới <strong className="text-[#000000]">{email}</strong>
+      <h2 className="text-[16px] font-semibold text-[#1c1b29] mb-1 text-center">Xác thực tài khoản</h2>
+      <p className="text-[13px] text-[#8e8ca3] mb-4 text-center">
+        Nhập mã xác thực đã gửi tới <strong className="text-[#1c1b29]">{email}</strong>
       </p>
       <VerifyOtpForm email={email} />
     </div>
@@ -29,7 +29,7 @@ function OtpContent() {
 
 export default function VerifyOtpPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-center text-[13px] text-[#969696]">Đang tải...</div>}>
+    <Suspense fallback={<div className="p-4 text-center text-[13px] text-[#8e8ca3]">Đang tải...</div>}>
       <OtpContent />
     </Suspense>
   );

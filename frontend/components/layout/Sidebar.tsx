@@ -2,10 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useNotificationStore } from '@/stores/notificationStore';
-import { useAuthStore } from '@/stores/authStore';
-import { Avatar } from '@/components/ui/Avatar';
+import {usePathname} from 'next/navigation';
+import {useNotificationStore} from '@/stores/notificationStore';
+import {useAuthStore} from '@/stores/authStore';
+import {Avatar} from '@/components/ui/Avatar';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -53,20 +53,20 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="hidden md:flex flex-col items-center justify-between w-[80px] h-screen sticky top-0 bg-[#ffffff] border-r border-[#d5d5d5] py-6 z-30 select-none">
-      <div className="flex flex-col items-center space-y-6">
-        <Link href="/feed" aria-label="Trang chủ MXH" className="grid h-11 w-11 place-items-center rounded-full border border-[#000000] text-[15px] font-black tracking-[-0.08em] hover:bg-[#efefef] transition-colors">
+    <aside className="z-30 hidden h-full min-h-0 select-none flex-col items-center justify-between overflow-y-auto bg-white py-7 md:flex">
+      <div className="flex flex-col items-center gap-9">
+        <Link href="/feed" aria-label="Trang chủ MXH" className="grid h-10 w-10 place-items-center rounded-[15px] bg-[#7b78ff] text-[11px] font-extrabold tracking-[-0.04em] text-white shadow-[0_8px_18px_rgba(123,120,255,.25)] transition hover:scale-105">
           MXH
         </Link>
-        <nav className="flex flex-col space-y-4">
+        <nav className="flex flex-col gap-3">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`relative p-3 rounded-full hover:bg-[#efefef] transition-colors ${
-                  isActive ? 'text-[#000000] bg-[#efefef]/60' : 'text-[#424242]'
+                className={`relative grid h-11 w-11 place-items-center rounded-[16px] transition-colors ${
+                  isActive ? 'bg-[#eeedff] text-[#7b78ff]' : 'text-[#8e8ca3] hover:bg-[#f4f2fa] hover:text-[#7b78ff]'
                 }`}
                 title={item.label}
                 aria-label={item.label}
@@ -74,7 +74,7 @@ export function Sidebar() {
               >
                 {item.icon}
                 {item.badge && item.badge > 0 ? (
-                  <span className="absolute top-1 right-1 bg-[#0095f6] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff8da1] px-1 text-[9px] font-bold text-white">
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 ) : null}
@@ -84,14 +84,14 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div>
+      <div className="rounded-full bg-[#fff0f3] p-1">
         {user ? (
           <Link href={`/${user.username}`} title={`@${user.username}`}>
             <Avatar src={user.avatarUrl} displayName={user.displayName} size={36} />
           </Link>
         ) : (
-          <Link href="/login" className="text-[12px] font-semibold text-[#0095f6] hover:underline">
-            Đăng nhập
+          <Link href="/login" aria-label="Đăng nhập" className="grid h-9 w-9 place-items-center rounded-full text-[20px] font-bold text-[#ff8da1] hover:bg-white" title="Đăng nhập">
+            ↗
           </Link>
         )}
       </div>

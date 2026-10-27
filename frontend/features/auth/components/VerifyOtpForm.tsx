@@ -56,17 +56,17 @@ export function VerifyOtpForm({ email }: VerifyOtpFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-50 text-red-600 rounded-[8px] text-[13px] border border-red-200">
+        <div className="p-3 bg-red-50 text-red-600 rounded-[16px] text-[13px] border border-red-200">
           {error}
         </div>
       )}
       {resendSuccess && (
-        <div className="p-3 bg-green-50 text-green-700 rounded-[8px] text-[13px] border border-green-200">
+        <div className="p-3 bg-green-50 text-green-700 rounded-[16px] text-[13px] border border-green-200">
           Đã gửi mã xác thực mới đến email của bạn!
         </div>
       )}
       <div>
-        <label className="block text-[12px] font-semibold text-[#424242] mb-1">
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">
           Mã xác thực OTP (6 chữ số)
         </label>
         <input
@@ -78,14 +78,14 @@ export function VerifyOtpForm({ email }: VerifyOtpFormProps) {
           placeholder="123456"
           maxLength={6}
           required
-          className="w-full tracking-widest text-center font-mono text-[20px] font-bold border border-[#d5d5d5] rounded-[8px] px-3 py-2 bg-[#fafafa] outline-none focus:border-[#000000] focus:bg-[#ffffff] transition-colors"
+          className="w-full tracking-widest text-center font-mono text-[20px] font-bold border border-[#efedf7] rounded-[16px] px-3 py-2 bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
         />
       </div>
       <Button type="submit" className="w-full mt-2" isLoading={isVerifying} disabled={code.trim().length < 6}>
         Xác nhận
       </Button>
 
-      <div className="text-center mt-4 text-[13px] text-[#969696]">
+      <div className="text-center mt-4 text-[13px] text-[#8e8ca3]">
         {resendCooldown > 0 ? (
           <span>Gửi lại mã sau {resendCooldown}s</span>
         ) : (
@@ -93,7 +93,7 @@ export function VerifyOtpForm({ email }: VerifyOtpFormProps) {
             type="button"
             onClick={handleResend}
             disabled={isResending}
-            className="text-[#385898] hover:underline font-semibold cursor-pointer"
+            className="text-[#7b78ff] hover:underline font-semibold cursor-pointer"
           >
             {isResending ? 'Đang gửi...' : 'Gửi lại mã xác thực'}
           </button>

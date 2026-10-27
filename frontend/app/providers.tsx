@@ -26,8 +26,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#d5d5d5] border-t-[#000000] rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#f4f2fa] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#efedf7] border-t-[#1c1b29] rounded-full animate-spin" />
       </div>
     );
   }
