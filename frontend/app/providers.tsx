@@ -3,32 +3,26 @@
 import React, { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
-import { refreshClient } from '@/lib/axios';
+import { refreshSession } from '@/lib/axios';
 import { useAuthStore } from '@/stores/authStore';
-import type { Author, RefreshResponse } from '@/types/api';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const setAuth = useAuthStore((s) => s.setAuth);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    let active = true;
+    const tokenBeforeRefresh = useAuthStore.getState().accessToken;
     // Khôi phục phiên đăng nhập khi F5 hoặc mở tab mới bằng cookie HttpOnly
-    refreshClient
-      .post<RefreshResponse>('/auth/refresh')
-      .then(async (res) => {
-        const me = await refreshClient.get<Author>('/auth/me', {
-          headers: { Authorization: `Bearer ${res.data.accessToken}` },
-        });
-        setAuth(me.data, res.data.accessToken);
-      })
+    refreshSession()
       .catch(() => {
-        clearAuth();
+        if (active && useAuthStore.getState().accessToken === tokenBeforeRefresh) clearAuth();
       })
       .finally(() => {
-        setIsInitializing(false);
+        if (active) setIsInitializing(false);
       });
-  }, [setAuth, clearAuth]);
+    return () => { active = false; };
+  }, [clearAuth]);
 
   if (isInitializing) {
     return (
