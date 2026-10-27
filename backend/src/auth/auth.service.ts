@@ -356,10 +356,10 @@ export class AuthService {
         const newSession = await this.prisma.client.transaction(async (tx) => {
             const claimPlan = this.prisma.client.raw.sql`
                 UPDATE "session"
-                SET "isRevoked" = true
+                SET "isRevoked" = true, "updatedAt" = CURRENT_TIMESTAMP
                 WHERE id = ${session.id} AND "isRevoked" = false
             `.affectedCount().build();
-            const claimedCount = Number(await tx.execute(claimPlan));
+            const { affectedRows: claimedCount } = await tx.execute(claimPlan);
 
             if (claimedCount !== 1) {
                 throw new UnauthorizedException(

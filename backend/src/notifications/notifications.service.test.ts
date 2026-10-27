@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { Temporal } from '@js-temporal/polyfill';
 import { NotificationsService } from './notifications.service.js';
 
 test('an invalid notification cursor is ignored instead of being sent to the database', async () => {
@@ -33,4 +34,40 @@ test('an invalid notification cursor is ignored instead of being sent to the dat
 
     assert.equal(cursorWasApplied, false);
     assert.deepEqual(response, { data: [], nextCursor: null, hasMore: false });
+});
+
+test('a valid notification cursor uses a Temporal.Instant for Prisma pagination', async () => {
+    let appliedCursor: any;
+    const query: any = {
+        orderBy() { return query; },
+        cursor(value: any) { appliedCursor = value; return query; },
+        include() { return query; },
+        limit() { return query; },
+        async all() { return []; },
+    };
+    const prisma = { client: { orm: { public: { Notification: { where: () => query } } } } };
+    const service = new NotificationsService(prisma as any, {} as any);
+    const createdAt = '2026-10-26T12:34:56.123456Z';
+    const cursor = Buffer.from(JSON.stringify({ createdAt, id: 'notification-1' })).toString('base64');
+
+    await service.getNotifications('user-id', { cursor, limit: 20 });
+
+    assert.ok(appliedCursor.createdAt instanceof Temporal.Instant);
+    assert.equal(appliedCursor.createdAt.toString(), createdAt);
+    assert.equal(appliedCursor.id, 'notification-1');
+});
+
+test('mark all as read returns the affected row count', async () => {
+    const prisma = {
+        client: {
+            raw: { sql: () => ({ affectedCount: () => ({ build: () => ({}) }) }) },
+            transaction: async (callback: (tx: any) => Promise<unknown>) => callback({
+                execute: async () => ({ affectedRows: 3 }),
+            }),
+        },
+    };
+    const gateway = { pushToUser() {} };
+    const service = new NotificationsService(prisma as any, gateway as any);
+
+    assert.deepEqual(await service.markAllAsRead('user-id'), { success: true, count: 3 });
 });

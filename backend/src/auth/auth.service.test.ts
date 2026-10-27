@@ -69,11 +69,11 @@ test('only one concurrent refresh request can rotate the same session', async ()
             return callback({
                 orm: client.orm,
                 async execute(plan: { text: string }) {
-                    if (!plan.text.includes('isRevoked')) return 0;
-                    if (claimed) return 0;
+                    if (!plan.text.includes('isRevoked')) return { affectedRows: 0 };
+                    if (claimed) return { affectedRows: 0 };
                     claimed = true;
                     oldSession.isRevoked = true;
-                    return 1;
+                    return { affectedRows: 1 };
                 },
             });
         },

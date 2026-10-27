@@ -2,6 +2,7 @@ import {Injectable, NotFoundException} from "@nestjs/common";
 import {PrismaService} from "../prisma/prisma.service.js";
 import {NotificationPaginationDto} from "./dto/notification-pagination.dto.js";
 import {EventsGateway} from "../gateway/events.gateway.js";
+import {Temporal} from '@js-temporal/polyfill';
 
 @Injectable()
 export class NotificationsService {
@@ -13,7 +14,7 @@ export class NotificationsService {
   async getNotifications(userId: string, query: NotificationPaginationDto) {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
 
-    let cursor: { createdAt: Date; id: string } | undefined;
+    let cursor: { createdAt: Temporal.Instant; id: string } | undefined;
     if (query.cursor) {
       try {
         const decoded = JSON.parse(
@@ -26,10 +27,7 @@ export class NotificationsService {
           typeof decoded.id === "string" &&
           decoded.id.length > 0
         ) {
-          const createdAt = new Date(decoded.createdAt);
-          if (Number.isFinite(createdAt.getTime())) {
-            cursor = { createdAt, id: decoded.id };
-          }
+          cursor = { createdAt: Temporal.Instant.from(decoded.createdAt), id: decoded.id };
         }
       } catch {
         // Cursor không hợp lệ thì bỏ qua
@@ -141,7 +139,7 @@ export class NotificationsService {
       .affectedCount()
       .build();
 
-    const affected = await this.prisma.client.transaction(async (tx) => {
+    const { affectedRows } = await this.prisma.client.transaction(async (tx) => {
       return await tx.execute(rawPlan);
     });
 
@@ -151,7 +149,7 @@ export class NotificationsService {
 
     return {
       success: true,
-      count: affected,
+      count: affectedRows,
     };
   }
 }

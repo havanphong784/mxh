@@ -15,6 +15,7 @@ import type {
     PostRepostedEvent,
 } from "../events/event-types.js";
 import {EventEmitter2} from "@nestjs/event-emitter";
+import {Temporal} from '@js-temporal/polyfill';
 
 @Injectable()
 export class PostsService {
@@ -204,7 +205,7 @@ export class PostsService {
         }
 
         const updatePayload: Record<string, any> = {
-            editedAt: new Date(),
+            editedAt: Temporal.Now.instant(),
         };
 
         if (dto.content !== undefined) {
@@ -868,7 +869,7 @@ export class PostsService {
                 DELETE FROM "post"
                 WHERE "authorId" = ${userId} AND "repostOfId" = ${postId}
             `.affectedCount().build();
-            const deletedCount = Number(await tx.execute(deletePlan));
+            const { affectedRows: deletedCount } = await tx.execute(deletePlan);
 
             if (deletedCount === 1) {
                 const decrementPlan = this.prismaService.client.raw.sql`
@@ -978,7 +979,7 @@ export class PostsService {
                 DELETE FROM "postLike"
                 WHERE "userId" = ${userId} AND "postId" = ${postId}
             `.affectedCount().build();
-            const deletedCount = Number(await tx.execute(deletePlan));
+            const { affectedRows: deletedCount } = await tx.execute(deletePlan);
 
             if (deletedCount === 1) {
                 const decrementPlan = this.prismaService.client.raw.sql`
@@ -1117,7 +1118,7 @@ export class PostsService {
                 DELETE FROM "postBookmark"
                 WHERE "userId" = ${userId} AND "postId" = ${postId}
             `.affectedCount().build();
-            const deletedCount = Number(await tx.execute(deletePlan));
+            const { affectedRows: deletedCount } = await tx.execute(deletePlan);
 
             if (deletedCount === 1) {
                 const decrementPlan = this.prismaService.client.raw.sql`
@@ -1718,7 +1719,7 @@ export class PostsService {
         return Buffer.from(payload).toString('base64url');
     }
 
-    private decodeCursor(cursor?: string): { createdAt: Date; id: string } | null {
+    private decodeCursor(cursor?: string): { createdAt: Temporal.Instant; id: string } | null {
         if (!cursor) return null;
         try {
             const decoded = Buffer.from(cursor, 'base64url').toString('utf-8');
@@ -1732,10 +1733,7 @@ export class PostsService {
             ) {
                 return null;
             }
-            const createdAt = new Date(parsed.createdAt);
-            if (!Number.isFinite(createdAt.getTime())) {
-                return null;
-            }
+            const createdAt = Temporal.Instant.from(parsed.createdAt);
             return {
                 createdAt,
                 id: parsed.id,

@@ -2,6 +2,7 @@ import {Injectable, Logger} from "@nestjs/common";
 import {OnEvent} from "@nestjs/event-emitter";
 import {PrismaService} from "../prisma/prisma.service.js";
 import {EventsGateway} from "../gateway/events.gateway.js";
+import {Temporal} from '@js-temporal/polyfill';
 import {
   POST_EVENTS,
   USER_EVENTS,
@@ -65,7 +66,7 @@ export class NotificationsListener {
         if (existing.isRead) {
           await this.prisma.client.orm.public.Notification.where({
             id: existing.id,
-          }).update({ isRead: false, createdAt: new Date() });
+          }).update({ isRead: false, createdAt: Temporal.Now.instant() });
           await this.sendRealtimeNotification(existing.id, event.postAuthorId);
         }
         return;
@@ -119,7 +120,7 @@ export class NotificationsListener {
         if (existing.isRead) {
           await this.prisma.client.orm.public.Notification.where({
             id: existing.id,
-          }).update({ isRead: false, createdAt: new Date() });
+          }).update({ isRead: false, createdAt: Temporal.Now.instant() });
           await this.sendRealtimeNotification(existing.id, event.postAuthorId);
         }
         return;
@@ -172,7 +173,7 @@ export class NotificationsListener {
         if (existing.isRead) {
           await this.prisma.client.orm.public.Notification.where({
             id: existing.id,
-          }).update({ isRead: false, createdAt: new Date() });
+          }).update({ isRead: false, createdAt: Temporal.Now.instant() });
           await this.sendRealtimeNotification(existing.id, event.followingId);
         }
         return;

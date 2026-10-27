@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as crypto from 'node:crypto';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Temporal } from '@js-temporal/polyfill';
 import { PostsService } from './posts.service.js';
 
 const activeAuthor = (id: string) => ({
@@ -316,6 +317,7 @@ test('a pure repost response embeds the original public post', () => {
 });
 
 test('updating a pure repost reloads the embedded original post', async () => {
+    let updatePayload: Record<string, unknown> | undefined;
     const original = postFixture({
         id: 'original-id',
         authorId: 'original-author',
@@ -357,6 +359,7 @@ test('updating a pure repost reloads the embedded original post', async () => {
                     };
                 },
                 async update(payload: Record<string, unknown>) {
+                    updatePayload = payload;
                     Object.assign(repost, payload);
                 },
             };
@@ -378,6 +381,7 @@ test('updating a pure repost reloads the embedded original post', async () => {
     const response = await service.updatePost('repost-id', 'reposter-id', {});
 
     assert.equal(response.repostOf?.id, 'original-id');
+    assert.ok(updatePayload?.editedAt instanceof Temporal.Instant);
 });
 
 test('bookmarks no longer return a followers-only post after the user unfollows its author', async () => {
@@ -491,6 +495,28 @@ test('an invalid post cursor is ignored instead of being sent to the database', 
     assert.deepEqual(response, { items: [], nextCursor: null });
 });
 
+test('a valid post cursor uses a Temporal.Instant for Prisma pagination', async () => {
+    let appliedCursor: any;
+    const query: any = {
+        where() { return query; },
+        orderBy() { return query; },
+        cursor(value: any) { appliedCursor = value; return query; },
+        limit() { return query; },
+        include() { return query; },
+        async all() { return []; },
+    };
+    const prisma = { client: { orm: { public: { Post: query } } } };
+    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const createdAt = '2026-10-26T12:34:56.123456Z';
+    const cursor = Buffer.from(JSON.stringify({ createdAt, id: 'post-1' })).toString('base64url');
+
+    await service.getExplore({ cursor, limit: 20 });
+
+    assert.ok(appliedCursor.createdAt instanceof Temporal.Instant);
+    assert.equal(appliedCursor.createdAt.toString(), createdAt);
+    assert.equal(appliedCursor.id, 'post-1');
+});
+
 test('concurrent likes are idempotent instead of returning a unique-constraint error', async () => {
     const state = { liked: false, likeCount: 0 };
     let reads = 0;
@@ -600,12 +626,12 @@ test('concurrent unlikes decrement the counter only when a like row is deleted',
                 orm: client.orm,
                 async execute(plan: { text: string }) {
                     if (plan.text.includes('DELETE')) {
-                        if (!state.liked) return 0;
+                        if (!state.liked) return { affectedRows: 0 };
                         state.liked = false;
-                        return 1;
+                        return { affectedRows: 1 };
                     }
                     state.likeCount = Math.max(0, state.likeCount - 1);
-                    return 1;
+                    return { affectedRows: 1 };
                 },
             });
         },

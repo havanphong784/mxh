@@ -1,5 +1,5 @@
 import {OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketServer,} from '@nestjs/websockets';
-import {Server, Socket} from 'socket.io';
+import {Namespace, Socket} from 'socket.io';
 import {Logger} from '@nestjs/common';
 import {OnEvent} from '@nestjs/event-emitter';
 import {AccessSessionService} from '../auth/access-session.service.js';
@@ -16,7 +16,7 @@ import type {SessionRevokedEvent, UserSessionsRevokedEvent} from '../events/even
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     public readonly onlineUsers = new Map<string, Set<string>>();
     @WebSocketServer()
-    private server!: Server;
+    private server!: Namespace;
     private readonly logger = new Logger(EventsGateway.name);
 
     constructor(private readonly accessSessionService: AccessSessionService) {}
@@ -78,7 +78,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     @OnEvent(AUTH_EVENTS.SESSION_REVOKED)
     handleSessionRevoked(event: SessionRevokedEvent) {
-        for (const socket of this.server.sockets.sockets.values()) {
+        for (const socket of this.server.sockets.values()) {
             if (socket.data.sessionId === event.sessionId) {
                 socket.disconnect(true);
             }
@@ -87,7 +87,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     @OnEvent(AUTH_EVENTS.USER_SESSIONS_REVOKED)
     handleUserSessionsRevoked(event: UserSessionsRevokedEvent) {
-        for (const socket of this.server.sockets.sockets.values()) {
+        for (const socket of this.server.sockets.values()) {
             if (
                 socket.data.userId === event.userId &&
                 socket.data.sessionId !== event.exceptSessionId
