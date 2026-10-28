@@ -5,6 +5,25 @@ import * as crypto from 'node:crypto';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import { PostsService } from './posts.service.js';
+import type { ConfigService } from '@nestjs/config';
+import type { EnvironmentVariables } from '../config/env.validation.js';
+
+function mockConfigService(overrides: Partial<EnvironmentVariables> = {}): ConfigService<EnvironmentVariables, true> {
+  const env: Partial<EnvironmentVariables> = {
+    CLOUDINARY_CLOUD_NAME: 'test-cloud',
+    CLOUDINARY_API_KEY: 'test-key',
+    CLOUDINARY_API_SECRET: 'test-secret',
+    ...overrides,
+  };
+  return {
+    get(key: string, _opts?: any) { return (env as any)[key]; },
+    getOrThrow(key: string, _opts?: any) {
+      const v = (env as any)[key];
+      if (v === undefined) throw new Error(`Missing ${key}`);
+      return v;
+    },
+  } as any;
+}
 
 const activeAuthor = (id: string) => ({
     id,
@@ -80,7 +99,7 @@ test('a follower of the reply author cannot read a reply in another author\'s fo
             },
         },
     };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     assert.equal(await service.canView(reply, 'viewer-id'), false);
 });
@@ -106,7 +125,7 @@ test('a reply author cannot override the root thread visibility', async () => {
             },
         },
     };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     await assert.rejects(
         service.updatePost('reply-id', 'reply-author', { visibility: 'PUBLIC' }),
@@ -159,7 +178,7 @@ test('changing root visibility propagates to every reply in the thread', async (
             return callback({ orm: client.orm });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, {} as any);
+    const service = new PostsService({ client } as any, {} as any, {} as any, mockConfigService());
 
     await service.updatePost('root-id', 'root-author', { visibility: 'PRIVATE' });
 
@@ -199,7 +218,7 @@ test('a deleted followers-only root still protects its replies', async () => {
         },
     };
     const prisma = { client: { orm: { public: { Post: postTable } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     await assert.rejects(
         service.getReplies('root-id', { limit: 20 }, undefined),
@@ -232,7 +251,7 @@ test('a deleted followers-only root still protects the ancestor chain', async ()
         },
     };
     const prisma = { client: { orm: { public: { Post: postTable } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     await assert.rejects(
         service.getAncestors('reply-id', undefined),
@@ -258,7 +277,7 @@ test('a quote stops exposing the original post after it becomes private', () => 
         parentId: null,
         rootId: null,
     });
-    const service = new PostsService({} as any, {} as any, {} as any);
+    const service = new PostsService({} as any, {} as any, {} as any, mockConfigService());
 
     const response = service.toPostResponse(quote);
 
@@ -268,7 +287,7 @@ test('a quote stops exposing the original post after it becomes private', () => 
 
 test('a deleted reply keeps its reply count so descendants can be opened', () => {
     const deletedReply = postFixture({ id: 'deleted-reply', isDeleted: true, replyCount: 2 });
-    const service = new PostsService({} as any, {} as any, {} as any);
+    const service = new PostsService({} as any, {} as any, {} as any, mockConfigService());
 
     assert.deepEqual(service.toPostResponse(deletedReply), {
         id: 'deleted-reply',
@@ -309,7 +328,7 @@ test('a pure repost response embeds the original public post', () => {
         repostOfId: original.id,
         repostOf: original,
     });
-    const service = new PostsService({} as any, {} as any, {} as any);
+    const service = new PostsService({} as any, {} as any, {} as any, mockConfigService());
 
     const response = service.toPostResponse(repost);
 
@@ -388,7 +407,7 @@ test('updating a pure repost reloads the embedded original post', async () => {
             return callback({ orm: client.orm });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, {} as any);
+    const service = new PostsService({ client } as any, {} as any, {} as any, mockConfigService());
 
     const response = await service.updatePost('repost-id', 'reposter-id', {});
 
@@ -454,7 +473,7 @@ test('bookmarks no longer return a followers-only post after the user unfollows 
             },
         },
     };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     const response = await service.getBookmarks('viewer-id', { limit: 20 });
 
@@ -510,7 +529,7 @@ test('bookmark pages skip inaccessible posts without losing later accessible pos
         Post: postTable,
         PostLike: { where() { return { where() { return this; }, async all() { return []; } }; } },
     } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     const firstPage = await service.getBookmarks('viewer', { limit: 1 });
     const secondPage = await service.getBookmarks('viewer', { limit: 1, cursor: firstPage.nextCursor! });
@@ -543,7 +562,7 @@ test('liked posts return viewable posts with active like state', async () => {
         PostBookmark: { where() { return { where() { return this; }, async all() { return []; } }; } },
         Post: postTable,
     } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     const response = await service.getLikedPosts('viewer', { limit: 20 });
     assert.deepEqual(response.items.map((item: any) => item.id), ['liked-post']);
@@ -593,7 +612,7 @@ test('bookmarks bound scanning when many saved posts are inaccessible', async ()
         Post: postTable,
         PostLike: { where() { return { where() { return this; }, async all() { return []; } }; } },
     } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     const firstPage = await service.getBookmarks('viewer', { limit: 1 });
     assert.equal(reads, 3);
@@ -630,7 +649,7 @@ test('searching media posts keeps public root filtering and escapes the search t
         include() { return postQuery; },
         async all() { return []; },
     };
-    const service = new PostsService({ client: { orm: { public: { Post: postQuery } } } } as any, {} as any, {} as any);
+    const service = new PostsService({ client: { orm: { public: { Post: postQuery } } } } as any, {} as any, {} as any, mockConfigService());
 
     await service.getExplore({ limit: 20, mediaOnly: 'true' }, undefined, '100%');
 
@@ -659,7 +678,7 @@ test('a text-only post cannot be edited into an empty post', async () => {
     };
     postQuery.update = async () => post;
     const prisma = { client };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
 
     await assert.rejects(
         service.updatePost('reply-id', 'reply-author', { content: '   ' }),
@@ -678,7 +697,7 @@ test('an invalid post cursor is ignored instead of being sent to the database', 
         async all() { return []; },
     };
     const prisma = { client: { orm: { public: { Post: query } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
     const invalidCursor = Buffer.from(JSON.stringify({ createdAt: 'not-a-date', id: null })).toString('base64url');
 
     const response = await service.getExplore({ cursor: invalidCursor, limit: 20 });
@@ -698,7 +717,7 @@ test('a valid post cursor uses a Temporal.Instant for Prisma pagination', async 
         async all() { return []; },
     };
     const prisma = { client: { orm: { public: { Post: query } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any);
+    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
     const createdAt = '2026-10-26T12:34:56.123456Z';
     const cursor = Buffer.from(JSON.stringify({ createdAt, id: 'post-1' })).toString('base64url');
 
@@ -762,7 +781,7 @@ test('concurrent likes are idempotent instead of returning a unique-constraint e
             });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any);
+    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any, mockConfigService());
 
     const results = await Promise.allSettled([
         service.likePost('post-id', 'viewer-id'),
@@ -828,7 +847,7 @@ test('concurrent unlikes decrement the counter only when a like row is deleted',
             });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, {} as any);
+    const service = new PostsService({ client } as any, {} as any, {} as any, mockConfigService());
 
     await Promise.all([
         service.unlikePost('post-id', 'viewer-id'),
@@ -839,10 +858,6 @@ test('concurrent unlikes decrement the counter only when a like row is deleted',
 });
 
 test('the same Cloudinary asset cannot be attached more than once', async () => {
-    const previousSecret = process.env.CLOUDINARY_API_SECRET;
-    const previousCloud = process.env.CLOUDINARY_CLOUD_NAME;
-    process.env.CLOUDINARY_API_SECRET = 'test-secret';
-    process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
     const publicId = 'mxh/user-id/posts/asset-id';
     const version = '123';
     const signature = crypto
@@ -881,17 +896,10 @@ test('the same Cloudinary asset cannot be attached more than once', async () => 
             return callback({ orm: client.orm, execute: async () => 1 });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any);
+    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any, mockConfigService());
 
-    try {
-        await assert.rejects(
-            service.createPost('user-id', { content: 'post', media: [media, { ...media, order: 1 }] }),
-            BadRequestException,
-        );
-    } finally {
-        if (previousSecret === undefined) delete process.env.CLOUDINARY_API_SECRET;
-        else process.env.CLOUDINARY_API_SECRET = previousSecret;
-        if (previousCloud === undefined) delete process.env.CLOUDINARY_CLOUD_NAME;
-        else process.env.CLOUDINARY_CLOUD_NAME = previousCloud;
-    }
+    await assert.rejects(
+        service.createPost('user-id', { content: 'post', media: [media, { ...media, order: 1 }] }),
+        BadRequestException,
+    );
 });

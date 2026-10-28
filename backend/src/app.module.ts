@@ -1,19 +1,25 @@
-import {Module} from "@nestjs/common";
-import {PrismaModule} from "./prisma/prisma.module.js";
-import {AppController} from "./app.controller.js";
-import {AppService} from "./app.service.js";
-import {AuthModule} from "./auth/auth.module.js";
-import {ThrottlerGuard, ThrottlerModule} from "@nestjs/throttler";
-import {APP_GUARD} from "@nestjs/core";
-import {MediaModule} from "./media/media.module.js";
-import {UsersModule} from "./users/users.module.js";
-import {PostsModule} from "./posts/posts.module.js";
-import {EventEmitterModule} from "@nestjs/event-emitter";
-import {NotificationsModule} from "./notifications/notifications.module.js";
-import {GatewayModule} from "./gateway/gateway.module.js";
+import { Module } from "@nestjs/common";
+import { PrismaModule } from "./prisma/prisma.module.js";
+import { AppController } from "./app.controller.js";
+import { AppService } from "./app.service.js";
+import { AuthModule } from "./auth/auth.module.js";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
+import { MediaModule } from "./media/media.module.js";
+import { UsersModule } from "./users/users.module.js";
+import { PostsModule } from "./posts/posts.module.js";
+import { EventEmitterModule } from "@nestjs/event-emitter";
+import { NotificationsModule } from "./notifications/notifications.module.js";
+import { GatewayModule } from "./gateway/gateway.module.js";
+import { ConfigModule } from "@nestjs/config";
+import { envValidationSchema } from "./config/env.validation.js";
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
     EventEmitterModule.forRoot(),
     PrismaModule,
     AuthModule,

@@ -3,6 +3,26 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
+import type { ConfigService } from '@nestjs/config';
+import type { EnvironmentVariables } from '../config/env.validation.js';
+
+function mockConfigService(overrides: Partial<EnvironmentVariables> = {}): ConfigService<EnvironmentVariables, true> {
+  const env: Partial<EnvironmentVariables> = {
+    JWT_ACCESS_SECRET: 'test-access-secret',
+    JWT_ACCESS_EXPIRES_IN: '15m',
+    JWT_REFRESH_SECRET: 'test-refresh-secret',
+    JWT_REFRESH_EXPIRES_IN: '7d',
+    ...overrides,
+  };
+  return {
+    get(key: string, _opts?: any) { return (env as any)[key]; },
+    getOrThrow(key: string, _opts?: any) {
+      const v = (env as any)[key];
+      if (v === undefined) throw new Error(`Missing ${key}`);
+      return v;
+    },
+  } as any;
+}
 
 test('only one concurrent refresh request can rotate the same session', async () => {
     const oldSession = {
@@ -78,10 +98,11 @@ test('only one concurrent refresh request can rotate the same session', async ()
             });
         },
     };
+    const config = mockConfigService();
     const jwtService = {
         async verifyAsync() { return { sub: 'user-id' }; },
         async signAsync(payload: any, options: any) {
-            return options.secret === process.env.JWT_REFRESH_SECRET
+            return options.secret === config.get('JWT_REFRESH_SECRET')
                 ? `refresh-${payload.jti}`
                 : `access-${payload.sessionId}`;
         },
@@ -91,6 +112,7 @@ test('only one concurrent refresh request can rotate the same session', async ()
         {} as any,
         jwtService as any,
         { emit() {} } as any,
+        config,
     );
 
     const results = await Promise.allSettled([
@@ -145,6 +167,7 @@ test('resend OTP removes the unusable code and reports a delivery failure', asyn
         { async sendOtpEmail() { return false; } } as any,
         {} as any,
         {} as any,
+        mockConfigService(),
     );
 
     await assert.rejects(
@@ -177,6 +200,7 @@ test('forgot password removes an OTP that could not be delivered', async () => {
         { async sendResetPasswordEmail() { return false; } } as any,
         {} as any,
         {} as any,
+        mockConfigService(),
     );
 
     const response = await service.forgotPassword({ email: user.email });

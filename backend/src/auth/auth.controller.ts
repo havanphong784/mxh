@@ -9,47 +9,52 @@ import {
   Res,
   UnauthorizedException,
   UseGuards,
-} from '@nestjs/common';
-import type {FastifyReply, FastifyRequest} from 'fastify';
-import {AuthService} from './auth.service.js';
-import {RegisterDto} from './dto/register.dto.js';
-import {VerifyOtpDto} from './dto/verify-otp.dto.js';
-import {ResendOtpDto} from "./dto/resend-otp.dto.js";
-import {LoginDto} from "./dto/login.dto.js";
-import {JwtAuthGuard} from "./guards/jwt-auth.guard.js";
-import {CurrentUser} from "./decorators/current-user.decorator.js";
-import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
-import {ResetPasswordDto} from "./dto/reset-password.dto.js";
-import {Throttle} from '@nestjs/throttler';
+} from "@nestjs/common";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { AuthService } from "./auth.service.js";
+import { RegisterDto } from "./dto/register.dto.js";
+import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
+import { ResendOtpDto } from "./dto/resend-otp.dto.js";
+import { LoginDto } from "./dto/login.dto.js";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
+import { CurrentUser } from "./decorators/current-user.decorator.js";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
+import { ResetPasswordDto } from "./dto/reset-password.dto.js";
+import { Throttle } from "@nestjs/throttler";
+import { ConfigService } from "@nestjs/config";
+import type { EnvironmentVariables } from "../config/env.validation.js";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService<EnvironmentVariables, true>,
+  ) {}
 
-  @Get('me')
+  @Get("me")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async getMe(@CurrentUser('sub') userId: string) {
+  async getMe(@CurrentUser("sub") userId: string) {
     return this.authService.getMe(userId);
   }
 
-  @Post('register')
+  @Post("register")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
-  @Post('verify-otp')
+  @Post("verify-otp")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async verifyOtp(
-      @Body() dto: VerifyOtpDto,
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
+    @Body() dto: VerifyOtpDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const meta = {
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
     };
 
@@ -62,23 +67,23 @@ export class AuthController {
     };
   }
 
-  @Post('resend-otp')
+  @Post("resend-otp")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async resendOtp(@Body() dto: ResendOtpDto) {
     return this.authService.resendOtp(dto);
   }
 
-  @Post('login')
+  @Post("login")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async login(
-      @Body() dto: LoginDto,
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
+    @Body() dto: LoginDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const meta = {
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
     };
 
@@ -92,11 +97,11 @@ export class AuthController {
     };
   }
 
-  @Post('logout')
+  @Post("logout")
   @HttpCode(HttpStatus.OK)
   async logout(
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const refreshToken = req.cookies.refreshToken;
     const result = await this.authService.logout(refreshToken);
@@ -104,20 +109,22 @@ export class AuthController {
     return result;
   }
 
-  @Post('refresh')
+  @Post("refresh")
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async refresh(
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      throw new UnauthorizedException('Không tìm thấy refresh token trong cookie');
+      throw new UnauthorizedException(
+        "Không tìm thấy refresh token trong cookie",
+      );
     }
 
     const meta = {
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
     };
 
@@ -130,35 +137,39 @@ export class AuthController {
     };
   }
 
-  @Post('forgot-password')
+  @Post("forgot-password")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
 
-  @Post('reset-password')
+  @Post("reset-password")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
 
+  private isProduction(): boolean {
+    return this.configService.get("NODE_ENV", { infer: true }) === "production";
+  }
+
   private clearRefreshTokenCookie(res: FastifyReply) {
-    res.clearCookie('refreshToken', {
-      path: '/api/v1/auth',
+    res.clearCookie("refreshToken", {
+      path: "/api/v1/auth",
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: this.isProduction(),
+      sameSite: "lax",
     });
   }
 
   private setRefreshTokenCookie(res: FastifyReply, refreshToken: string) {
-    res.setCookie('refreshToken', refreshToken, {
+    res.setCookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Chỉ bật HTTPS khi lên Production
-      sameSite: 'lax',    // Chống tấn công CSRF
-      path: '/api/v1/auth',
+      secure: this.isProduction(),
+      sameSite: "lax",
+      path: "/api/v1/auth",
       maxAge: 7 * 24 * 60 * 60,
     });
   }
