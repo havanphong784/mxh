@@ -1,17 +1,35 @@
-import {Injectable, NotFoundException} from "@nestjs/common";
-import {PrismaService} from "../prisma/prisma.service.js";
-import {NotificationPaginationDto} from "./dto/notification-pagination.dto.js";
-import {EventsGateway} from "../gateway/events.gateway.js";
-import {Temporal} from '@js-temporal/polyfill';
+import { Injectable, NotFoundException, Optional } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js";
+import { EventsGateway } from "../gateway/events.gateway.js";
+import { Temporal } from "@js-temporal/polyfill";
+import { NotificationsRepository } from "./notifications.repository.js";
+import {
+  MarkAllReadResultDto,
+  MarkReadResultDto,
+  NotificationPaginatedResponseDto,
+  NotificationResponseMapper,
+  UnreadCountResponseDto,
+} from "./dto/notification-response.dto.js";
 
 @Injectable()
 export class NotificationsService {
+  private readonly notificationsRepository: NotificationsRepository;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventsGateway: EventsGateway,
-  ) {}
+    @Optional()
+    notificationsRepository?: NotificationsRepository,
+  ) {
+    this.notificationsRepository =
+      notificationsRepository ?? new NotificationsRepository(this.prisma);
+  }
 
-  async getNotifications(userId: string, query: NotificationPaginationDto) {
+  async getNotifications(
+    userId: string,
+    query: NotificationPaginationDto,
+  ): Promise<NotificationPaginatedResponseDto> {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
 
     let cursor: { createdAt: Temporal.Instant; id: string } | undefined;
@@ -34,22 +52,11 @@ export class NotificationsService {
       }
     }
 
-    let q = this.prisma.client.orm.public.Notification.where((n) =>
-      n.recipientId.eq(userId),
-    ).orderBy([(n) => n.createdAt.desc(), (n) => n.id.desc()]);
-
-    if (cursor) {
-      q = q.cursor({
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      });
-    }
-
-    const items = await q
-      .include("actor")
-      .include("post")
-      .limit(limit + 1)
-      .all();
+    const items = await this.notificationsRepository.findManyWithCursor(
+      userId,
+      limit,
+      cursor,
+    );
 
     const hasMore = items.length > limit;
     const dataItems = hasMore ? items.slice(0, limit) : items;
@@ -62,59 +69,31 @@ export class NotificationsService {
       ).toString("base64");
     }
 
-    const formattedData = dataItems.map((item: any) => ({
-      id: item.id,
-      type: item.type,
-      isRead: item.isRead,
-      createdAt: item.createdAt,
-      actor: item.actor
-        ? {
-            id: item.actor.id,
-            username: item.actor.username,
-            displayName: item.actor.displayName,
-            avatarUrl: item.actor.avatarUrl,
-          }
-        : null,
-      post: item.post
-        ? {
-            id: item.post.id,
-            content: item.post.content ? item.post.content.slice(0, 100) : null,
-          }
-        : null,
-    }));
-
     return {
-      data: formattedData,
+      data: dataItems.map(NotificationResponseMapper.toItemDto),
       nextCursor,
       hasMore,
     };
   }
 
-  async getUnreadCount(userId: string) {
-    const agg = await this.prisma.client.orm.public.Notification.where((n) =>
-      n.recipientId.eq(userId),
-    )
-      .where((n) => n.isRead.eq(false))
-      .aggregate((a) => ({ count: a.count() }));
-
-    return {
-      count: Number(agg.count) || 0,
-    };
+  async getUnreadCount(userId: string): Promise<UnreadCountResponseDto> {
+    const count = await this.notificationsRepository.countUnread(userId);
+    return { count };
   }
 
-  async markAsRead(userId: string, notificationId: string) {
-    const notification = await this.prisma.client.orm.public.Notification.where(
-      { id: notificationId },
-    ).first();
+  async markAsRead(
+    userId: string,
+    notificationId: string,
+  ): Promise<MarkReadResultDto> {
+    const notification =
+      await this.notificationsRepository.findById(notificationId);
 
     if (!notification || notification.recipientId !== userId) {
       throw new NotFoundException("Thông báo không tồn tại");
     }
 
     if (!notification.isRead) {
-      await this.prisma.client.orm.public.Notification.where({
-        id: notificationId,
-      }).update({ isRead: true });
+      await this.notificationsRepository.markAsRead(notificationId);
 
       const unread = await this.getUnreadCount(userId);
       this.eventsGateway.pushToUser(
@@ -130,18 +109,9 @@ export class NotificationsService {
     };
   }
 
-  async markAllAsRead(userId: string) {
-    const rawPlan = this.prisma.client.raw.sql`
-      UPDATE "notification"
-      SET "isRead" = true
-      WHERE "recipientId" = ${userId} AND "isRead" = false
-    `
-      .affectedCount()
-      .build();
-
-    const { affectedRows } = await this.prisma.client.transaction(async (tx) => {
-      return await tx.execute(rawPlan);
-    });
+  async markAllAsRead(userId: string): Promise<MarkAllReadResultDto> {
+    const affectedRows =
+      await this.notificationsRepository.markAllAsRead(userId);
 
     this.eventsGateway.pushToUser(userId, "notification:unread-count", {
       count: 0,

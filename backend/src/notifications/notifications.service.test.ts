@@ -71,3 +71,38 @@ test('mark all as read returns the affected row count', async () => {
 
     assert.deepEqual(await service.markAllAsRead('user-id'), { success: true, count: 3 });
 });
+
+test('getNotifications maps actor and post through NotificationResponseMapper', async () => {
+    const mockNotification = {
+        id: 'notif-1',
+        type: 'LIKE',
+        isRead: false,
+        createdAt: '2026-10-27T10:00:00.000Z',
+        actor: {
+            id: 'actor-1',
+            username: 'alice',
+            displayName: 'Alice',
+            avatarUrl: 'https://example.com/avatar.jpg',
+        },
+        post: {
+            id: 'post-1',
+            content: 'Hello world long content that should be sliced to 100 characters max when returned as post preview in notification item dto.',
+        },
+    };
+
+    const query: any = {
+        orderBy() { return query; },
+        include() { return query; },
+        limit() { return query; },
+        async all() { return [mockNotification]; },
+    };
+    const prisma = { client: { orm: { public: { Notification: { where: () => query } } } } };
+    const service = new NotificationsService(prisma as any, {} as any);
+
+    const result = await service.getNotifications('user-id', { limit: 20 });
+    assert.equal(result.data.length, 1);
+    assert.equal(result.data[0].id, 'notif-1');
+    assert.equal(result.data[0].actor?.username, 'alice');
+    assert.equal(result.data[0].post?.id, 'post-1');
+    assert.ok(result.data[0].post?.content && result.data[0].post.content.length <= 100);
+});

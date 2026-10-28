@@ -21,6 +21,13 @@ import {Temporal} from '@js-temporal/polyfill';
 import {EventEmitter2} from '@nestjs/event-emitter';
 import {AUTH_EVENTS} from '../events/event-types.js';
 import type {SessionRevokedEvent, UserSessionsRevokedEvent} from '../events/event-types.js';
+import type {
+    AuthResultDto,
+    AuthUserDto,
+    MessageResponseDto,
+    RefreshResultDto,
+    RegisterResponseDto,
+} from './dto/auth-response.dto.js';
 
 export interface RequestMeta {
     userAgent?: string;
@@ -36,7 +43,7 @@ export class AuthService {
         private readonly eventEmitter: EventEmitter2,
     ) {}
 
-    async getMe(userId: string) {
+    async getMe(userId: string): Promise<AuthUserDto> {
         const user = await this.prisma.client.orm.public.User
             .where((u) => u.id.eq(userId))
             .first();
@@ -58,7 +65,7 @@ export class AuthService {
         };
     }
 
-    async register(dto:RegisterDto) {
+    async register(dto: RegisterDto): Promise<RegisterResponseDto> {
         const email = dto.email;
         const username = dto.username;
 
@@ -121,7 +128,10 @@ export class AuthService {
         };
     }
 
-    async verifyOtp(dto: VerifyOtpDto, meta: RequestMeta){
+    async verifyOtp(
+        dto: VerifyOtpDto,
+        meta: RequestMeta,
+    ): Promise<AuthResultDto> {
         const email = dto.email;
         const otpRecord = await this.prisma.client.orm.public.OtpVerification
             .where((o) => o.email.eq(email))
@@ -184,7 +194,7 @@ export class AuthService {
 
     }
 
-    async resendOtp(dto: ResendOtpDto) {
+    async resendOtp(dto: ResendOtpDto): Promise<RegisterResponseDto> {
         const email = dto.email;
         const user = await this.prisma.client.orm.public.User
             .where((u) => u.email.eq(email))
@@ -249,7 +259,10 @@ export class AuthService {
         };
     }
 
-    async login(dto: LoginDto, meta: RequestMeta) {
+    async login(
+        dto: LoginDto,
+        meta: RequestMeta,
+    ): Promise<AuthResultDto> {
         const email = dto.email;
         const user = await this.prisma.client.orm.public.User
             .where((u) => u.email.eq(email))
@@ -290,7 +303,10 @@ export class AuthService {
         };
     }
 
-    async refreshTokens(refreshToken: string, meta: RequestMeta) {
+    async refreshTokens(
+        refreshToken: string,
+        meta: RequestMeta,
+    ): Promise<RefreshResultDto> {
         let payload: any;
         try {
             payload = await this.jwtService.verifyAsync(refreshToken, {
@@ -382,7 +398,7 @@ export class AuthService {
         };
     }
 
-    async logout(refreshToken?: string) {
+    async logout(refreshToken?: string): Promise<MessageResponseDto> {
         if (!refreshToken) {
             return { message: 'Đăng xuất thành công!' };
         }
@@ -408,7 +424,9 @@ export class AuthService {
         };
     }
 
-    async forgotPassword(dto: ForgotPasswordDto) {
+    async forgotPassword(
+        dto: ForgotPasswordDto,
+    ): Promise<MessageResponseDto> {
         const email = dto.email;
         const user = await this.prisma.client.orm.public.User
             .where((u) => u.email.eq(email))
@@ -468,7 +486,7 @@ export class AuthService {
         };
     }
 
-    async resetPassword(dto: ResetPasswordDto) {
+    async resetPassword(dto: ResetPasswordDto): Promise<MessageResponseDto> {
         const email = dto.email;
         const otpRecord = await this.prisma.client.orm.public.OtpVerification
             .where((o) => o.email.eq(email))

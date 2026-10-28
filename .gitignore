@@ -1,3 +1,4 @@
+node_modules
 node_modules/
 .next/
 dist/
@@ -16,6 +17,7 @@ coverage/
 /docs/posts.http
 *.test.ts
 !backend/src/scripts/seed-data.test.ts
+!backend/src/scripts/purge-retention.test.ts
 !frontend/lib/single-flight.test.ts
 !frontend/lib/auth-session.test.ts
 !frontend/lib/page-title.test.ts

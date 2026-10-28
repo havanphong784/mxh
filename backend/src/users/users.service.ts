@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
   Optional,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { MediaService } from "../media/media.service.js";
@@ -735,6 +736,24 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  async getAuthProfile(userId: string) {
+    const user = await this.usersRepository.findById(userId);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException("Tài khoản không tồn tại hoặc đã bị khóa.");
+    }
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      bannerUrl: user.bannerUrl,
+      bio: user.bio,
+      isEmailVerified: user.isEmailVerified,
+      createdAt: user.createdAt,
+    };
   }
 
   async findActiveUserById(userId: string) {

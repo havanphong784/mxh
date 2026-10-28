@@ -9,47 +9,54 @@ import {
   Res,
   UnauthorizedException,
   UseGuards,
-} from '@nestjs/common';
-import type {FastifyReply, FastifyRequest} from 'fastify';
-import {AuthService} from './auth.service.js';
-import {RegisterDto} from './dto/register.dto.js';
-import {VerifyOtpDto} from './dto/verify-otp.dto.js';
-import {ResendOtpDto} from "./dto/resend-otp.dto.js";
-import {LoginDto} from "./dto/login.dto.js";
-import {JwtAuthGuard} from "./guards/jwt-auth.guard.js";
-import {CurrentUser} from "./decorators/current-user.decorator.js";
-import {ForgotPasswordDto} from "./dto/forgot-password.dto.js";
-import {ResetPasswordDto} from "./dto/reset-password.dto.js";
-import {Throttle} from '@nestjs/throttler';
+} from "@nestjs/common";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { AuthService } from "./auth.service.js";
+import { RegisterDto } from "./dto/register.dto.js";
+import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
+import { ResendOtpDto } from "./dto/resend-otp.dto.js";
+import { LoginDto } from "./dto/login.dto.js";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
+import { CurrentUser } from "./decorators/current-user.decorator.js";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
+import { ResetPasswordDto } from "./dto/reset-password.dto.js";
+import { Throttle } from "@nestjs/throttler";
+import type {
+  AuthResponseDto,
+  AuthUserDto,
+  MessageResponseDto,
+  RefreshResponseDto,
+  RegisterResponseDto,
+} from "./dto/auth-response.dto.js";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Get('me')
+  @Get("me")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async getMe(@CurrentUser('sub') userId: string) {
+  async getMe(@CurrentUser("sub") userId: string): Promise<AuthUserDto> {
     return this.authService.getMe(userId);
   }
 
-  @Post('register')
+  @Post("register")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto) {
+  async register(@Body() dto: RegisterDto): Promise<RegisterResponseDto> {
     return this.authService.register(dto);
   }
 
-  @Post('verify-otp')
+  @Post("verify-otp")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async verifyOtp(
-      @Body() dto: VerifyOtpDto,
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
-  ) {
+    @Body() dto: VerifyOtpDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<AuthResponseDto> {
     const meta = {
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
     };
 
@@ -62,23 +69,23 @@ export class AuthController {
     };
   }
 
-  @Post('resend-otp')
+  @Post("resend-otp")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async resendOtp(@Body() dto: ResendOtpDto) {
+  async resendOtp(@Body() dto: ResendOtpDto): Promise<RegisterResponseDto> {
     return this.authService.resendOtp(dto);
   }
 
-  @Post('login')
+  @Post("login")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async login(
-      @Body() dto: LoginDto,
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
-  ) {
+    @Body() dto: LoginDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<AuthResponseDto> {
     const meta = {
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
     };
 
@@ -92,32 +99,34 @@ export class AuthController {
     };
   }
 
-  @Post('logout')
+  @Post("logout")
   @HttpCode(HttpStatus.OK)
   async logout(
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
-  ) {
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<MessageResponseDto> {
     const refreshToken = req.cookies.refreshToken;
     const result = await this.authService.logout(refreshToken);
     this.clearRefreshTokenCookie(res);
     return result;
   }
 
-  @Post('refresh')
+  @Post("refresh")
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async refresh(
-      @Req() req: FastifyRequest,
-      @Res({ passthrough: true }) res: FastifyReply
-  ) {
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<RefreshResponseDto> {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
-      throw new UnauthorizedException('Không tìm thấy refresh token trong cookie');
+      throw new UnauthorizedException(
+        "Không tìm thấy refresh token trong cookie",
+      );
     }
 
     const meta = {
-      userAgent: req.headers['user-agent'],
+      userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
     };
 
@@ -130,17 +139,21 @@ export class AuthController {
     };
   }
 
-  @Post('forgot-password')
+  @Post("forgot-password")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<MessageResponseDto> {
     return this.authService.forgotPassword(dto);
   }
 
-  @Post('reset-password')
+  @Post("reset-password")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Body() dto: ResetPasswordDto) {
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<MessageResponseDto> {
     return this.authService.resetPassword(dto);
   }
 
