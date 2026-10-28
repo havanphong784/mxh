@@ -18,6 +18,7 @@ coverage/
 *.test.ts
 !backend/src/scripts/seed-data.test.ts
 !backend/src/scripts/purge-retention.test.ts
+!backend/src/common/idempotency/idempotency.interceptor.test.ts
 !frontend/lib/single-flight.test.ts
 !frontend/lib/auth-session.test.ts
 !frontend/lib/page-title.test.ts
