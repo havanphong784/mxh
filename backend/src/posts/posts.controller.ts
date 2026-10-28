@@ -22,6 +22,8 @@ import { CursorPaginationDto } from "./dto/cursor-pagination.dto.js";
 import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
 import { SearchQueryDto } from "../common/dto/search-query.dto.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
+import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
+import type { PostResponseDto } from "./dto/post-response.dto.js";
 
 @Controller("posts")
 export class PostsController {
@@ -34,7 +36,7 @@ export class PostsController {
   async createPost(
     @CurrentUser("sub") userId: string,
     @Body() dto: CreatePostDto,
-  ) {
+  ): Promise<PostResponseDto> {
     return this.postsService.createPost(userId, dto);
   }
 
@@ -44,7 +46,7 @@ export class PostsController {
   async getFeed(
     @CurrentUser("sub") userId: string,
     @Query() query: CursorPaginationDto,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getFeed(userId, query);
   }
 
@@ -54,7 +56,7 @@ export class PostsController {
   async getExplore(
     @Query() query: ExploreQueryDto,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getExplore(query, viewerId);
   }
 
@@ -64,7 +66,7 @@ export class PostsController {
   async searchPosts(
     @Query() query: SearchQueryDto,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getExplore(query, viewerId, query.q);
   }
 
@@ -74,7 +76,7 @@ export class PostsController {
   async getBookmarks(
     @CurrentUser("sub") userId: string,
     @Query() query: CursorPaginationDto,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getBookmarks(userId, query);
   }
 
@@ -84,7 +86,7 @@ export class PostsController {
   async getLikedPosts(
     @CurrentUser("sub") userId: string,
     @Query() query: CursorPaginationDto,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getLikedPosts(userId, query);
   }
 
@@ -94,7 +96,7 @@ export class PostsController {
   async getPostById(
     @Param("id") postId: string,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<PostResponseDto> {
     return this.postsService.getPostById(postId, viewerId);
   }
 
@@ -105,7 +107,7 @@ export class PostsController {
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
     @Body() dto: UpdatePostDto,
-  ) {
+  ): Promise<PostResponseDto> {
     return this.postsService.updatePost(postId, userId, dto);
   }
 
@@ -116,8 +118,8 @@ export class PostsController {
   async deletePost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
-    return this.postsService.deletePost(postId, userId);
+  ): Promise<void> {
+    await this.postsService.deletePost(postId, userId);
   }
 
   @Get(":id/replies")
@@ -127,7 +129,7 @@ export class PostsController {
     @Param("id") postId: string,
     @Query() query: CursorPaginationDto,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getReplies(postId, query, viewerId);
   }
 
@@ -137,7 +139,7 @@ export class PostsController {
   async getAncestors(
     @Param("id") postId: string,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<{ ancestors: PostResponseDto[] }> {
     return this.postsService.getAncestors(postId, viewerId);
   }
 
@@ -148,7 +150,7 @@ export class PostsController {
   async repost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
+  ): Promise<{ reposted: boolean; repostCount: number }> {
     return this.postsService.repost(postId, userId);
   }
 
@@ -159,8 +161,8 @@ export class PostsController {
   async unrepost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
-    return this.postsService.unrepost(postId, userId);
+  ): Promise<void> {
+    await this.postsService.unrepost(postId, userId);
   }
 
   @Post(":id/like")
@@ -170,7 +172,7 @@ export class PostsController {
   async likePost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
+  ): Promise<{ liked: boolean; likeCount: number }> {
     return this.postsService.likePost(postId, userId);
   }
 
@@ -181,8 +183,8 @@ export class PostsController {
   async unlikePost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
-    return this.postsService.unlikePost(postId, userId);
+  ): Promise<void> {
+    await this.postsService.unlikePost(postId, userId);
   }
 
   @Get(":id/likes")
@@ -192,7 +194,14 @@ export class PostsController {
     @Param("id") postId: string,
     @Query() query: OffsetPaginationDto,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<
+    OffsetPage<{
+      id: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+    }>
+  > {
     return this.postsService.getPostLikes(postId, query, viewerId);
   }
 
@@ -203,7 +212,7 @@ export class PostsController {
   async bookmarkPost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
+  ): Promise<{ bookmarked: boolean }> {
     return this.postsService.bookmarkPost(postId, userId);
   }
 
@@ -214,7 +223,7 @@ export class PostsController {
   async unbookmarkPost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
-  ) {
-    return this.postsService.unbookmarkPost(postId, userId);
+  ): Promise<void> {
+    await this.postsService.unbookmarkPost(postId, userId);
   }
 }

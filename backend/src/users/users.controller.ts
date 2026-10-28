@@ -22,6 +22,14 @@ import { SearchQueryDto } from "../common/dto/search-query.dto.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
+import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
+import type { PostResponseDto } from "../posts/dto/post-response.dto.js";
+import type {
+  FollowActionResultDto,
+  MyProfileResponseDto,
+  PublicProfileResponseDto,
+  UserSummaryDto,
+} from "./dto/user-response.dto.js";
 
 @Controller("users")
 export class UsersController {
@@ -32,19 +40,25 @@ export class UsersController {
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
-  async getMyProfile(@CurrentUser("sub") userId: string) {
+  async getMyProfile(
+    @CurrentUser("sub") userId: string,
+  ): Promise<MyProfileResponseDto> {
     return this.usersService.getMyProfile(userId);
   }
 
   @Get("search")
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async searchUsers(@Query() query: SearchQueryDto) {
+  async searchUsers(
+    @Query() query: SearchQueryDto,
+  ): Promise<CursorPage<UserSummaryDto>> {
     return this.usersService.searchUsers(query.q, query.cursor, query.limit);
   }
 
   @Get("suggestions")
   @UseGuards(OptionalJwtAuthGuard)
-  async suggestUsers(@CurrentUser("sub") viewerId?: string) {
+  async suggestUsers(
+    @CurrentUser("sub") viewerId?: string,
+  ): Promise<{ items: UserSummaryDto[] }> {
     return this.usersService.suggestUsers(viewerId);
   }
 
@@ -53,7 +67,7 @@ export class UsersController {
   async getPublicProfile(
     @Param("username") username: string,
     @CurrentUser("sub") currentUserId?: string,
-  ) {
+  ): Promise<PublicProfileResponseDto> {
     return this.usersService.getPublicProfile(username, currentUserId);
   }
 
@@ -64,7 +78,7 @@ export class UsersController {
   async follow(
     @CurrentUser("sub") currentUserId: string,
     @Param("id") targetUserId: string,
-  ) {
+  ): Promise<FollowActionResultDto> {
     return this.usersService.followUser(currentUserId, targetUserId);
   }
 
@@ -75,15 +89,15 @@ export class UsersController {
   async unfollow(
     @CurrentUser("sub") currentUserId: string,
     @Param("id") targetUserId: string,
-  ) {
-    return this.usersService.unfollowUser(currentUserId, targetUserId);
+  ): Promise<void> {
+    await this.usersService.unfollowUser(currentUserId, targetUserId);
   }
 
   @Get(":username/followers")
   async getFollowers(
     @Param("username") username: string,
     @Query() query: FollowPaginationDto,
-  ) {
+  ): Promise<OffsetPage<UserSummaryDto>> {
     return this.usersService.getFollowers(username, query);
   }
 
@@ -91,7 +105,7 @@ export class UsersController {
   async getFollowing(
     @Param("username") username: string,
     @Query() query: FollowPaginationDto,
-  ) {
+  ): Promise<OffsetPage<UserSummaryDto>> {
     return this.usersService.getFollowing(username, query);
   }
 
@@ -102,7 +116,7 @@ export class UsersController {
     @Param("username") username: string,
     @Query() query: CursorPaginationDto,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getUserPosts(username, query, viewerId);
   }
 
@@ -113,7 +127,7 @@ export class UsersController {
     @Param("username") username: string,
     @Query() query: CursorPaginationDto,
     @CurrentUser("sub") viewerId?: string,
-  ) {
+  ): Promise<CursorPage<PostResponseDto>> {
     return this.postsService.getUserReplies(username, query, viewerId);
   }
 
@@ -123,7 +137,7 @@ export class UsersController {
   async updateProfile(
     @CurrentUser("sub") userId: string,
     @Body() dto: UpdateProfileDto,
-  ) {
+  ): Promise<MyProfileResponseDto> {
     return this.usersService.updateProfile(userId, dto);
   }
 
@@ -135,7 +149,7 @@ export class UsersController {
     @CurrentUser("sub") userId: string,
     @CurrentUser("sessionId") currentSessionId: string,
     @Body() dto: ChangePasswordDto,
-  ) {
+  ): Promise<{ message: string }> {
     return this.usersService.changePassword(userId, dto, currentSessionId);
   }
 }

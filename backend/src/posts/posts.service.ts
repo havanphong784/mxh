@@ -27,6 +27,12 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Temporal } from "@js-temporal/polyfill";
 import { toContainsPattern } from "../common/search.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
+import {
+  PostResponseDto,
+  PostResponseMapper,
+} from "./dto/post-response.dto.js";
+import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
+import { PostsRepository } from "./posts.repository.js";
 
 @Injectable()
 export class PostsService {
@@ -34,6 +40,7 @@ export class PostsService {
 
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly postsRepository: PostsRepository,
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => UsersService))
@@ -404,133 +411,8 @@ export class PostsService {
       repostedSet?: Set<string>;
       bookmarkedSet?: Set<string>;
     },
-  ): any {
-    if (post.isDeleted) {
-      return {
-        id: post.id,
-        isDeleted: true,
-        createdAt: post.createdAt,
-        replyCount: post.replyCount,
-      };
-    }
-
-    if (
-      post.author &&
-      (!post.author.isActive || !post.author.isEmailVerified)
-    ) {
-      return {
-        id: post.id,
-        isUnavailable: true,
-        createdAt: post.createdAt,
-        replyCount: post.replyCount,
-      };
-    }
-
-    const isLiked = options?.likedSet ? options.likedSet.has(post.id) : false;
-    const isReposted = options?.repostedSet
-      ? options.repostedSet.has(post.id)
-      : false;
-    const isBookmarked = options?.bookmarkedSet
-      ? options.bookmarkedSet.has(post.id)
-      : false;
-
-    let quotedPostData: any = null;
-    let isQuotedPostDeleted = false;
-
-    if (post.quotedPostId) {
-      if (
-        post.quotedPost &&
-        !post.quotedPost.isDeleted &&
-        post.quotedPost.visibility === "PUBLIC"
-      ) {
-        quotedPostData = {
-          id: post.quotedPost.id,
-          content: post.quotedPost.content,
-          createdAt: post.quotedPost.createdAt,
-          author: post.quotedPost.author
-            ? {
-                id: post.quotedPost.author.id,
-                username: post.quotedPost.author.username,
-                displayName: post.quotedPost.author.displayName,
-                avatarUrl: post.quotedPost.author.avatarUrl,
-              }
-            : null,
-          media: (post.quotedPost.media || []).map((m: any) => ({
-            id: m.id,
-            url: m.url,
-            type: m.type,
-          })),
-        };
-      } else {
-        isQuotedPostDeleted = true;
-      }
-    }
-
-    if (
-      post.author &&
-      (!post.author.isActive || !post.author.isEmailVerified)
-    ) {
-      return {
-        id: post.id,
-        isUnavailable: true,
-        createdAt: post.createdAt,
-        parentId: post.parentId ?? null,
-        rootId: post.rootId ?? null,
-        replyCount: post.replyCount,
-      };
-    }
-
-    return {
-      id: post.id,
-      content: post.content,
-      visibility: post.visibility,
-      parentId: post.parentId ?? null,
-      rootId: post.rootId ?? null,
-      repostOfId: post.repostOfId ?? null,
-      repostOf:
-        post.repostOf &&
-        !post.repostOf.isDeleted &&
-        post.repostOf.visibility === "PUBLIC"
-          ? this.toPostResponse(post.repostOf)
-          : null,
-      quotedPostId: post.quotedPostId ?? null,
-      quotedPost: quotedPostData,
-      isQuotedPostDeleted,
-      isDeleted: false,
-      editedAt: post.editedAt,
-      createdAt: post.createdAt,
-      author: {
-        id: post.author.id,
-        username: post.author.username,
-        displayName: post.author.displayName,
-        avatarUrl: post.author.avatarUrl,
-        bio: post.author.bio,
-      },
-      media: (post.media || [])
-        .sort((a: any, b: any) => a.order - b.order)
-        .map((m: any) => ({
-          id: m.id,
-          publicId: m.publicId,
-          url: m.url,
-          type: m.type,
-          width: m.width,
-          height: m.height,
-          duration: m.duration,
-          order: m.order,
-        })),
-      counters: {
-        likeCount: post.likeCount,
-        replyCount: post.replyCount,
-        repostCount: post.repostCount,
-        quoteCount: post.quoteCount,
-        bookmarkCount: post.bookmarkCount,
-      },
-      interactions: {
-        isLiked,
-        isReposted,
-        isBookmarked,
-      },
-    };
+  ): PostResponseDto {
+    return PostResponseMapper.fromEntity(post, options);
   }
 
   async canView(post: any, viewerId?: string): Promise<boolean> {
