@@ -1,12 +1,10 @@
-import {Injectable, Logger} from "@nestjs/common";
-import {OnEvent} from "@nestjs/event-emitter";
-import {PrismaService} from "../prisma/prisma.service.js";
-import {EventsGateway} from "../gateway/events.gateway.js";
-import {Temporal} from '@js-temporal/polyfill';
-import {
-  POST_EVENTS,
-  USER_EVENTS,
-} from "../events/event-types.js";
+import { Injectable, Logger } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { EventsGateway } from "../gateway/events.gateway.js";
+import { UsersService } from "../users/users.service.js";
+import { Temporal } from "@js-temporal/polyfill";
+import { POST_EVENTS, USER_EVENTS } from "../events/event-types.js";
 import type {
   PostCreatedEvent,
   PostLikedEvent,
@@ -23,6 +21,7 @@ export class NotificationsListener {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventsGateway: EventsGateway,
+    private readonly usersService: UsersService,
   ) {}
 
   @OnEvent(POST_EVENTS.CREATED)
@@ -30,15 +29,15 @@ export class NotificationsListener {
     if (!event.isRootPost) return;
 
     try {
-      const followers = await this.prisma.client.orm.public.Follow.where((f) =>
-          f.followingId.eq(event.authorId),
-      ).all();
+      const followerIds = await this.usersService.getFollowerIds(
+        event.authorId,
+      );
 
-      if (!followers || followers.length === 0) return;
+      if (!followerIds || followerIds.length === 0) return;
 
-      for (const follow of followers) {
-        if (this.eventsGateway.isUserOnline(follow.followerId)) {
-          this.eventsGateway.pushToUser(follow.followerId, "feed:new-post", {
+      for (const followerId of followerIds) {
+        if (this.eventsGateway.isUserOnline(followerId)) {
+          this.eventsGateway.pushToUser(followerId, "feed:new-post", {
             authorId: event.authorId,
             postId: event.postId,
           });
