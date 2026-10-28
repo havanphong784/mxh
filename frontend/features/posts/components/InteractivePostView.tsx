@@ -13,7 +13,8 @@ import { InfiniteScrollTrigger } from "@/components/common/InfiniteScrollTrigger
 import { isActivePost } from "@/features/posts/post-state";
 
 export function InteractivePostView({ postId }: { postId: string }) {
-  const user = useAuthStore((state) => state.user);
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const queryClient = useQueryClient();
   const postQuery = useQuery({
     queryKey: ["posts", "detail", postId],
@@ -61,14 +62,14 @@ export function InteractivePostView({ postId }: { postId: string }) {
         repliesLoading={repliesQuery.isPending}
         repliesError={repliesQuery.isError}
         onRetryReplies={() => repliesQuery.refetch()}
-        currentUserId={user?.id}
+        currentUserId={currentUserId}
         isLoading={postQuery.isLoading}
         onLike={actions.toggleLike}
         onRepost={actions.toggleRepost}
         onBookmark={actions.toggleBookmark}
         onDelete={actions.deletePost}
         replyComposerNode={
-          !canReply ? null : user ? (
+          !canReply ? null : isAuthenticated ? (
             <PostComposer
               parentId={postId}
               placeholder="Viết phản hồi…"

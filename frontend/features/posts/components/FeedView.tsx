@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useFeed } from "@/features/posts/hooks/useFeed";
 import { PostList } from "@/components/common/PostList";
 import { InfiniteScrollTrigger } from "@/components/common/InfiniteScrollTrigger";
 import { NewPostBanner } from "@/features/posts/components/NewPostBanner";
 import { PostComposer } from "@/features/posts/components/PostComposer";
 import { PostFeedSkeleton } from "@/components/ui/PostSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuthStore } from "@/stores/authStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 
@@ -51,38 +51,36 @@ export function FeedView() {
 
       {/* Danh sách bài viết */}
       {!isAuthenticated ? (
-        <div className="surface-card px-6 py-14 text-center">
-          <span className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-[#fff0f3] text-[25px] text-[#ff8da1]">
-            ♡
-          </span>
-          <h2 className="mt-5 text-[18px] font-extrabold">
-            Đăng nhập để xem bảng tin
-          </h2>
-          <p className="mt-2 text-[13px] text-[#6d6a82]">
-            Bảng tin hiển thị bài viết của những người bạn theo dõi.
-          </p>
-          <Link
-            href="/login"
-            className="mt-5 inline-flex rounded-full bg-[#7b78ff] px-5 py-2.5 text-[13px] font-bold text-white"
-          >
-            Đăng nhập
-          </Link>
-        </div>
+        <EmptyState
+          title="Đăng nhập để xem bảng tin"
+          description="Bảng tin hiển thị bài viết của những người bạn theo dõi."
+          href="/login"
+          action="Đăng nhập ngay"
+        />
       ) : isLoading ? (
         <PostFeedSkeleton count={3} />
       ) : isError && posts.length === 0 && !isFetchNextPageError ? (
         <div className="surface-card px-6 py-14 text-center">
-          <h2 className="text-[18px] font-extrabold">Không thể tải bảng tin</h2>
+          <h2 className="text-[18px] font-extrabold text-[#1c1b29]">
+            Không thể tải bảng tin
+          </h2>
           <p className="mt-2 text-[13px] text-[#6d6a82]">
             Kiểm tra kết nối rồi thử lại.
           </p>
           <button
             onClick={() => refetch()}
-            className="mt-5 rounded-full bg-[#eeedff] px-5 py-2.5 text-[13px] font-bold text-[#7b78ff]"
+            className="mt-5 rounded-full bg-[#eeedff] px-5 py-2.5 text-[13px] font-bold text-[#7b78ff] hover:bg-[#e0deff]"
           >
             Thử lại
           </button>
         </div>
+      ) : posts.length === 0 && !hasNextPage && !isFetchNextPageError ? (
+        <EmptyState
+          title="Chưa có bài viết nào trên bảng tin"
+          description="Hãy theo dõi thêm bạn bè hoặc khám phá các chủ đề mới để cập nhật tin tức."
+          href="/explore"
+          action="Khám phá cộng đồng"
+        />
       ) : (
         <div className="feed-stack">
           <PostList

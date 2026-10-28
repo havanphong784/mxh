@@ -13,15 +13,17 @@ export function RegisterForm() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPasswordError(null);
 
-    const passwordError = validateNewPassword(password);
-    if (passwordError) {
-      setError(passwordError);
+    const valError = validateNewPassword(password);
+    if (valError) {
+      setPasswordError(valError);
       return;
     }
 
@@ -94,14 +96,24 @@ export function RegisterForm() {
         <input
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (passwordError) setPasswordError(null);
+          }}
           placeholder="Ít nhất 8 ký tự, có chữ hoa và số"
           required
           minLength={8}
           maxLength={100}
           autoComplete="new-password"
-          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
+          className={`w-full border rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none transition-colors ${
+            passwordError
+              ? "border-red-400 bg-red-50/40 focus:border-red-500 focus:bg-white"
+              : "border-[#efedf7] focus:border-[#1c1b29] focus:bg-[#ffffff]"
+          }`}
         />
+        {passwordError && (
+          <p className="mt-1 text-[12px] text-red-500">{passwordError}</p>
+        )}
       </div>
       <Button type="submit" className="w-full mt-2" isLoading={isRegistering}>
         Tiếp tục xác thực OTP

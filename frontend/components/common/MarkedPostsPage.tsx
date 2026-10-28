@@ -10,17 +10,18 @@ import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 import { PostList } from "./PostList";
 
 export function MarkedPostsPage({ kind }: { kind: "bookmarks" | "liked" }) {
-  const user = useAuthStore((state) => state.user);
+  const userId = useAuthStore((state) => state.user?.id);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const query = usePostList(
     [kind],
     kind === "bookmarks" ? postsApi.getBookmarks : postsApi.getLikedPosts,
-    Boolean(user),
+    isAuthenticated,
   );
   const actions = usePostInteractions();
   const posts = query.data?.pages.flatMap((page) => page.items) ?? [];
   const label = kind === "bookmarks" ? "đã lưu" : "đã thích";
 
-  if (!user)
+  if (!isAuthenticated)
     return (
       <EmptyState
         title={`Đăng nhập để xem bài ${label}`}
@@ -56,7 +57,7 @@ export function MarkedPostsPage({ kind }: { kind: "bookmarks" | "liked" }) {
       {posts.length > 0 && (
         <PostList
           posts={posts}
-          currentUserId={user.id}
+          currentUserId={userId}
           onLike={actions.toggleLike}
           onRepost={actions.toggleRepost}
           onBookmark={actions.toggleBookmark}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProfile } from "@/features/users/hooks/useProfile";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { usersApi } from "@/features/users/api";
 import { ProfileHeader } from "@/features/users/components/ProfileHeader";
 import { EditProfileModal } from "@/features/users/components/EditProfileModal";
@@ -16,7 +17,8 @@ import { useAuthStore } from "@/stores/authStore";
 
 export function UserProfileView({ username }: { username: string }) {
   const router = useRouter();
-  const currentUser = useAuthStore((state) => state.user);
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const { logout, isLoggingOut } = useAuth();
   const [tab, setTab] = useState<"posts" | "replies">("posts");
   const [editing, setEditing] = useState(false);
   const profile = useProfile(username);
@@ -46,7 +48,7 @@ export function UserProfileView({ username }: { username: string }) {
     );
   }
 
-  const isOwner = currentUser?.id === profile.data.id;
+  const isOwner = currentUserId === profile.data.id;
   const posts = list.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
@@ -56,9 +58,11 @@ export function UserProfileView({ username }: { username: string }) {
         isOwner={isOwner}
         onEdit={() => setEditing(true)}
         onFollow={() =>
-          currentUser ? profile.toggleFollow() : router.push("/login")
+          currentUserId ? profile.toggleFollow() : router.push("/login")
         }
         isFollowPending={profile.isFollowPending}
+        onLogout={logout}
+        isLoggingOut={isLoggingOut}
       />
       <div className="flex gap-2 rounded-[20px] bg-white p-1.5 shadow-[0_12px_32px_-4px_rgba(123,120,255,.08)]">
         {(["posts", "replies"] as const).map((item) => (
@@ -83,7 +87,7 @@ export function UserProfileView({ username }: { username: string }) {
           {posts.length > 0 ? (
             <PostList
               posts={posts}
-              currentUserId={currentUser?.id}
+              currentUserId={currentUserId}
               onLike={actions.toggleLike}
               onRepost={actions.toggleRepost}
               onBookmark={actions.toggleBookmark}
