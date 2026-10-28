@@ -38,3 +38,14 @@ export interface PublicProfileResponseDto {
 export interface FollowActionResultDto {
   message: string;
 }
+
+export interface FollowPaginatedResponseDto {
+  items: UserSummaryDto[];
+  nextCursor: string | null;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

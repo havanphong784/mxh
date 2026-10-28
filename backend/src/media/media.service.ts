@@ -1,5 +1,27 @@
-import {Injectable, Logger} from '@nestjs/common';
-import {v2 as cloudinary} from 'cloudinary';
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { v2 as cloudinary } from "cloudinary";
+import crypto from "node:crypto";
+
+export interface VerifiedMediaItem {
+  publicId: string;
+  url: string;
+  type: "IMAGE" | "VIDEO" | "AUDIO";
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  order: number;
+}
+
+export interface VerifyMediaItemInput {
+  publicId: string;
+  version: number;
+  signature: string;
+  type: "IMAGE" | "VIDEO" | "AUDIO";
+  width?: number;
+  height?: number;
+  duration?: number;
+  order: number;
+}
 
 @Injectable()
 export class MediaService {
@@ -10,6 +32,55 @@ export class MediaService {
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+
+  verifyMediaItems(
+    userId: string,
+    mediaItems: VerifyMediaItemInput[],
+  ): VerifiedMediaItem[] {
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!apiSecret || !cloudName) {
+      throw new Error(
+        "Chưa cấu hình CLOUDINARY_API_SECRET hoặc CLOUDINARY_CLOUD_NAME",
+      );
+    }
+    const expectedPrefix = `mxh/${userId}/posts/`;
+    const seenPublicIds = new Set<string>();
+
+    return mediaItems.map((item) => {
+      if (seenPublicIds.has(item.publicId)) {
+        throw new BadRequestException(`Media ${item.publicId} bị trùng lặp`);
+      }
+      seenPublicIds.add(item.publicId);
+
+      if (!item.publicId.startsWith(expectedPrefix)) {
+        throw new BadRequestException(
+          `Media ${item.publicId} không hợp lệ hoặc không thuộc quyền sở hữu của bạn`,
+        );
+      }
+      const signaturePayload = `public_id=${item.publicId}&version=${item.version}${apiSecret}`;
+      const expectedSignature = crypto
+        .createHash("sha1")
+        .update(signaturePayload)
+        .digest("hex");
+      if (item.signature !== expectedSignature) {
+        throw new BadRequestException(
+          `Chữ ký media ${item.publicId} không hợp lệ`,
+        );
+      }
+      const resourceType = item.type === "IMAGE" ? "image" : "video";
+      const secureUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/v${item.version}/${item.publicId}`;
+      return {
+        publicId: item.publicId,
+        url: secureUrl,
+        type: item.type,
+        width: item.width ?? null,
+        height: item.height ?? null,
+        duration: item.duration ?? null,
+        order: item.order,
+      };
     });
   }
 

@@ -26,6 +26,7 @@ import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
 import type { PostResponseDto } from "../posts/dto/post-response.dto.js";
 import type {
   FollowActionResultDto,
+  FollowPaginatedResponseDto,
   MyProfileResponseDto,
   PublicProfileResponseDto,
   UserSummaryDto,
@@ -73,7 +74,7 @@ export class UsersController {
 
   @Post(":id/follow")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async follow(
     @CurrentUser("sub") currentUserId: string,
@@ -84,7 +85,7 @@ export class UsersController {
 
   @Delete(":id/follow")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async unfollow(
     @CurrentUser("sub") currentUserId: string,
@@ -94,24 +95,26 @@ export class UsersController {
   }
 
   @Get(":username/followers")
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getFollowers(
     @Param("username") username: string,
     @Query() query: FollowPaginationDto,
-  ): Promise<OffsetPage<UserSummaryDto>> {
+  ): Promise<FollowPaginatedResponseDto> {
     return this.usersService.getFollowers(username, query);
   }
 
   @Get(":username/following")
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getFollowing(
     @Param("username") username: string,
     @Query() query: FollowPaginationDto,
-  ): Promise<OffsetPage<UserSummaryDto>> {
+  ): Promise<FollowPaginatedResponseDto> {
     return this.usersService.getFollowing(username, query);
   }
 
   @Get(":username/posts")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getUserPosts(
     @Param("username") username: string,
     @Query() query: CursorPaginationDto,
@@ -122,7 +125,7 @@ export class UsersController {
 
   @Get(":username/replies")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getUserReplies(
     @Param("username") username: string,
     @Query() query: CursorPaginationDto,
@@ -133,7 +136,7 @@ export class UsersController {
 
   @Patch("me")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   async updateProfile(
     @CurrentUser("sub") userId: string,
     @Body() dto: UpdateProfileDto,

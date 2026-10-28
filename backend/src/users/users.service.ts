@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { MediaService } from "../media/media.service.js";
@@ -22,14 +23,23 @@ import {
   DomainException,
   ERROR_CODES,
 } from "../common/exceptions/domain.exception.js";
+import { Temporal } from "@js-temporal/polyfill";
+import { UsersRepository } from "./users.repository.js";
+import type { FollowPaginatedResponseDto } from "./dto/user-response.dto.js";
 
 @Injectable()
 export class UsersService {
+  private readonly repo: UsersRepository;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+    @Optional()
+    usersRepository?: UsersRepository,
+  ) {
+    this.repo = usersRepository ?? new UsersRepository(prisma);
+  }
 
   async searchUsers(term: string, cursor?: string, requestedLimit = 20) {
     const pattern = toContainsPattern(term);
@@ -447,7 +457,10 @@ export class UsersService {
     };
   }
 
-  async getFollowers(username: string, query: FollowPaginationDto) {
+  async getFollowers(
+    username: string,
+    query: FollowPaginationDto,
+  ): Promise<FollowPaginatedResponseDto> {
     const user = await this.prisma.client.orm.public.User.where((u) =>
       u.username.eq(username.toLowerCase()),
     ).first();
@@ -458,8 +471,53 @@ export class UsersService {
       );
     }
 
-    const page = Math.max(1, Number(query?.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+    const cursor = this.decodeFollowCursor(query?.cursor);
+
+    if (cursor) {
+      let followQuery = this.prisma.client.orm.public.Follow.where((f) =>
+        f.followingId.eq(user.id),
+      )
+        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
+        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
+        .orderBy([(f) => f.createdAt.desc(), (f) => f.followerId.desc()])
+        .limit(limit + 1)
+        .include("follower");
+
+      followQuery = followQuery.cursor(cursor);
+      const follows = await followQuery.all();
+
+      const hasNextPage = follows.length > limit;
+      const items = hasNextPage ? follows.slice(0, limit) : follows;
+      const nextCursor =
+        hasNextPage && items.length > 0
+          ? this.encodeFollowCursor({
+              createdAt: items[items.length - 1].createdAt,
+              id: items[items.length - 1].followerId,
+            })
+          : null;
+
+      const total = await this.repo.countFollowers(user.id);
+
+      return {
+        items: items.map((f: any) => ({
+          id: f.follower.id,
+          username: f.follower.username,
+          displayName: f.follower.displayName,
+          avatarUrl: f.follower.avatarUrl,
+          bio: f.follower.bio,
+        })),
+        nextCursor,
+        meta: {
+          total,
+          page: 1,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    const page = Math.max(1, Number(query?.page) || 1);
     const skip = (page - 1) * limit;
 
     const [totalAgg, follows] = await Promise.all([
@@ -474,7 +532,7 @@ export class UsersService {
       )
         .where((f) => f.follower.some((u) => u.isActive.eq(true)))
         .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
-        .orderBy((f) => f.createdAt.desc())
+        .orderBy([(f) => f.createdAt.desc(), (f) => f.followerId.desc()])
         .offset(skip)
         .limit(limit)
         .include("follower")
@@ -482,6 +540,13 @@ export class UsersService {
     ]);
 
     const total = Number(totalAgg.total);
+    const nextCursor =
+      follows.length === limit && skip + limit < total
+        ? this.encodeFollowCursor({
+            createdAt: follows[follows.length - 1].createdAt,
+            id: follows[follows.length - 1].followerId,
+          })
+        : null;
 
     return {
       items: follows.map((f: any) => ({
@@ -491,6 +556,7 @@ export class UsersService {
         avatarUrl: f.follower.avatarUrl,
         bio: f.follower.bio,
       })),
+      nextCursor,
       meta: {
         total,
         page,
@@ -500,7 +566,10 @@ export class UsersService {
     };
   }
 
-  async getFollowing(username: string, query: FollowPaginationDto) {
+  async getFollowing(
+    username: string,
+    query: FollowPaginationDto,
+  ): Promise<FollowPaginatedResponseDto> {
     const user = await this.prisma.client.orm.public.User.where((u) =>
       u.username.eq(username.toLowerCase()),
     ).first();
@@ -511,8 +580,53 @@ export class UsersService {
       );
     }
 
-    const page = Math.max(1, Number(query?.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+    const cursor = this.decodeFollowCursor(query?.cursor);
+
+    if (cursor) {
+      let followQuery = this.prisma.client.orm.public.Follow.where((f) =>
+        f.followerId.eq(user.id),
+      )
+        .where((f) => f.following.some((u) => u.isActive.eq(true)))
+        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
+        .orderBy([(f) => f.createdAt.desc(), (f) => f.followingId.desc()])
+        .limit(limit + 1)
+        .include("following");
+
+      followQuery = followQuery.cursor(cursor);
+      const follows = await followQuery.all();
+
+      const hasNextPage = follows.length > limit;
+      const items = hasNextPage ? follows.slice(0, limit) : follows;
+      const nextCursor =
+        hasNextPage && items.length > 0
+          ? this.encodeFollowCursor({
+              createdAt: items[items.length - 1].createdAt,
+              id: items[items.length - 1].followingId,
+            })
+          : null;
+
+      const total = await this.repo.countFollowing(user.id);
+
+      return {
+        items: items.map((f: any) => ({
+          id: f.following.id,
+          username: f.following.username,
+          displayName: f.following.displayName,
+          avatarUrl: f.following.avatarUrl,
+          bio: f.following.bio,
+        })),
+        nextCursor,
+        meta: {
+          total,
+          page: 1,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    const page = Math.max(1, Number(query?.page) || 1);
     const skip = (page - 1) * limit;
 
     const [totalAgg, follows] = await Promise.all([
@@ -527,7 +641,7 @@ export class UsersService {
       )
         .where((f) => f.following.some((u) => u.isActive.eq(true)))
         .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-        .orderBy((f) => f.createdAt.desc())
+        .orderBy([(f) => f.createdAt.desc(), (f) => f.followingId.desc()])
         .offset(skip)
         .limit(limit)
         .include("following")
@@ -535,6 +649,13 @@ export class UsersService {
     ]);
 
     const total = Number(totalAgg.total);
+    const nextCursor =
+      follows.length === limit && skip + limit < total
+        ? this.encodeFollowCursor({
+            createdAt: follows[follows.length - 1].createdAt,
+            id: follows[follows.length - 1].followingId,
+          })
+        : null;
 
     return {
       items: follows.map((f: any) => ({
@@ -544,6 +665,7 @@ export class UsersService {
         avatarUrl: f.following.avatarUrl,
         bio: f.following.bio,
       })),
+      nextCursor,
       meta: {
         total,
         page,
@@ -551,6 +673,39 @@ export class UsersService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  private encodeFollowCursor(item: { createdAt: any; id: string }): string {
+    return Buffer.from(
+      JSON.stringify({
+        createdAt: item.createdAt.toString(),
+        id: item.id,
+      }),
+    ).toString("base64url");
+  }
+
+  private decodeFollowCursor(
+    cursor?: string,
+  ): { createdAt: Temporal.Instant; id: string } | null {
+    if (!cursor) return null;
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      );
+      if (
+        typeof decoded?.createdAt !== "string" ||
+        typeof decoded?.id !== "string" ||
+        !decoded.id
+      ) {
+        return null;
+      }
+      return {
+        createdAt: Temporal.Instant.from(decoded.createdAt),
+        id: decoded.id,
+      };
+    } catch {
+      return null;
+    }
   }
 
   // ==========================================

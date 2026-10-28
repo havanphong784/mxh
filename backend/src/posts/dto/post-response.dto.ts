@@ -39,6 +39,26 @@ export interface QuotedPostResponseDto {
   media: PostMediaResponseDto[];
 }
 
+export interface PostLikeUserDto {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio?: string | null;
+  likedAt?: string | unknown;
+}
+
+export interface PostLikesResponseDto {
+  items: PostLikeUserDto[];
+  nextCursor: string | null;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface ParentPostSummaryDto {
   id: string;
   content: string | null;
@@ -132,7 +152,11 @@ export class PostResponseMapper {
     let isQuotedPostDeleted = false;
 
     if (post.quotedPostId) {
-      if (!post.quotedPost || post.quotedPost.isDeleted) {
+      if (
+        !post.quotedPost ||
+        post.quotedPost.isDeleted ||
+        post.quotedPost.visibility !== "PUBLIC"
+      ) {
         isQuotedPostDeleted = true;
       } else if (
         !post.quotedPost.author ||
@@ -176,7 +200,10 @@ export class PostResponseMapper {
       rootId: post.rootId,
       repostOfId: post.repostOfId,
       repostOf:
-        post.repostOfId && post.repostOf
+        post.repostOfId &&
+        post.repostOf &&
+        !post.repostOf.isDeleted &&
+        post.repostOf.visibility === "PUBLIC"
           ? PostResponseMapper.fromEntity(post.repostOf)
           : null,
       quotedPostId: post.quotedPostId ?? null,

@@ -2,10 +2,12 @@ import {
   BadRequestException,
   ForbiddenException,
   forwardRef,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { CreatePostDto, PostMediaItemDto } from "./dto/create-post.dto.js";
 import * as crypto from "node:crypto";
@@ -28,24 +30,35 @@ import { Temporal } from "@js-temporal/polyfill";
 import { toContainsPattern } from "../common/search.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
 import {
+  PostLikesResponseDto,
   PostResponseDto,
   PostResponseMapper,
 } from "./dto/post-response.dto.js";
 import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
 import { PostsRepository } from "./posts.repository.js";
+import {
+  DomainException,
+  ERROR_CODES,
+} from "../common/exceptions/domain.exception.js";
 
 @Injectable()
 export class PostsService {
   private readonly logger = new Logger(PostsService.name);
+  private readonly postRepository: PostsRepository;
 
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly postsRepository: PostsRepository,
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => UsersService))
-    private readonly usersService: UsersService,
-  ) {}
+    @Optional()
+    private readonly usersService?: UsersService,
+    @Optional()
+    postsRepository?: PostsRepository,
+  ) {
+    this.postRepository =
+      postsRepository ?? new PostsRepository(this.prismaService);
+  }
 
   async createPost(userId: string, dto: CreatePostDto) {
     await this.ensureActiveUser(userId);
@@ -120,7 +133,9 @@ export class PostsService {
     }
 
     const verifiedMedia = hasMedia
-      ? this.verifyMediaItems(userId, dto.media!)
+      ? (this.mediaService?.verifyMediaItems
+          ? this.mediaService.verifyMediaItems(userId, dto.media!)
+          : this.verifyMediaItems(userId, dto.media!))
       : [];
 
     let result: any;
@@ -431,9 +446,15 @@ export class PostsService {
 
     let author = visibilitySource.author;
     if (!author && visibilitySource.authorId) {
-      author = await this.usersService.findActiveUserById(
-        visibilitySource.authorId,
-      );
+      if (this.usersService) {
+        author = await this.usersService.findActiveUserById(
+          visibilitySource.authorId,
+        );
+      } else {
+        author = await this.prismaService.client.orm.public.User.where(
+          (u: any) => u.id.eq(visibilitySource.authorId),
+        ).first();
+      }
     }
 
     if (!author || !author.isActive || !author.isEmailVerified) {
@@ -454,7 +475,18 @@ export class PostsService {
 
     if (visibilitySource.visibility === "FOLLOWERS") {
       if (!viewerId) return false;
-      return this.usersService.isFollowing(viewerId, visibilitySource.authorId);
+      if (this.usersService) {
+        return this.usersService.isFollowing(
+          viewerId,
+          visibilitySource.authorId,
+        );
+      }
+      const follow = await this.prismaService.client.orm.public.Follow.where(
+        (f: any) => f.followerId.eq(viewerId),
+      )
+        .where((f: any) => f.followingId.eq(visibilitySource.authorId))
+        .first();
+      return Boolean(follow);
     }
 
     return false;
@@ -972,7 +1004,7 @@ export class PostsService {
     postId: string,
     query: OffsetPaginationDto,
     viewerId?: string,
-  ) {
+  ): Promise<PostLikesResponseDto> {
     const post = await this.prismaService.client.orm.public.Post.where({
       id: postId,
     }).first();
@@ -988,15 +1020,48 @@ export class PostsService {
       );
     }
 
-    const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+    const cursor = this.decodeLikeCursor(query.cursor);
+
+    if (cursor) {
+      let likeQuery = this.prismaService.client.orm.public.PostLike.where(
+        (l: any) => l.postId.eq(postId),
+      )
+        .orderBy([(l: any) => l.createdAt.desc(), (l: any) => l.userId.desc()])
+        .limit(limit + 1)
+        .include("user");
+
+      likeQuery = likeQuery.cursor(cursor);
+      const likes = await likeQuery.all();
+
+      const hasNextPage = likes.length > limit;
+      const items = hasNextPage ? likes.slice(0, limit) : likes;
+      const nextCursor =
+        hasNextPage && items.length > 0
+          ? this.encodeLikeCursor(items[items.length - 1])
+          : null;
+
+      return {
+        items: items.map((item: any) => ({
+          id: item.user.id,
+          username: item.user.username,
+          displayName: item.user.displayName,
+          avatarUrl: item.user.avatarUrl,
+          bio: item.user.bio,
+          likedAt: item.createdAt,
+        })),
+        nextCursor,
+      };
+    }
+
+    const page = Math.max(1, Number(query.page) || 1);
     const skip = (page - 1) * limit;
 
     const [likes, totalAgg] = await Promise.all([
       this.prismaService.client.orm.public.PostLike.where((l) =>
         l.postId.eq(postId),
       )
-        .orderBy((l) => l.createdAt.desc())
+        .orderBy([(l: any) => l.createdAt.desc(), (l: any) => l.userId.desc()])
         .offset(skip)
         .limit(limit)
         .include("user")
@@ -1007,6 +1072,10 @@ export class PostsService {
     ]);
 
     const total = Number(totalAgg.total) || 0;
+    const nextCursor =
+      likes.length === limit && skip + limit < total
+        ? this.encodeLikeCursor(likes[likes.length - 1])
+        : null;
 
     return {
       items: likes.map((item: any) => ({
@@ -1017,6 +1086,7 @@ export class PostsService {
         bio: item.user.bio,
         likedAt: item.createdAt,
       })),
+      nextCursor,
       pagination: {
         page,
         limit,
@@ -1258,7 +1328,17 @@ export class PostsService {
   async getFeed(userId: string, query: CursorPaginationDto) {
     await this.ensureActiveUser(userId);
 
-    const followingIds = await this.usersService.getActiveFollowingIds(userId);
+    const followingIds = this.usersService
+      ? await this.usersService.getActiveFollowingIds(userId)
+      : await this.prismaService.client.orm.public.Follow.where((f: any) =>
+          f.followerId.eq(userId),
+        )
+          .where((f: any) => f.following.some((u: any) => u.isActive.eq(true)))
+          .where((f: any) =>
+            f.following.some((u: any) => u.isEmailVerified.eq(true)),
+          )
+          .all()
+          .then((rows: any[]) => rows.map((r) => r.followingId));
     const targetAuthorIds = [userId, ...followingIds];
 
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
@@ -1723,7 +1803,20 @@ export class PostsService {
   }
 
   private async ensureActiveUser(userId: string) {
-    return this.usersService.ensureActiveUser(userId);
+    if (this.usersService) {
+      return this.usersService.ensureActiveUser(userId);
+    }
+    const user = await this.prismaService.client.orm.public.User.where(
+      (u: any) => u.id.eq(userId),
+    ).first();
+    if (!user || !user.isActive || !user.isEmailVerified) {
+      throw new DomainException(
+        ERROR_CODES.USER_NOT_FOUND,
+        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return user;
   }
 
   private isUniqueConstraintError(error: unknown): boolean {
@@ -1814,6 +1907,39 @@ export class PostsService {
       return {
         createdAt: Temporal.Instant.from(decoded.createdAt),
         postId: decoded.postId,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private encodeLikeCursor(item: { createdAt: any; userId: string }): string {
+    return Buffer.from(
+      JSON.stringify({
+        createdAt: item.createdAt.toString(),
+        userId: item.userId,
+      }),
+    ).toString("base64url");
+  }
+
+  private decodeLikeCursor(
+    cursor?: string,
+  ): { createdAt: Temporal.Instant; userId: string } | null {
+    if (!cursor) return null;
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      );
+      if (
+        typeof decoded?.createdAt !== "string" ||
+        typeof decoded?.userId !== "string" ||
+        !decoded.userId
+      ) {
+        return null;
+      }
+      return {
+        createdAt: Temporal.Instant.from(decoded.createdAt),
+        userId: decoded.userId,
       };
     } catch {
       return null;

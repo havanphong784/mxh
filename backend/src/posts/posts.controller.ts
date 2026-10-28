@@ -23,7 +23,10 @@ import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
 import { SearchQueryDto } from "../common/dto/search-query.dto.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
 import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
-import type { PostResponseDto } from "./dto/post-response.dto.js";
+import type {
+  PostLikesResponseDto,
+  PostResponseDto,
+} from "./dto/post-response.dto.js";
 
 @Controller("posts")
 export class PostsController {
@@ -31,7 +34,7 @@ export class PostsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
   async createPost(
     @CurrentUser("sub") userId: string,
@@ -42,7 +45,7 @@ export class PostsController {
 
   @Get("feed")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getFeed(
     @CurrentUser("sub") userId: string,
     @Query() query: CursorPaginationDto,
@@ -52,7 +55,7 @@ export class PostsController {
 
   @Get("explore")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getExplore(
     @Query() query: ExploreQueryDto,
     @CurrentUser("sub") viewerId?: string,
@@ -62,7 +65,7 @@ export class PostsController {
 
   @Get("search")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   async searchPosts(
     @Query() query: SearchQueryDto,
     @CurrentUser("sub") viewerId?: string,
@@ -72,7 +75,7 @@ export class PostsController {
 
   @Get("bookmarks")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getBookmarks(
     @CurrentUser("sub") userId: string,
     @Query() query: CursorPaginationDto,
@@ -82,7 +85,7 @@ export class PostsController {
 
   @Get("liked")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getLikedPosts(
     @CurrentUser("sub") userId: string,
     @Query() query: CursorPaginationDto,
@@ -92,7 +95,7 @@ export class PostsController {
 
   @Get(":id")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getPostById(
     @Param("id") postId: string,
     @CurrentUser("sub") viewerId?: string,
@@ -102,7 +105,7 @@ export class PostsController {
 
   @Patch(":id")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   async updatePost(
     @Param("id") postId: string,
     @CurrentUser("sub") userId: string,
@@ -113,7 +116,7 @@ export class PostsController {
 
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deletePost(
     @Param("id") postId: string,
@@ -124,7 +127,7 @@ export class PostsController {
 
   @Get(":id/replies")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getReplies(
     @Param("id") postId: string,
     @Query() query: CursorPaginationDto,
@@ -135,7 +138,7 @@ export class PostsController {
 
   @Get(":id/ancestors")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getAncestors(
     @Param("id") postId: string,
     @CurrentUser("sub") viewerId?: string,
@@ -145,7 +148,7 @@ export class PostsController {
 
   @Post(":id/repost")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async repost(
     @Param("id") postId: string,
@@ -156,7 +159,7 @@ export class PostsController {
 
   @Delete(":id/repost")
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   async unrepost(
     @Param("id") postId: string,
@@ -189,19 +192,12 @@ export class PostsController {
 
   @Get(":id/likes")
   @UseGuards(OptionalJwtAuthGuard)
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
   async getPostLikes(
     @Param("id") postId: string,
     @Query() query: OffsetPaginationDto,
     @CurrentUser("sub") viewerId?: string,
-  ): Promise<
-    OffsetPage<{
-      id: string;
-      username: string;
-      displayName: string;
-      avatarUrl: string | null;
-    }>
-  > {
+  ): Promise<PostLikesResponseDto> {
     return this.postsService.getPostLikes(postId, query, viewerId);
   }
 
