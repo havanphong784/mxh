@@ -32,11 +32,11 @@ test("createPostSchema rejects content exceeding 2000 characters", () => {
   assert.equal(error, "Nội dung bài viết không được vượt quá 2000 ký tự.");
 });
 
-test("createPostSchema rejects more than 4 media attachments", () => {
-  const media = [1, 2, 3, 4, 5];
+test("createPostSchema rejects more than 10 media attachments", () => {
+  const media = Array.from({ length: 11 }, (_, i) => i + 1);
   const error = createPostSchema.validate({
     content: "Có quá nhiều ảnh",
     media,
   });
-  assert.equal(error, "Tối đa 4 ảnh hoặc video cho mỗi bài viết.");
+  assert.equal(error, "Chỉ được phép đính kèm tối đa 10 tệp phương tiện.");
 });

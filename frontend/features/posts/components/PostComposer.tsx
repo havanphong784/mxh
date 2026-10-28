@@ -10,13 +10,16 @@ import type { PostVisibility, UploadedMedia } from "@/types/api";
 import { toPostMediaInput } from "@/features/media/cloudinary";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { createPostSchema } from "../validation";
+import { MAX_MEDIA_COUNT } from "../constants";
 
 export const PostComposer: React.FC<{
   onSuccess?: () => void;
   parentId?: string;
   placeholder?: string;
 }> = ({ onSuccess, parentId, placeholder }) => {
-  const user = useAuthStore((s) => s.user);
+  const userAvatarUrl = useAuthStore((s) => s.user?.avatarUrl);
+  const userDisplayName = useAuthStore((s) => s.user?.displayName);
+  const isAuthenticated = useAuthStore((s) => Boolean(s.user));
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
   const [mediaList, setMediaList] = useState<UploadedMedia[]>([]);
@@ -43,8 +46,10 @@ export const PostComposer: React.FC<{
 
   const handleSelectFiles = async (files: FileList) => {
     setValidationError(null);
-    if (mediaList.length + files.length > 4) {
-      setValidationError("Tối đa 4 ảnh hoặc video cho mỗi bài viết.");
+    if (mediaList.length + files.length > MAX_MEDIA_COUNT) {
+      setValidationError(
+        `Chỉ được phép đính kèm tối đa ${MAX_MEDIA_COUNT} tệp phương tiện.`,
+      );
       return;
     }
 
@@ -82,12 +87,12 @@ export const PostComposer: React.FC<{
     });
   };
 
-  if (!user) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <PostComposerUI
-      userAvatarUrl={user.avatarUrl}
-      userDisplayName={user.displayName}
+      userAvatarUrl={userAvatarUrl}
+      userDisplayName={userDisplayName}
       content={content}
       onContentChange={handleContentChange}
       visibility={visibility}
