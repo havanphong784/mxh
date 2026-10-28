@@ -1,14 +1,28 @@
-'use client';
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { ResetPasswordView } from "@/features/auth/components/ResetPasswordView";
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { ResetPasswordForm } from '@/features/auth/components/ResetPasswordForm';
+export const metadata: Metadata = {
+  title: "Tạo mật khẩu mới — MXH",
+  description:
+    "Nhập mã xác thực OTP và thiết lập mật khẩu mới cho tài khoản MXH.",
+};
 
-function ResetContent() {
-  const email = useSearchParams().get('email') ?? '';
-  return <div><h2 className="mb-1 text-center text-[16px] font-semibold">Tạo mật khẩu mới</h2><p className="mb-5 text-center text-[13px] text-[#8e8ca3]">Nhập mã OTP trong email và mật khẩu mới.</p><ResetPasswordForm initialEmail={email} /></div>;
+interface ResetPasswordPageProps {
+  searchParams: Promise<{ email?: string }>;
 }
 
-export default function ResetPasswordPage() {
-  return <Suspense fallback={<p className="text-center text-[13px] text-[#8e8ca3]">Đang tải…</p>}><ResetContent /></Suspense>;
+export default async function ResetPasswordPage({
+  searchParams,
+}: ResetPasswordPageProps) {
+  const { email } = await searchParams;
+  return (
+    <Suspense
+      fallback={
+        <p className="text-center text-[13px] text-[#8e8ca3]">Đang tải…</p>
+      }
+    >
+      <ResetPasswordView initialEmail={email} />
+    </Suspense>
+  );
 }
