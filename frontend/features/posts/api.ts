@@ -1,48 +1,95 @@
-import { apiClient } from '@/lib/axios';
-import type { CursorPage, PostItem, PostMediaInput } from '@/types/api';
+import type { AxiosResponse } from "axios";
+import { apiClient } from "@/lib/axios";
+import type { CursorPage, PostItem, PostMediaInput } from "@/types/api";
 
 export const postsApi = {
-  getFeed: (cursor?: string | null) =>
-    apiClient.get<CursorPage<PostItem>>('/posts/feed', { params: { limit: 20, cursor } }),
+  getFeed: (
+    cursor?: string | null,
+  ): Promise<AxiosResponse<CursorPage<PostItem>>> =>
+    apiClient.get<CursorPage<PostItem>>("/posts/feed", {
+      params: { limit: 20, cursor },
+    }),
 
-  getExplore: (cursor?: string | null, mediaOnly = false) =>
-    apiClient.get<CursorPage<PostItem>>('/posts/explore', { params: { limit: 20, cursor, mediaOnly } }),
+  getExplore: (
+    cursor?: string | null,
+    mediaOnly = false,
+  ): Promise<AxiosResponse<CursorPage<PostItem>>> =>
+    apiClient.get<CursorPage<PostItem>>("/posts/explore", {
+      params: { limit: 20, cursor, mediaOnly },
+    }),
 
-  searchPosts: (term: string, cursor?: string | null, mediaOnly = false) =>
-    apiClient.get<CursorPage<PostItem>>('/posts/search', { params: { q: term, limit: 20, cursor, mediaOnly } }),
+  searchPosts: (
+    term: string,
+    cursor?: string | null,
+    mediaOnly = false,
+  ): Promise<AxiosResponse<CursorPage<PostItem>>> =>
+    apiClient.get<CursorPage<PostItem>>("/posts/search", {
+      params: { q: term, limit: 20, cursor, mediaOnly },
+    }),
 
-  getPost: (id: string) => apiClient.get<PostItem>(`/posts/${id}`),
+  getPost: (id: string): Promise<AxiosResponse<PostItem>> =>
+    apiClient.get<PostItem>(`/posts/${id}`),
 
-  getAncestors: (id: string) => apiClient.get<{ ancestors: PostItem[] }>(`/posts/${id}/ancestors`),
+  getAncestors: (
+    id: string,
+  ): Promise<AxiosResponse<{ ancestors: PostItem[] }>> =>
+    apiClient.get<{ ancestors: PostItem[] }>(`/posts/${id}/ancestors`),
 
-  getReplies: (id: string, cursor?: string | null) =>
-    apiClient.get<CursorPage<PostItem>>(`/posts/${id}/replies`, { params: { limit: 20, cursor } }),
+  getReplies: (
+    id: string,
+    cursor?: string | null,
+  ): Promise<AxiosResponse<CursorPage<PostItem>>> =>
+    apiClient.get<CursorPage<PostItem>>(`/posts/${id}/replies`, {
+      params: { limit: 20, cursor },
+    }),
 
   createPost: (data: {
     content?: string | null;
-    visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+    visibility?: "PUBLIC" | "FOLLOWERS" | "PRIVATE";
     media?: PostMediaInput[];
     parentId?: string | null;
     quotedPostId?: string | null;
-  }) => apiClient.post<PostItem>('/posts', data),
+  }): Promise<AxiosResponse<PostItem>> =>
+    apiClient.post<PostItem>("/posts", data),
 
-  updatePost: (id: string, data: { content?: string; visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE' }) =>
+  updatePost: (
+    id: string,
+    data: { content?: string; visibility?: "PUBLIC" | "FOLLOWERS" | "PRIVATE" },
+  ): Promise<AxiosResponse<PostItem>> =>
     apiClient.patch<PostItem>(`/posts/${id}`, data),
 
-  deletePost: (id: string) => apiClient.delete(`/posts/${id}`),
+  deletePost: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/posts/${id}`),
 
-  likePost: (id: string) => apiClient.post(`/posts/${id}/like`),
-  unlikePost: (id: string) => apiClient.delete(`/posts/${id}/like`),
+  likePost: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.post(`/posts/${id}/like`),
 
-  repost: (id: string) => apiClient.post(`/posts/${id}/repost`),
-  unrepost: (id: string) => apiClient.delete(`/posts/${id}/repost`),
+  unlikePost: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/posts/${id}/like`),
 
-  bookmark: (id: string) => apiClient.post(`/posts/${id}/bookmark`),
-  unbookmark: (id: string) => apiClient.delete(`/posts/${id}/bookmark`),
+  repost: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.post(`/posts/${id}/repost`),
 
-  getBookmarks: (cursor?: string | null) =>
-    apiClient.get<CursorPage<PostItem>>('/posts/bookmarks', { params: { cursor, limit: 20 } }),
+  unrepost: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/posts/${id}/repost`),
 
-  getLikedPosts: (cursor?: string | null) =>
-    apiClient.get<CursorPage<PostItem>>('/posts/liked', { params: { cursor, limit: 20 } }),
+  bookmark: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.post(`/posts/${id}/bookmark`),
+
+  unbookmark: (id: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/posts/${id}/bookmark`),
+
+  getBookmarks: (
+    cursor?: string | null,
+  ): Promise<AxiosResponse<CursorPage<PostItem>>> =>
+    apiClient.get<CursorPage<PostItem>>("/posts/bookmarks", {
+      params: { cursor, limit: 20 },
+    }),
+
+  getLikedPosts: (
+    cursor?: string | null,
+  ): Promise<AxiosResponse<CursorPage<PostItem>>> =>
+    apiClient.get<CursorPage<PostItem>>("/posts/liked", {
+      params: { cursor, limit: 20 },
+    }),
 };

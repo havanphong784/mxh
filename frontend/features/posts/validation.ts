@@ -1,3 +1,5 @@
+import { MAX_MEDIA_COUNT, MAX_POST_LENGTH } from "./constants.ts";
+
 export interface CreatePostValidationInput {
   content?: string | null;
   media?: unknown[];
@@ -11,11 +13,11 @@ export const createPostSchema = {
     if (!trimmed && !hasMedia) {
       return "Bài viết phải có nội dung chữ hoặc đính kèm ít nhất một hình ảnh/video.";
     }
-    if (trimmed.length > 2000) {
-      return "Nội dung bài viết không được vượt quá 2000 ký tự.";
+    if (trimmed.length > MAX_POST_LENGTH) {
+      return `Nội dung bài viết không được vượt quá ${MAX_POST_LENGTH} ký tự.`;
     }
-    if (data.media && data.media.length > 4) {
-      return "Tối đa 4 ảnh hoặc video cho mỗi bài viết.";
+    if (data.media && data.media.length > MAX_MEDIA_COUNT) {
+      return `Chỉ được phép đính kèm tối đa ${MAX_MEDIA_COUNT} tệp phương tiện.`;
     }
     return null;
   },
