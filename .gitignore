@@ -8,6 +8,7 @@ build/
 .env.local
 .env.*.local
 *.log
+*.tsbuildinfo
 .DS_Store
 coverage/
 .turbo/
@@ -21,6 +22,7 @@ coverage/
 !frontend/lib/page-title.test.ts
 !frontend/lib/utils.test.ts
 !frontend/lib/navigation-state.test.ts
+!frontend/features/**/*.test.ts
 !backend/src/common/search.test.ts
 /.superpowers/
 /.prowl/

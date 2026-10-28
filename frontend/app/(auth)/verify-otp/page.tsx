@@ -1,36 +1,29 @@
-'use client';
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { VerifyOtpView } from "@/features/auth/components/VerifyOtpView";
 
-import React, { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { VerifyOtpForm } from '@/features/auth/components/VerifyOtpForm';
+export const metadata: Metadata = {
+  title: "Xác thực tài khoản — MXH",
+  description: "Nhập mã xác thực OTP để hoàn tất kích hoạt tài khoản MXH.",
+};
 
-function OtpContent() {
-  const searchParams = useSearchParams();
-  const email = searchParams.get('email') || '';
-
-  if (!email) {
-    return (
-      <div className="text-center text-[13px] text-red-500">
-        Không tìm thấy địa chỉ email cần xác thực. Vui lòng quay lại đăng ký.
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <h2 className="text-[16px] font-semibold text-[#1c1b29] mb-1 text-center">Xác thực tài khoản</h2>
-      <p className="text-[13px] text-[#8e8ca3] mb-4 text-center">
-        Nhập mã xác thực đã gửi tới <strong className="text-[#1c1b29]">{email}</strong>
-      </p>
-      <VerifyOtpForm email={email} />
-    </div>
-  );
+interface VerifyOtpPageProps {
+  searchParams: Promise<{ email?: string }>;
 }
 
-export default function VerifyOtpPage() {
+export default async function VerifyOtpPage({
+  searchParams,
+}: VerifyOtpPageProps) {
+  const { email } = await searchParams;
   return (
-    <Suspense fallback={<div className="p-4 text-center text-[13px] text-[#8e8ca3]">Đang tải...</div>}>
-      <OtpContent />
+    <Suspense
+      fallback={
+        <div className="p-4 text-center text-[13px] text-[#8e8ca3]">
+          Đang tải...
+        </div>
+      }
+    >
+      <VerifyOtpView initialEmail={email} />
     </Suspense>
   );
 }

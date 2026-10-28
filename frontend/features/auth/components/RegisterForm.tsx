@@ -1,26 +1,36 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from '@/components/ui/Button';
-import Link from 'next/link';
-import { getApiErrorMessage } from '@/lib/api-error';
+import React, { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "@/components/ui/Button";
+import Link from "next/link";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { validateNewPassword } from "../validation";
 
 export function RegisterForm() {
   const { register, isRegistering } = useAuth();
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const passwordError = validateNewPassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     try {
       await register({ email, username, displayName, password });
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Đăng ký không thành công. Vui lòng thử lại.'));
+      setError(
+        getApiErrorMessage(err, "Đăng ký không thành công. Vui lòng thử lại."),
+      );
     }
   };
 
@@ -32,7 +42,9 @@ export function RegisterForm() {
         </div>
       )}
       <div>
-        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Email</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">
+          Email
+        </label>
         <input
           type="email"
           value={email}
@@ -44,7 +56,9 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Tên tài khoản (username)</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">
+          Tên tài khoản (username)
+        </label>
         <input
           type="text"
           value={username}
@@ -59,7 +73,9 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Tên hiển thị</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">
+          Tên hiển thị
+        </label>
         <input
           type="text"
           value={displayName}
@@ -72,7 +88,9 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">Mật khẩu</label>
+        <label className="block text-[12px] font-semibold text-[#4a4860] mb-1">
+          Mật khẩu
+        </label>
         <input
           type="password"
           value={password}
@@ -89,8 +107,11 @@ export function RegisterForm() {
         Tiếp tục xác thực OTP
       </Button>
       <div className="text-center mt-4 text-[13px] text-[#8e8ca3]">
-        Đã có tài khoản?{' '}
-        <Link href="/login" className="text-[#7b78ff] hover:underline font-semibold">
+        Đã có tài khoản?{" "}
+        <Link
+          href="/login"
+          className="text-[#7b78ff] hover:underline font-semibold"
+        >
           Đăng nhập
         </Link>
       </div>

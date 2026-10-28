@@ -1,5 +1,7 @@
-import React from 'react';
-import type { PostMedia } from '@/types/api';
+import React from "react";
+import Image from "next/image";
+import { getOptimizedMediaUrl } from "@/features/media/cloudinary";
+import type { PostMedia } from "@/types/api";
 
 interface MediaGridProps {
   media: PostMedia[];
@@ -11,11 +13,11 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ media }) => {
   return (
     <div
       className={`mt-4 grid gap-2 overflow-hidden rounded-[20px] ${
-        media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+        media.length === 1 ? "grid-cols-1" : "grid-cols-2"
       }`}
     >
       {media.map((item) => {
-        if (item.type === 'VIDEO') {
+        if (item.type === "VIDEO") {
           return (
             <video
               key={item.id || item.publicId}
@@ -26,14 +28,18 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ media }) => {
           );
         }
 
+        const isCloudinary = item.url.includes("res.cloudinary.com");
+        const optimizedUrl = getOptimizedMediaUrl(item.url, 800);
+
         return (
-          // User media URLs are dynamic and may not share a configured Next Image host.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             key={item.id || item.publicId}
-            src={item.url}
+            src={optimizedUrl}
             alt="Đính kèm bài viết"
+            width={item.width || 800}
+            height={item.height || 600}
             loading="lazy"
+            unoptimized={!isCloudinary}
             className="max-h-[420px] w-full rounded-[20px] object-cover shadow-[0_14px_24px_-6px_rgba(28,27,41,.18)] transition-opacity hover:opacity-95"
           />
         );
