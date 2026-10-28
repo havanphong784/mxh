@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import React from 'react';
-import type { PostItem } from '@/types/api';
-import { InteractivePostCard } from './InteractivePostCard';
-import { ReplyThread } from './ReplyThread';
+import React from "react";
+import type { PostItem } from "@/types/api";
+import { InteractivePostCard } from "./InteractivePostCard";
+import { ReplyThread } from "./ReplyThread";
+import { PostFeedSkeleton } from "@/components/ui/PostSkeleton";
 
 interface ThreadViewUIProps {
   post: PostItem;
@@ -36,7 +37,6 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
   onDelete,
   replyComposerNode,
 }) => {
-
   if (isLoading) {
     return (
       <div className="p-8 text-center text-[#8e8ca3] text-[13px]">
@@ -80,18 +80,23 @@ export const ThreadViewUI: React.FC<ThreadViewUIProps> = ({
       </div>
 
       {/* 4. Khung nhập phản hồi (Reply Composer) */}
-      {replyComposerNode && (
-        <div>
-          {replyComposerNode}
-        </div>
-      )}
+      {replyComposerNode && <div>{replyComposerNode}</div>}
 
       {/* 5. Danh sách các bài trả lời (Replies) */}
       <div className="feed-stack">
         {repliesLoading ? (
-          <div className="p-8 text-center text-[#8e8ca3] text-[13px]">Đang tải phản hồi…</div>
+          <PostFeedSkeleton count={2} />
         ) : repliesError && replies.length === 0 ? (
-          <div className="p-8 text-center text-red-600 text-[13px]">Không thể tải phản hồi. <button type="button" onClick={onRetryReplies} className="font-bold underline">Thử lại</button></div>
+          <div className="p-8 text-center text-red-600 text-[13px]">
+            Không thể tải phản hồi.{" "}
+            <button
+              type="button"
+              onClick={onRetryReplies}
+              className="font-bold underline"
+            >
+              Thử lại
+            </button>
+          </div>
         ) : replies.length === 0 ? (
           <div className="p-8 text-center text-[#8e8ca3] text-[13px]">
             Chưa có phản hồi nào. Hãy là người đầu tiên trả lời!

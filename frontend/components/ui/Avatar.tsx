@@ -1,4 +1,5 @@
-import React from 'react';
+import React from "react";
+import Image from "next/image";
 
 interface AvatarProps {
   src: string | null | undefined;
@@ -9,21 +10,21 @@ interface AvatarProps {
 
 export const Avatar: React.FC<AvatarProps> = ({
   src,
-  displayName = 'U',
+  displayName = "U",
   size = 32,
-  className = '',
+  className = "",
 }) => {
-  const initials = displayName.trim().charAt(0).toUpperCase() || 'U';
+  const initials = displayName.trim().charAt(0).toUpperCase() || "U";
 
   if (src) {
+    const isCloudinary = src.includes("res.cloudinary.com");
     return (
-      // Avatars are user-supplied remote URLs from Cloudinary; dimensions are fixed here.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
         alt={displayName}
         width={size}
         height={size}
+        unoptimized={!isCloudinary}
         className={`rounded-full border-2 border-white object-cover shadow-[0_4px_12px_rgba(123,120,255,.15)] ${className}`}
         style={{ width: `${size}px`, height: `${size}px` }}
       />

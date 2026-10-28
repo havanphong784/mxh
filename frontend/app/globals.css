@@ -26,7 +26,7 @@
   --color-gold: #ffd166;
   --color-mint: #6ee7b7;
   --color-line: #efedf7;
-  --font-sans: "Plus Jakarta Sans", "Nunito", "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sans), "Plus Jakarta Sans", "Nunito", "Poppins", ui-sans-serif, system-ui, sans-serif;
   --shadow-shell: 0 30px 60px -12px rgba(90, 75, 140, 0.18);
   --shadow-card: 0 12px 32px -4px rgba(123, 120, 255, 0.08);
   --shadow-media: 0 14px 24px -6px rgba(28, 27, 41, 0.18);
