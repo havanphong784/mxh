@@ -14,6 +14,7 @@ import { usePostInteractions } from "@/features/posts/hooks/usePostInteractions"
 import { PostList } from "@/components/common/PostList";
 import { InfiniteScrollTrigger } from "@/components/common/InfiniteScrollTrigger";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PostFeedSkeleton } from "@/components/ui/PostSkeleton";
 import { UserRow } from "@/components/common/UserRow";
 import { useAuthStore } from "@/stores/authStore";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -200,9 +201,7 @@ export default function ExplorePage() {
           )}
         </>
       ) : query.isPending ? (
-        <p className="p-8 text-center text-[13px] text-[#8e8ca3]">
-          Đang tải bài viết…
-        </p>
+        <PostFeedSkeleton count={3} />
       ) : query.isError && posts.length === 0 ? (
         <EmptyState
           title="Không thể tải khám phá"
