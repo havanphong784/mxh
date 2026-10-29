@@ -39,7 +39,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
-      code = this.mapStatusToErrorCode(statusCode);
+      code = this.mapStatusToErrorCode(statusCode, request.url);
 
       if (typeof exceptionResponse === "string") {
         message = exceptionResponse;
@@ -51,11 +51,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         if (typeof resObj.code === "string") {
           code = resObj.code;
-        } else if (
-          typeof resObj.error === "string" &&
-          resObj.error.length > 0
-        ) {
-          code = resObj.error;
         }
 
         if (Array.isArray(resObj.message)) {
@@ -92,16 +87,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
     });
   }
 
-  private mapStatusToErrorCode(status: number): string {
+  private mapStatusToErrorCode(status: number, path: string): string {
     switch (status) {
       case HttpStatus.BAD_REQUEST:
         return ERROR_CODES.VALIDATION_FAILED;
       case HttpStatus.UNAUTHORIZED:
         return ERROR_CODES.AUTH_UNAUTHORIZED;
       case HttpStatus.FORBIDDEN:
-        return ERROR_CODES.FORBIDDEN_ACTION;
+        return path.startsWith("/api/v1/posts/")
+          ? ERROR_CODES.POST_FORBIDDEN_ACTION
+          : ERROR_CODES.FORBIDDEN_ACTION;
       case HttpStatus.NOT_FOUND:
-        return ERROR_CODES.POST_NOT_FOUND;
+        return path.startsWith("/api/v1/users/")
+          ? ERROR_CODES.USER_NOT_FOUND
+          : ERROR_CODES.POST_NOT_FOUND;
       case HttpStatus.TOO_MANY_REQUESTS:
         return ERROR_CODES.RATE_LIMIT_EXCEEDED;
       default:

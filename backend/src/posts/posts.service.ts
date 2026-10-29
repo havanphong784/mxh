@@ -2,15 +2,13 @@ import {
   BadRequestException,
   ForbiddenException,
   forwardRef,
-  HttpStatus,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
   Optional,
 } from "@nestjs/common";
-import { CreatePostDto, PostMediaItemDto } from "./dto/create-post.dto.js";
-import * as crypto from "node:crypto";
+import { CreatePostDto } from "./dto/create-post.dto.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { UpdatePostDto } from "./dto/update-post.dto.js";
 import { MediaService } from "../media/media.service.js";
@@ -36,10 +34,6 @@ import {
 } from "./dto/post-response.dto.js";
 import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
 import { PostsRepository } from "./posts.repository.js";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../common/exceptions/domain.exception.js";
 
 @Injectable()
 export class PostsService {
@@ -51,8 +45,7 @@ export class PostsService {
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => UsersService))
-    @Optional()
-    private readonly usersService?: UsersService,
+    private readonly usersService: UsersService,
     @Optional()
     postsRepository?: PostsRepository,
   ) {
@@ -133,9 +126,7 @@ export class PostsService {
     }
 
     const verifiedMedia = hasMedia
-      ? (this.mediaService?.verifyMediaItems
-          ? this.mediaService.verifyMediaItems(userId, dto.media!)
-          : this.verifyMediaItems(userId, dto.media!))
+      ? this.mediaService.verifyMediaItems(userId, dto.media!)
       : [];
 
     let result: any;
@@ -446,15 +437,9 @@ export class PostsService {
 
     let author = visibilitySource.author;
     if (!author && visibilitySource.authorId) {
-      if (this.usersService) {
-        author = await this.usersService.findActiveUserById(
-          visibilitySource.authorId,
-        );
-      } else {
-        author = await this.prismaService.client.orm.public.User.where(
-          (u: any) => u.id.eq(visibilitySource.authorId),
-        ).first();
-      }
+      author = await this.getUsersService().findActiveUserById(
+        visibilitySource.authorId,
+      );
     }
 
     if (!author || !author.isActive || !author.isEmailVerified) {
@@ -475,18 +460,10 @@ export class PostsService {
 
     if (visibilitySource.visibility === "FOLLOWERS") {
       if (!viewerId) return false;
-      if (this.usersService) {
-        return this.usersService.isFollowing(
-          viewerId,
-          visibilitySource.authorId,
-        );
-      }
-      const follow = await this.prismaService.client.orm.public.Follow.where(
-        (f: any) => f.followerId.eq(viewerId),
-      )
-        .where((f: any) => f.followingId.eq(visibilitySource.authorId))
-        .first();
-      return Boolean(follow);
+      return this.getUsersService().isFollowing(
+        viewerId,
+        visibilitySource.authorId,
+      );
     }
 
     return false;
@@ -511,7 +488,7 @@ export class PostsService {
     if (post.isDeleted) {
       return {
         id: post.id,
-        isDeleted: true,
+        isDeleted: true as const,
         createdAt: post.createdAt,
         replyCount: post.replyCount,
       };
@@ -1328,17 +1305,7 @@ export class PostsService {
   async getFeed(userId: string, query: CursorPaginationDto) {
     await this.ensureActiveUser(userId);
 
-    const followingIds = this.usersService
-      ? await this.usersService.getActiveFollowingIds(userId)
-      : await this.prismaService.client.orm.public.Follow.where((f: any) =>
-          f.followerId.eq(userId),
-        )
-          .where((f: any) => f.following.some((u: any) => u.isActive.eq(true)))
-          .where((f: any) =>
-            f.following.some((u: any) => u.isEmailVerified.eq(true)),
-          )
-          .all()
-          .then((rows: any[]) => rows.map((r) => r.followingId));
+    const followingIds = await this.getUsersService().getActiveFollowingIds(userId);
     const targetAuthorIds = [userId, ...followingIds];
 
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
@@ -1518,12 +1485,12 @@ export class PostsService {
     viewerId?: string,
   ) {
     const targetUser =
-      await this.usersService.findActiveUserByUsername(username);
+      await this.getUsersService().findActiveUserByUsername(username);
 
     const isOwner = viewerId === targetUser.id;
     let isFollowing = false;
     if (viewerId && !isOwner) {
-      isFollowing = await this.usersService.isFollowing(
+      isFollowing = await this.getUsersService().isFollowing(
         viewerId,
         targetUser.id,
       );
@@ -1614,7 +1581,7 @@ export class PostsService {
     viewerId?: string,
   ) {
     const targetUser =
-      await this.usersService.findActiveUserByUsername(username);
+      await this.getUsersService().findActiveUserByUsername(username);
 
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
@@ -1803,20 +1770,14 @@ export class PostsService {
   }
 
   private async ensureActiveUser(userId: string) {
-    if (this.usersService) {
-      return this.usersService.ensureActiveUser(userId);
+    return this.getUsersService().ensureActiveUser(userId);
+  }
+
+  private getUsersService(): UsersService {
+    if (!this.usersService) {
+      throw new Error("UsersService chưa được cấu hình cho PostsService");
     }
-    const user = await this.prismaService.client.orm.public.User.where(
-      (u: any) => u.id.eq(userId),
-    ).first();
-    if (!user || !user.isActive || !user.isEmailVerified) {
-      throw new DomainException(
-        ERROR_CODES.USER_NOT_FOUND,
-        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    return user;
+    return this.usersService;
   }
 
   private isUniqueConstraintError(error: unknown): boolean {
@@ -1827,50 +1788,6 @@ export class PostsService {
       candidate.message?.includes("duplicate key") === true ||
       candidate.message?.includes("violates unique constraint") === true
     );
-  }
-
-  private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    if (!apiSecret || !cloudName) {
-      throw new Error("Chưa cấu hình Cloudinary environment variables");
-    }
-    const expectedPrefix = `mxh/${userId}/posts/`;
-    const seenPublicIds = new Set<string>();
-
-    return mediaItems.map((item) => {
-      if (seenPublicIds.has(item.publicId)) {
-        throw new BadRequestException(`Media ${item.publicId} bị trùng lặp`);
-      }
-      seenPublicIds.add(item.publicId);
-
-      if (!item.publicId.startsWith(expectedPrefix)) {
-        throw new BadRequestException(
-          `Media ${item.publicId} không hợp lệ hoặc không thuộc quyền sở hữu của bạn`,
-        );
-      }
-      const signaturePayload = `public_id=${item.publicId}&version=${item.version}${apiSecret}`;
-      const expectedSignature = crypto
-        .createHash("sha1")
-        .update(signaturePayload)
-        .digest("hex");
-      if (item.signature !== expectedSignature) {
-        throw new BadRequestException(
-          `Chữ ký media ${item.publicId} không hợp lệ`,
-        );
-      }
-      const resourceType = item.type === "IMAGE" ? "image" : "video";
-      const secureUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/v${item.version}/${item.publicId}`;
-      return {
-        publicId: item.publicId,
-        url: secureUrl,
-        type: item.type,
-        width: item.width ?? null,
-        height: item.height ?? null,
-        duration: item.duration ?? null,
-        order: item.order,
-      };
-    });
   }
 
   private encodeCursor(item: { createdAt: any; id: string }): string {

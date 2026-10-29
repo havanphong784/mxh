@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { v2 as cloudinary } from 'cloudinary';
 import { MediaService } from './media.service.js';
 import crypto from 'node:crypto';
-import { BadRequestException } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 
 test('video-backed media is deleted with Cloudinary resource_type video', async (t) => {
   const originalDestroy = cloudinary.uploader.destroy;
@@ -114,7 +114,7 @@ test('verifyMediaItems validates user ownership and Cloudinary signatures', () =
             order: 0,
           },
         ]),
-      BadRequestException,
+      (error: unknown) => error instanceof HttpException,
     );
 
     // Rejects invalid signature
@@ -129,7 +129,8 @@ test('verifyMediaItems validates user ownership and Cloudinary signatures', () =
             order: 0,
           },
         ]),
-      BadRequestException,
+      (error: unknown) => error instanceof HttpException &&
+        (error.getResponse() as { code?: string }).code === 'MEDIA_INVALID_SIGNATURE',
     );
   } finally {
     process.env.CLOUDINARY_API_SECRET = originalSecret;

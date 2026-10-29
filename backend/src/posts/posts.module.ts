@@ -10,6 +10,6 @@ import { UsersModule } from "../users/users.module.js";
   imports: [MediaModule, AuthModule, forwardRef(() => UsersModule)],
   controllers: [PostsController],
   providers: [PostsService, PostsRepository],
-  exports: [PostsService, PostsRepository],
+  exports: [PostsService],
 })
 export class PostsModule {}

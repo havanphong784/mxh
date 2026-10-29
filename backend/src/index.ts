@@ -18,10 +18,15 @@ declare global {
 globalThis.Temporal = Temporal;
 
 async function bootstrap() {
+  const cookieSecret = process.env.COOKIE_SECRET;
+  if (!cookieSecret || cookieSecret.length < 32) {
+    throw new Error("COOKIE_SECRET must contain at least 32 characters");
+  }
+
   const adapter = new FastifyAdapter({
     logger: true,
     requestIdHeader: "x-request-id",
-    genReqId: (req) => {
+    genReqId: (req: { headers: Record<string, string | string[] | undefined> }) => {
       const existingId = req.headers["x-request-id"];
       if (typeof existingId === "string" && existingId.trim().length > 0) {
         return existingId.trim();
@@ -53,7 +58,7 @@ async function bootstrap() {
   });
 
   await app.register(fastifyCookie as any, {
-    secret: process.env.COOKIE_SECRET || "cookies-secret",
+    secret: cookieSecret,
   });
   app.useGlobalPipes(
     new ValidationPipe({

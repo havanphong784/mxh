@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { v2 as cloudinary } from "cloudinary";
 import crypto from "node:crypto";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
 
 export interface VerifiedMediaItem {
   publicId: string;
@@ -14,7 +15,7 @@ export interface VerifiedMediaItem {
 
 export interface VerifyMediaItemInput {
   publicId: string;
-  version: number;
+  version: string | number;
   signature: string;
   type: "IMAGE" | "VIDEO" | "AUDIO";
   width?: number;
@@ -66,8 +67,10 @@ export class MediaService {
         .update(signaturePayload)
         .digest("hex");
       if (item.signature !== expectedSignature) {
-        throw new BadRequestException(
+        throw new DomainException(
+          ERROR_CODES.MEDIA_INVALID_SIGNATURE,
           `Chữ ký media ${item.publicId} không hợp lệ`,
+          HttpStatus.BAD_REQUEST,
         );
       }
       const resourceType = item.type === "IMAGE" ? "image" : "video";

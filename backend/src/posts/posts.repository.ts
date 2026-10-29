@@ -55,35 +55,4 @@ export class PostsRepository {
     return this.post.where({ authorId, repostOfId }).first();
   }
 
-  async incrementCounter(
-    tx: any,
-    table: string,
-    counterCol: string,
-    id: string,
-  ): Promise<void> {
-    const plan = this.prisma.client.raw.sql`
-      UPDATE "post"
-      SET ${this.prisma.client.raw.sql.raw(`"${counterCol}" = "${counterCol}" + 1`)}
-      WHERE id = ${id}
-    `
-      .affectedCount()
-      .build();
-    await tx.execute(plan);
-  }
-
-  async decrementCounter(
-    tx: any,
-    table: string,
-    counterCol: string,
-    id: string,
-  ): Promise<void> {
-    const plan = this.prisma.client.raw.sql`
-      UPDATE "post"
-      SET ${this.prisma.client.raw.sql.raw(`"${counterCol}" = GREATEST(0, "${counterCol}" - 1)`)}
-      WHERE id = ${id}
-    `
-      .affectedCount()
-      .build();
-    await tx.execute(plan);
-  }
 }

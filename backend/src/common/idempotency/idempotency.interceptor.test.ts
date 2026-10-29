@@ -38,7 +38,7 @@ function createMockContext(options: {
   };
 
   const context: Partial<ExecutionContext> = {
-    getType: () => "http",
+    getType: () => "http" as never,
     switchToHttp: () =>
       ({
         getRequest: () => request,

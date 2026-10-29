@@ -1,7 +1,8 @@
-import {Injectable, UnauthorizedException} from '@nestjs/common';
+import {HttpStatus, Injectable, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
 import {PrismaService} from '../prisma/prisma.service.js';
 import type {CurrentUserPayload} from './decorators/current-user.decorator.js';
+import { DomainException, ERROR_CODES } from '../common/exceptions/domain.exception.js';
 
 @Injectable()
 export class AccessSessionService {
@@ -17,8 +18,11 @@ export class AccessSessionService {
       payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_ACCESS_SECRET,
       });
-    } catch {
-      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+    } catch (error) {
+      const code = error instanceof Error && error.name === 'TokenExpiredError'
+        ? ERROR_CODES.AUTH_TOKEN_EXPIRED
+        : ERROR_CODES.AUTH_UNAUTHORIZED;
+      throw new DomainException(code, 'Token không hợp lệ hoặc đã hết hạn', HttpStatus.UNAUTHORIZED);
     }
 
     if (!this.isAccessTokenPayload(payload)) {
@@ -30,15 +34,20 @@ export class AccessSessionService {
       .include('user')
       .first();
 
-    if (
-      !session ||
-      session.userId !== payload.sub ||
-      session.isRevoked ||
-      this.isExpired(session.expiresAt) ||
-      !session.user.isActive ||
-      !session.user.isEmailVerified
-    ) {
-      throw new UnauthorizedException('Phiên đăng nhập không còn hiệu lực');
+    if (!session || session.userId !== payload.sub) {
+      throw new DomainException(ERROR_CODES.AUTH_SESSION_EXPIRED, 'Phiên đăng nhập không còn hiệu lực', HttpStatus.UNAUTHORIZED);
+    }
+    if (session.isRevoked) {
+      throw new DomainException(ERROR_CODES.AUTH_SESSION_REVOKED, 'Phiên đăng nhập đã bị thu hồi', HttpStatus.UNAUTHORIZED);
+    }
+    if (this.isExpired(session.expiresAt)) {
+      throw new DomainException(ERROR_CODES.AUTH_SESSION_EXPIRED, 'Phiên đăng nhập đã hết hạn', HttpStatus.UNAUTHORIZED);
+    }
+    if (!session.user.isActive) {
+      throw new DomainException(ERROR_CODES.AUTH_ACCOUNT_LOCKED, 'Tài khoản đã bị khóa', HttpStatus.FORBIDDEN);
+    }
+    if (!session.user.isEmailVerified) {
+      throw new DomainException(ERROR_CODES.AUTH_EMAIL_UNVERIFIED, 'Tài khoản chưa xác thực email', HttpStatus.FORBIDDEN);
     }
 
     return payload;

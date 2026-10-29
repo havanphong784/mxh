@@ -105,7 +105,7 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ): Promise<MessageResponseDto> {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = this.readRefreshTokenCookie(req);
     const result = await this.authService.logout(refreshToken);
     this.clearRefreshTokenCookie(res);
     return result;
@@ -118,7 +118,7 @@ export class AuthController {
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ): Promise<RefreshResponseDto> {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = this.readRefreshTokenCookie(req);
     if (!refreshToken) {
       throw new UnauthorizedException(
         "Không tìm thấy refresh token trong cookie",
@@ -157,6 +157,16 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
+  private readRefreshTokenCookie(req: FastifyRequest): string | undefined {
+    const signedValue = req.cookies.refreshToken;
+    if (!signedValue) return undefined;
+    const result = req.unsignCookie(signedValue);
+    if (!result.valid || !result.value) {
+      throw new UnauthorizedException("Refresh cookie không hợp lệ");
+    }
+    return result.value;
+  }
+
   private clearRefreshTokenCookie(res: FastifyReply) {
     res.clearCookie('refreshToken', {
       path: '/api/v1/auth',
@@ -173,6 +183,7 @@ export class AuthController {
       sameSite: 'lax',    // Chống tấn công CSRF
       path: '/api/v1/auth',
       maxAge: 7 * 24 * 60 * 60,
+      signed: true,
     });
   }
 }

@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { UsersService } from './users.service.js';
+import argon2 from 'argon2';
 
 test('a failed profile database update keeps the currently referenced media', async () => {
   const currentUser = {
@@ -45,6 +46,22 @@ test('a failed profile database update keeps the currently referenced media', as
     /database unavailable/,
   );
   assert.deepEqual(deletedPublicIds, []);
+});
+
+test('password change rolls back when revoking other sessions fails', async () => {
+  const originalHash = await argon2.hash('Old1234!');
+  let passwordHash = originalHash;
+  const userTable = { where() { return { async first() { return { id: 'user-id', isActive: true, passwordHash }; }, async update(data: { passwordHash: string }) { passwordHash = data.passwordHash; } }; } };
+  const sessionTable = { where() { return { async all() { return [{ id: 'current' }, { id: 'other' }]; }, async update() { throw new Error('session update failed'); } }; } };
+  const orm = { public: { User: userTable, Session: sessionTable } };
+  const client = { orm, async transaction<T>(callback: (tx: { orm: typeof orm }) => Promise<T>) { const previous = passwordHash; try { return await callback({ orm }); } catch (error) { passwordHash = previous; throw error; } } };
+  const service = new UsersService({ client } as any, {} as any, { emit() {} } as any);
+
+  await assert.rejects(
+    service.changePassword('user-id', { oldPassword: 'Old1234!', newPassword: 'New5678!', logoutOtherDevices: true }, 'current'),
+    /session update failed/,
+  );
+  assert.equal(passwordHash, originalHash);
 });
 
 test('user search returns unique public profile fields and filters inactive accounts', async () => {
