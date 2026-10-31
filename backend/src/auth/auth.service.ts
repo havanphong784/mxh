@@ -4,9 +4,12 @@ import {
     HttpStatus,
     Injectable,
     NotFoundException,
+    Inject,
+    forwardRef,
     UnauthorizedException
 } from '@nestjs/common';
-import {PrismaService} from "../prisma/prisma.service.js";
+import { UsersService } from '../users/users.service.js';
+import { UsersAuthService } from '../users/users-auth.service.js';
 import argon2 from 'argon2';
 import * as crypto from "node:crypto";
 import {MailService} from "../mail/mail.service.js";
@@ -38,40 +41,22 @@ export interface RequestMeta {
 @Injectable()
 export class AuthService {
     constructor(
-        private readonly prisma: PrismaService,
         private readonly mailService: MailService,
         private readonly jwtService: JwtService,
         private readonly eventEmitter: EventEmitter2,
+        @Inject(forwardRef(() => UsersService)) private readonly usersService: UsersService,
+        private readonly usersAuthService: UsersAuthService,
     ) {}
 
     async getMe(userId: string): Promise<AuthUserDto> {
-        const user = await this.prisma.client.orm.public.User
-            .where((u) => u.id.eq(userId))
-            .first();
-
-        if (!user || !user.isActive) {
-            throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
-        }
-
-        return {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
-            bannerUrl: user.bannerUrl,
-            bio: user.bio,
-            isEmailVerified: user.isEmailVerified,
-            createdAt: user.createdAt,
-        };
+        return this.usersService.getAuthProfile(userId);
     }
 
     async register(dto: RegisterDto): Promise<RegisterResponseDto> {
         const email = dto.email;
         const username = dto.username;
 
-        const existingEmail = await this.prisma.client.orm.public.User
-            .where((u) => u.email.eq(email)).first();
+        const existingEmail = await this.usersAuthService.findUserByEmail(email);
         if (existingEmail) {
             if (!existingEmail.isEmailVerified) {
                 throw new DomainException(
@@ -83,8 +68,7 @@ export class AuthService {
             throw new DomainException(ERROR_CODES.AUTH_EMAIL_CONFLICT, 'Email đã tồn tại !', HttpStatus.CONFLICT);
         }
 
-        const existingUsername = await this.prisma.client.orm.public.User
-            .where((u) => u.username.eq(username)).first();
+        const existingUsername = await this.usersAuthService.usernameExists(username);
         if (existingUsername) {
             throw new DomainException(ERROR_CODES.AUTH_USERNAME_CONFLICT, 'Username đã tồn tại !', HttpStatus.CONFLICT);
         }
@@ -96,30 +80,14 @@ export class AuthService {
             Date.now() + 5 * 60 * 1000 // 5 phút
         );
 
-        const user = await this.prisma.client.transaction(async (tx) => {
-            const createdUser = await tx.orm.public.User.create({
-                email,
-                username,
-                passwordHash,
-                displayName: dto.displayName,
-                isEmailVerified: false,
-            });
-            await tx.orm.public.OtpVerification.create({
-                email: createdUser.email,
-                codeHash,
-                type: 'REGISTER_VERIFY',
-                expiresAt,
-                attempts: 0,
-                userId: createdUser.id,
-            });
-            return createdUser;
+        const user = await this.usersAuthService.createPendingUserWithOtp({
+            email, username, passwordHash, displayName: dto.displayName,
+            codeHash, expiresAt,
         });
 
         const isSent = await this.mailService.sendOtpEmail(user.email, otpCode);
         if (!isSent) {
-            await this.prisma.client.orm.public.User
-                .where({ id: user.id })
-                .delete();
+            await this.usersAuthService.deleteUserById(user.id);
             throw new BadRequestException(
                 'Hệ thống tạm thời không thể gửi email xác thực. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.'
             );
@@ -136,11 +104,7 @@ export class AuthService {
         meta: RequestMeta,
     ): Promise<AuthResultDto> {
         const email = dto.email;
-        const otpRecord = await this.prisma.client.orm.public.OtpVerification
-            .where((o) => o.email.eq(email))
-            .where((o) => o.type.eq('REGISTER_VERIFY'))
-            .orderBy((o) => o.createdAt.desc())
-            .first();
+        const otpRecord = await this.usersAuthService.findLatestOtp(email, 'REGISTER_VERIFY');
         if (!otpRecord) {
             throw new NotFoundException('Không tìm thấy yêu cầu xác thực hoặc mã đã hết hạn');
         }
@@ -156,15 +120,11 @@ export class AuthService {
 
         const inputHash = this.hashSha256(dto.code);
         if (inputHash !== otpRecord.codeHash) {
-            await this.prisma.client.orm.public.OtpVerification
-                .where({ id: otpRecord.id })
-                .update({ attempts: otpRecord.attempts + 1 });
+            await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
             throw new BadRequestException('Mã OTP không chính xác');
         }
 
-        const user = await this.prisma.client.orm.public.User
-            .where((u) => u.email.eq(email))
-            .first();
+        const user = await this.usersAuthService.findUserByEmail(email);
 
         if (!user) {
             throw new NotFoundException('Không tìm thấy thông tin người dùng');
@@ -172,15 +132,9 @@ export class AuthService {
 
         const refreshToken = await this.generateRefreshToken(user.id);
         const sessionData = this.createSessionData(user.id, refreshToken, meta);
-        const session = await this.prisma.client.transaction(async (tx) => {
-            await tx.orm.public.User
-                .where((u) => u.email.eq(email))
-                .update({ isEmailVerified: true });
-            await tx.orm.public.OtpVerification
-                .where({ id: otpRecord.id })
-                .delete();
-            return tx.orm.public.Session.create(sessionData);
-        });
+        const session = await this.usersAuthService.activateAndCreateSession(
+            email, otpRecord.id, sessionData,
+        );
 
         const accessToken = await this.generateAccessToken(user, session.id);
 
@@ -205,9 +159,7 @@ export class AuthService {
 
     async resendOtp(dto: ResendOtpDto): Promise<RegisterResponseDto> {
         const email = dto.email;
-        const user = await this.prisma.client.orm.public.User
-            .where((u) => u.email.eq(email))
-            .first();
+        const user = await this.usersAuthService.findUserByEmail(email);
         if (!user) {
             throw new NotFoundException('Không tìm thấy tài khoản với email này.');
         }
@@ -216,11 +168,7 @@ export class AuthService {
             throw new BadRequestException('Tài khoản này đã được kích hoạt trước đó. Vui lòng đăng nhập.');
         }
 
-        const lastOtp = await this.prisma.client.orm.public.OtpVerification
-            .where((o) => o.email.eq(email))
-            .where((o) => o.type.eq('REGISTER_VERIFY'))
-            .orderBy((o) => o.createdAt.desc())
-            .first();
+        const lastOtp = await this.usersAuthService.findLatestOtp(email, 'REGISTER_VERIFY');
 
         if (lastOtp) {
             const createdAtMs = this.getTimestampMs(lastOtp.createdAt);
@@ -232,9 +180,7 @@ export class AuthService {
                 throw new BadRequestException(`Vui lòng chờ ${waitSeconds} giây nữa trước khi yêu cầu mã mới.`);
             }
 
-            await this.prisma.client.orm.public.OtpVerification
-                .where({ id: lastOtp.id })
-                .delete();
+            await this.usersAuthService.deleteOtp(lastOtp.id);
         }
 
         const otpCode = this.generateOtpCode();
@@ -243,7 +189,7 @@ export class AuthService {
             Date.now() + 5 * 60 * 1000 // 5 phút
         );
 
-        const createdOtp = await this.prisma.client.orm.public.OtpVerification.create({
+        const createdOtp = await this.usersAuthService.createOtp({
             email: user.email,
             codeHash,
             type: 'REGISTER_VERIFY',
@@ -254,9 +200,7 @@ export class AuthService {
 
         const isSent = await this.mailService.sendOtpEmail(user.email, otpCode);
         if (!isSent) {
-            await this.prisma.client.orm.public.OtpVerification
-                .where({ id: createdOtp.id })
-                .delete();
+            await this.usersAuthService.deleteOtp(createdOtp.id);
             throw new BadRequestException(
                 'Hệ thống tạm thời không thể gửi email xác thực. Vui lòng thử lại sau.',
             );
@@ -273,9 +217,7 @@ export class AuthService {
         meta: RequestMeta,
     ): Promise<AuthResultDto> {
         const email = dto.email;
-        const user = await this.prisma.client.orm.public.User
-            .where((u) => u.email.eq(email))
-            .first();
+        const user = await this.usersAuthService.findUserByEmail(email);
 
         if (!user) {
             throw new DomainException(ERROR_CODES.AUTH_INVALID_CREDENTIALS, 'Email hoặc mật khẩu không chính xác.', HttpStatus.UNAUTHORIZED);
@@ -289,7 +231,7 @@ export class AuthService {
             throw new DomainException(ERROR_CODES.AUTH_EMAIL_UNVERIFIED, 'Tài khoản chưa được kích hoạt. Vui lòng xác thực email trước khi đăng nhập.', HttpStatus.FORBIDDEN);
         }
 
-        const isPasswordValid = await argon2.verify(user.passwordHash, dto.password);
+        const isPasswordValid = await this.usersAuthService.verifyPassword(email, dto.password);
         if (!isPasswordValid) {
             throw new DomainException(ERROR_CODES.AUTH_INVALID_CREDENTIALS, 'Email hoặc mật khẩu không chính xác.', HttpStatus.UNAUTHORIZED);
         }
@@ -330,9 +272,7 @@ export class AuthService {
         }
 
         const tokenHash = this.hashSha256(refreshToken);
-        const session = await this.prisma.client.orm.public.Session
-            .where((s) => s.tokenHash.eq(tokenHash))
-            .first();
+        const session = await this.usersAuthService.findSessionByTokenHash(tokenHash);
 
         if (!session) {
             throw new UnauthorizedException('Phiên đăng nhập không tồn tại hoặc đã bị đăng xuất.');
@@ -352,17 +292,11 @@ export class AuthService {
                 );
             }
 
-            await this.prisma.client.orm.public.Session
-                .where((s) => s.userId.eq(session.userId))
-                .update({ isRevoked: true });
+            await this.usersAuthService.revokeSessionsForUser(session.userId);
 
             this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
                 userId: session.userId,
             } satisfies UserSessionsRevokedEvent);
-
-            await this.prisma.client.orm.public.Session
-                .where((s) => s.tokenHash.eq(tokenHash))
-                .delete();
 
             throw new ForbiddenException('Phát hiện dấu hiệu bất thường. Toàn bộ phiên đăng nhập đã bị hủy, vui lòng đăng nhập lại.');
         }
@@ -372,9 +306,7 @@ export class AuthService {
             throw new UnauthorizedException('Phiên đăng nhập đã hết hạn.');
         }
 
-        const user = await this.prisma.client.orm.public.User
-            .where((u) => u.id.eq(session.userId))
-            .first();
+        const user = await this.usersAuthService.findUserById(session.userId);
 
         if (!user || !user.isActive) {
             throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
@@ -382,22 +314,10 @@ export class AuthService {
 
         const newRefreshToken = await this.generateRefreshToken(user.id);
         const newSessionData = this.createSessionData(user.id, newRefreshToken, meta);
-        const newSession = await this.prisma.client.transaction(async (tx) => {
-            const claimPlan = this.prisma.client.raw.sql`
-                UPDATE "session"
-                SET "isRevoked" = true, "updatedAt" = CURRENT_TIMESTAMP
-                WHERE id = ${session.id} AND "isRevoked" = false
-            `.affectedCount().build();
-            const { affectedRows: claimedCount } = await tx.execute(claimPlan);
-
-            if (claimedCount !== 1) {
-                throw new UnauthorizedException(
-                    'Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.',
-                );
-            }
-
-            return tx.orm.public.Session.create(newSessionData);
-        });
+        const newSession = await this.usersAuthService.rotateRefreshSession(session.id, newSessionData);
+        if (!newSession) {
+            throw new UnauthorizedException('Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.');
+        }
 
         this.eventEmitter.emit(AUTH_EVENTS.SESSION_REVOKED, {
             sessionId: session.id,
@@ -418,17 +338,11 @@ export class AuthService {
 
         const tokenHash = this.hashSha256(refreshToken);
 
-        const sessions = await this.prisma.client.orm.public.Session
-            .where((s) => s.tokenHash.eq(tokenHash))
-            .all();
+        const sessionIds = await this.usersAuthService.revokeSessionByTokenHash(tokenHash);
 
-        await this.prisma.client.orm.public.Session
-            .where((s) => s.tokenHash.eq(tokenHash))
-            .update({ isRevoked: true });
-
-        for (const session of sessions) {
+        for (const sessionId of sessionIds) {
             this.eventEmitter.emit(AUTH_EVENTS.SESSION_REVOKED, {
-                sessionId: session.id,
+                sessionId,
             } satisfies SessionRevokedEvent);
         }
 
@@ -441,9 +355,7 @@ export class AuthService {
         dto: ForgotPasswordDto,
     ): Promise<MessageResponseDto> {
         const email = dto.email;
-        const user = await this.prisma.client.orm.public.User
-            .where((u) => u.email.eq(email))
-            .first();
+        const user = await this.usersAuthService.findUserByEmail(email);
 
         if (!user || !user.isActive) {
             return {
@@ -451,11 +363,7 @@ export class AuthService {
             };
         }
 
-        const lastOtp = await this.prisma.client.orm.public.OtpVerification
-            .where((o) => o.email.eq(email))
-            .where((o) => o.type.eq('FORGOT_PASSWORD'))
-            .orderBy((o) => o.createdAt.desc())
-            .first();
+        const lastOtp = await this.usersAuthService.findLatestOtp(email, 'FORGOT_PASSWORD');
 
         if (lastOtp) {
             const createdAtMs = this.getTimestampMs(lastOtp.createdAt);
@@ -467,9 +375,7 @@ export class AuthService {
                 throw new BadRequestException(`Vui lòng chờ ${waitSeconds} giây nữa trước khi yêu cầu mã mới.`);
             }
 
-            await this.prisma.client.orm.public.OtpVerification
-                .where({ id: lastOtp.id })
-                .delete();
+            await this.usersAuthService.deleteOtp(lastOtp.id);
         }
 
         const otpCode = this.generateOtpCode();
@@ -478,7 +384,7 @@ export class AuthService {
             Date.now() + 5 * 60 * 1000
         );
 
-        const createdOtp = await this.prisma.client.orm.public.OtpVerification.create({
+        const createdOtp = await this.usersAuthService.createOtp({
             email: user.email,
             codeHash,
             type: 'FORGOT_PASSWORD',
@@ -489,9 +395,7 @@ export class AuthService {
 
         const sent = await this.mailService.sendResetPasswordEmail(user.email, otpCode);
         if (!sent) {
-            await this.prisma.client.orm.public.OtpVerification
-                .where({ id: createdOtp.id })
-                .delete();
+            await this.usersAuthService.deleteOtp(createdOtp.id);
         }
 
         return {
@@ -501,11 +405,7 @@ export class AuthService {
 
     async resetPassword(dto: ResetPasswordDto): Promise<MessageResponseDto> {
         const email = dto.email;
-        const otpRecord = await this.prisma.client.orm.public.OtpVerification
-            .where((o) => o.email.eq(email))
-            .where((o) => o.type.eq('FORGOT_PASSWORD'))
-            .orderBy((o) => o.createdAt.desc())
-            .first();
+        const otpRecord = await this.usersAuthService.findLatestOtp(email, 'FORGOT_PASSWORD');
         if (!otpRecord) {
             throw new NotFoundException('Không tìm thấy yêu cầu đặt lại mật khẩu hoặc mã đã hết hạn.');
         }
@@ -521,26 +421,14 @@ export class AuthService {
 
         const inputHash = this.hashSha256(dto.code);
         if (inputHash !== otpRecord.codeHash) {
-            await this.prisma.client.orm.public.OtpVerification
-                .where({ id: otpRecord.id })
-                .update({ attempts: otpRecord.attempts + 1 });
+            await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
             throw new BadRequestException('Mã OTP không chính xác.');
         }
 
         const passwordHash = await argon2.hash(dto.newPassword);
-        await this.prisma.client.transaction(async (tx) => {
-            await tx.orm.public.User
-                .where((u) => u.email.eq(email))
-                .update({ passwordHash });
-            await tx.orm.public.OtpVerification
-                .where({ id: otpRecord.id })
-                .delete();
-            if (otpRecord.userId) {
-                await tx.orm.public.Session
-                    .where((s) => s.userId.eq(otpRecord.userId!))
-                    .update({ isRevoked: true });
-            }
-        });
+        await this.usersAuthService.resetPasswordAndRevokeSessions(
+            email, otpRecord.id, otpRecord.userId, passwordHash,
+        );
 
         if (otpRecord.userId) {
             this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
@@ -603,7 +491,7 @@ export class AuthService {
     }
 
     private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {
-        return await this.prisma.client.orm.public.Session.create(
+        return this.usersAuthService.createSession(
             this.createSessionData(userId, refreshToken, meta),
         );
     }

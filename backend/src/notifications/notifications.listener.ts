@@ -1,6 +1,5 @@
-import { Injectable, Logger, Optional } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
-import { PrismaService } from "../prisma/prisma.service.js";
 import { EventsGateway } from "../gateway/events.gateway.js";
 import { UsersService } from "../users/users.service.js";
 import { POST_EVENTS, USER_EVENTS } from "../events/event-types.js";
@@ -17,18 +16,12 @@ import type {
 @Injectable()
 export class NotificationsListener {
   private readonly logger = new Logger(NotificationsListener.name);
-  private readonly notificationsRepository: NotificationsRepository;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly notificationsRepository: NotificationsRepository,
     private readonly eventsGateway: EventsGateway,
     private readonly usersService: UsersService,
-    @Optional()
-    notificationsRepository?: NotificationsRepository,
-  ) {
-    this.notificationsRepository =
-      notificationsRepository ?? new NotificationsRepository(this.prisma);
-  }
+  ) {}
 
   @OnEvent(POST_EVENTS.CREATED)
   async handlePostCreated(event: PostCreatedEvent) {

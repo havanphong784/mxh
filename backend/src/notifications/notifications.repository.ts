@@ -6,10 +6,6 @@ import { Temporal } from "@js-temporal/polyfill";
 export class NotificationsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  get client() {
-    return this.prisma.client;
-  }
-
   get notification() {
     return this.prisma.client.orm.public.Notification;
   }

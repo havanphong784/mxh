@@ -1,6 +1,7 @@
 import {HttpStatus, Injectable, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
-import {PrismaService} from '../prisma/prisma.service.js';
+import { Inject, forwardRef } from '@nestjs/common';
+import { UsersService } from '../users/users.service.js';
 import type {CurrentUserPayload} from './decorators/current-user.decorator.js';
 import { DomainException, ERROR_CODES } from '../common/exceptions/domain.exception.js';
 
@@ -8,7 +9,7 @@ import { DomainException, ERROR_CODES } from '../common/exceptions/domain.except
 export class AccessSessionService {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => UsersService)) private readonly usersService: UsersService,
   ) {}
 
   async verifyAccessToken(token: string): Promise<CurrentUserPayload> {
@@ -29,10 +30,7 @@ export class AccessSessionService {
       throw new UnauthorizedException('Token không chứa thông tin phiên hợp lệ');
     }
 
-    const session = await this.prisma.client.orm.public.Session
-      .where((s) => s.id.eq(payload.sessionId))
-      .include('user')
-      .first();
+    const session = await this.usersService.getAccessSessionState(payload.sessionId);
 
     if (!session || session.userId !== payload.sub) {
       throw new DomainException(ERROR_CODES.AUTH_SESSION_EXPIRED, 'Phiên đăng nhập không còn hiệu lực', HttpStatus.UNAUTHORIZED);
@@ -43,10 +41,10 @@ export class AccessSessionService {
     if (this.isExpired(session.expiresAt)) {
       throw new DomainException(ERROR_CODES.AUTH_SESSION_EXPIRED, 'Phiên đăng nhập đã hết hạn', HttpStatus.UNAUTHORIZED);
     }
-    if (!session.user.isActive) {
+    if (!session.isActive) {
       throw new DomainException(ERROR_CODES.AUTH_ACCOUNT_LOCKED, 'Tài khoản đã bị khóa', HttpStatus.FORBIDDEN);
     }
-    if (!session.user.isEmailVerified) {
+    if (!session.isEmailVerified) {
       throw new DomainException(ERROR_CODES.AUTH_EMAIL_UNVERIFIED, 'Tài khoản chưa xác thực email', HttpStatus.FORBIDDEN);
     }
 

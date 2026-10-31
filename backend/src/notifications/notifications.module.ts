@@ -15,6 +15,6 @@ import { UsersModule } from "../users/users.module.js";
     NotificationsListener,
     NotificationsRepository,
   ],
-  exports: [NotificationsService, NotificationsRepository],
+  exports: [NotificationsService],
 })
 export class NotificationsModule {}

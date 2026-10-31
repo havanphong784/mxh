@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Temporal } from '@js-temporal/polyfill';
 import { NotificationsService } from './notifications.service.js';
+import { NotificationsRepository } from './notifications.repository.js';
+
+function createService(prisma: any, gateway: any) {
+    return new NotificationsService(new NotificationsRepository(prisma), gateway);
+}
 
 test('an invalid notification cursor is ignored instead of being sent to the database', async () => {
     let cursorWasApplied = false;
@@ -22,7 +27,7 @@ test('an invalid notification cursor is ignored instead of being sent to the dat
             },
         },
     };
-    const service = new NotificationsService(prisma as any, {} as any);
+    const service = createService(prisma, {});
     const invalidCursor = Buffer.from(
         JSON.stringify({ createdAt: 'not-a-date', id: null }),
     ).toString('base64');
@@ -46,7 +51,7 @@ test('a valid notification cursor uses a Temporal.Instant for Prisma pagination'
         async all() { return []; },
     };
     const prisma = { client: { orm: { public: { Notification: { where: () => query } } } } };
-    const service = new NotificationsService(prisma as any, {} as any);
+    const service = createService(prisma, {});
     const createdAt = '2026-10-26T12:34:56.123456Z';
     const cursor = Buffer.from(JSON.stringify({ createdAt, id: 'notification-1' })).toString('base64');
 
@@ -67,7 +72,7 @@ test('mark all as read returns the affected row count', async () => {
         },
     };
     const gateway = { pushToUser() {} };
-    const service = new NotificationsService(prisma as any, gateway as any);
+    const service = createService(prisma, gateway);
 
     assert.deepEqual(await service.markAllAsRead('user-id'), { success: true, count: 3 });
 });
@@ -97,7 +102,7 @@ test('getNotifications maps actor and post through NotificationResponseMapper', 
         async all() { return [mockNotification]; },
     };
     const prisma = { client: { orm: { public: { Notification: { where: () => query } } } } };
-    const service = new NotificationsService(prisma as any, {} as any);
+    const service = createService(prisma, {});
 
     const result = await service.getNotifications('user-id', { limit: 20 });
     assert.equal(result.data.length, 1);

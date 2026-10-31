@@ -1,5 +1,4 @@
-import { Injectable, NotFoundException, Optional } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service.js";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js";
 import { EventsGateway } from "../gateway/events.gateway.js";
 import { Temporal } from "@js-temporal/polyfill";
@@ -14,17 +13,10 @@ import {
 
 @Injectable()
 export class NotificationsService {
-  private readonly notificationsRepository: NotificationsRepository;
-
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly notificationsRepository: NotificationsRepository,
     private readonly eventsGateway: EventsGateway,
-    @Optional()
-    notificationsRepository?: NotificationsRepository,
-  ) {
-    this.notificationsRepository =
-      notificationsRepository ?? new NotificationsRepository(this.prisma);
-  }
+  ) {}
 
   async getNotifications(
     userId: string,

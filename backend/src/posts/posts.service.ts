@@ -6,10 +6,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
 } from "@nestjs/common";
 import { CreatePostDto } from "./dto/create-post.dto.js";
-import { PrismaService } from "../prisma/prisma.service.js";
 import { UpdatePostDto } from "./dto/update-post.dto.js";
 import { MediaService } from "../media/media.service.js";
 import { UsersService } from "../users/users.service.js";
@@ -25,7 +23,6 @@ import type {
 } from "../events/event-types.js";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Temporal } from "@js-temporal/polyfill";
-import { toContainsPattern } from "../common/search.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
 import {
   PostLikesResponseDto,
@@ -38,20 +35,14 @@ import { PostsRepository } from "./posts.repository.js";
 @Injectable()
 export class PostsService {
   private readonly logger = new Logger(PostsService.name);
-  private readonly postRepository: PostsRepository;
 
   constructor(
-    private readonly prismaService: PrismaService,
+    private readonly postRepository: PostsRepository,
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
-    @Optional()
-    postsRepository?: PostsRepository,
-  ) {
-    this.postRepository =
-      postsRepository ?? new PostsRepository(this.prismaService);
-  }
+  ) {}
 
   async createPost(userId: string, dto: CreatePostDto) {
     await this.ensureActiveUser(userId);
@@ -71,11 +62,7 @@ export class PostsService {
     let visibility = dto.visibility ?? "PUBLIC";
 
     if (dto.parentId) {
-      parentPost = await this.prismaService.client.orm.public.Post.where({
-        id: dto.parentId,
-      })
-        .include("author")
-        .first();
+      parentPost = await this.postRepository.findByIdWithAuthor(dto.parentId);
 
       if (!parentPost) {
         throw new NotFoundException("Bài viết cha không tồn tại");
@@ -88,9 +75,7 @@ export class PostsService {
       rootId = parentPost.rootId ? parentPost.rootId : parentPost.id;
 
       rootPost = parentPost.rootId
-        ? await this.prismaService.client.orm.public.Post.where({ id: rootId })
-            .include("author")
-            .first()
+        ? await this.postRepository.findByIdWithAuthor(rootId!)
         : parentPost;
 
       if (!rootPost) {
@@ -110,9 +95,7 @@ export class PostsService {
     }
 
     if (dto.quotedPostId) {
-      quotedPost = await this.prismaService.client.orm.public.Post.where({
-        id: dto.quotedPostId,
-      }).first();
+      quotedPost = await this.postRepository.findById(dto.quotedPostId);
 
       if (!quotedPost || quotedPost.isDeleted) {
         throw new BadRequestException(
@@ -131,62 +114,16 @@ export class PostsService {
 
     let result: any;
     try {
-      result = await this.prismaService.client.transaction(async (tx) => {
-        const post = await tx.orm.public.Post.create({
-          authorId: userId,
-          content: content || null,
-          visibility,
-          parentId: dto.parentId || null,
-          rootId: rootId || null,
-          quotedPostId: dto.quotedPostId || null,
-        });
-
-        if (dto.parentId) {
-          const rawPlan = this.prismaService.client.raw.sql`
-                        UPDATE "post"
-                        SET "replyCount" = "replyCount" + 1
-                        WHERE id = ${dto.parentId}
-                    `
-            .affectedCount()
-            .build();
-          await tx.execute(rawPlan);
-        }
-
-        if (dto.quotedPostId) {
-          const rawPlan = this.prismaService.client.raw.sql`
-                        UPDATE "post"
-                        SET "quoteCount" = "quoteCount" + 1
-                        WHERE id = ${dto.quotedPostId}
-                    `
-            .affectedCount()
-            .build();
-          await tx.execute(rawPlan);
-        }
-
-        for (const media of verifiedMedia) {
-          await tx.orm.public.PostMedia.create({
-            postId: post.id,
-            publicId: media.publicId,
-            url: media.url,
-            type: media.type,
-            width: media.width,
-            height: media.height,
-            duration: media.duration,
-            order: media.order,
-          });
-        }
-
-        const fullPost = await tx.orm.public.Post.where({ id: post.id })
-          .include("author")
-          .include("media")
-          .include("quotedPost")
-          .include("repostOf", (repost) =>
-            repost.include("author").include("media").include("quotedPost"),
-          )
-          .first();
-
-        return this.toPostResponse(fullPost);
+      const post = await this.postRepository.createPostWithMedia({
+        authorId: userId,
+        content: content || null,
+        visibility,
+        parentId: dto.parentId || null,
+        rootId: rootId || null,
+        quotedPostId: dto.quotedPostId || null,
+        media: verifiedMedia,
       });
+      result = this.toPostResponse(post);
     } catch (error) {
       if (verifiedMedia.length > 0 && this.isUniqueConstraintError(error)) {
         throw new BadRequestException(
@@ -228,12 +165,7 @@ export class PostsService {
   async updatePost(postId: string, userId: string, dto: UpdatePostDto) {
     await this.ensureActiveUser(userId);
 
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    })
-      .include("author")
-      .include("media")
-      .first();
+    const post = await this.postRepository.findByIdWithAuthorAndMedia(postId);
 
     if (!post || post.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -270,26 +202,9 @@ export class PostsService {
       updatePayload.visibility = dto.visibility;
     }
 
-    await this.prismaService.client.transaction(async (tx) => {
-      await tx.orm.public.Post.where({ id: postId }).update(updatePayload);
+    await this.postRepository.updatePostAndReplies(postId, updatePayload, dto.visibility);
 
-      if (dto.visibility !== undefined) {
-        await tx.orm.public.Post.where((p) => p.rootId.eq(postId)).update({
-          visibility: dto.visibility,
-        });
-      }
-    });
-
-    const updated = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    })
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .first();
+    const updated = await this.postRepository.findByIdForResponse(postId);
 
     return this.toPostResponse(updated);
   }
@@ -297,11 +212,7 @@ export class PostsService {
   async deletePost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    })
-      .include("media")
-      .first();
+    const post = await this.postRepository.findByIdWithMedia(postId);
 
     if (!post || post.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -319,80 +230,7 @@ export class PostsService {
       type: media.type,
     }));
 
-    await this.prismaService.client.transaction(async (tx) => {
-      const repliesCountAgg = await tx.orm.public.Post.where((p) =>
-        p.parentId.eq(postId),
-      ).aggregate((agg) => ({ total: agg.count() }));
-      const hasReplies = Number(repliesCountAgg.total) > 0;
-
-      if (hasReplies) {
-        await tx.orm.public.Post.where({ id: postId }).update({
-          isDeleted: true,
-          content: null,
-        });
-
-        await tx.orm.public.PostMedia.where((m) =>
-          m.postId.eq(postId),
-        ).delete();
-
-        await tx.orm.public.PostLike.where((l) => l.postId.eq(postId)).delete();
-        await tx.orm.public.PostBookmark.where((b) =>
-          b.postId.eq(postId),
-        ).delete();
-
-        await tx.orm.public.Post.where((p) => p.repostOfId.eq(postId)).delete();
-
-        if (post.quotedPostId) {
-          const rawPlan = this.prismaService.client.raw.sql`
-            UPDATE "post"
-            SET "quoteCount" = GREATEST(0, "quoteCount" - 1)
-            WHERE id = ${post.quotedPostId}
-          `
-            .affectedCount()
-            .build();
-          await tx.execute(rawPlan);
-        }
-
-        if (post.repostOfId) {
-          const rawPlan = this.prismaService.client.raw.sql`
-            UPDATE "post"
-            SET "repostCount" = GREATEST(0, "repostCount" - 1)
-            WHERE id = ${post.repostOfId}
-          `
-            .affectedCount()
-            .build();
-          await tx.execute(rawPlan);
-        }
-      } else {
-        await tx.orm.public.Post.where({ id: postId }).delete();
-
-        if (post.quotedPostId) {
-          const rawPlan = this.prismaService.client.raw.sql`
-            UPDATE "post"
-            SET "quoteCount" = GREATEST(0, "quoteCount" - 1)
-            WHERE id = ${post.quotedPostId}
-          `
-            .affectedCount()
-            .build();
-          await tx.execute(rawPlan);
-        }
-
-        if (post.repostOfId) {
-          const rawPlan = this.prismaService.client.raw.sql`
-            UPDATE "post"
-            SET "repostCount" = GREATEST(0, "repostCount" - 1)
-            WHERE id = ${post.repostOfId}
-          `
-            .affectedCount()
-            .build();
-          await tx.execute(rawPlan);
-        }
-
-        if (post.parentId) {
-          await this.cleanupParentTombstone(tx, post.parentId);
-        }
-      }
-    });
+    await this.postRepository.deletePostRecord(postId, post);
 
     if (mediaToDelete.length > 0) {
       Promise.all(
@@ -424,11 +262,7 @@ export class PostsService {
   async canView(post: any, viewerId?: string): Promise<boolean> {
     let visibilitySource = post;
     if (post.rootId) {
-      visibilitySource = await this.prismaService.client.orm.public.Post.where({
-        id: post.rootId,
-      })
-        .include("author")
-        .first();
+      visibilitySource = await this.postRepository.findByIdWithAuthor(post.rootId);
 
       if (!visibilitySource) {
         return false;
@@ -470,16 +304,7 @@ export class PostsService {
   }
 
   async getPostById(postId: string, viewerId?: string) {
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    })
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .first();
+    const post = await this.postRepository.findByIdForResponse(postId);
 
     if (!post) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -504,28 +329,10 @@ export class PostsService {
     const bookmarkedSet = new Set<string>();
 
     if (viewerId) {
-      const [like, repost, bookmark] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(viewerId),
-        )
-          .where((l) => l.postId.eq(postId))
-          .first(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(viewerId),
-        )
-          .where((p) => p.repostOfId.eq(postId))
-          .where((p) => p.isDeleted.eq(false))
-          .first(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(viewerId),
-        )
-          .where((b) => b.postId.eq(postId))
-          .first(),
-      ]);
-
-      if (like) likedSet.add(postId);
-      if (repost) repostedSet.add(postId);
-      if (bookmark) bookmarkedSet.add(postId);
+      const marks = await this.postRepository.findViewerMarks(viewerId, [postId]);
+      if (marks.likes.length > 0) likedSet.add(postId);
+      if (marks.reposts.length > 0) repostedSet.add(postId);
+      if (marks.bookmarks.length > 0) bookmarkedSet.add(postId);
     }
 
     return this.toPostResponse(post, { likedSet, repostedSet, bookmarkedSet });
@@ -536,11 +343,7 @@ export class PostsService {
     query: CursorPaginationDto,
     viewerId?: string,
   ) {
-    const parentPost = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    })
-      .include("author")
-      .first();
+    const parentPost = await this.postRepository.findByIdWithAuthor(postId);
 
     if (!parentPost) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -552,11 +355,7 @@ export class PostsService {
       const rootPost =
         rootIdToCheck === parentPost.id
           ? parentPost
-          : await this.prismaService.client.orm.public.Post.where({
-              id: rootIdToCheck,
-            })
-              .include("author")
-              .first();
+          : await this.postRepository.findByIdWithAuthor(rootIdToCheck);
 
       if (rootPost) {
         const canViewRoot = await this.canView(rootPost, viewerId);
@@ -571,26 +370,7 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    let replyQuery = this.prismaService.client.orm.public.Post.where((p) =>
-      p.parentId.eq(postId),
-    ).orderBy([(p) => p.createdAt.asc(), (p) => p.id.asc()]);
-
-    if (cursor) {
-      replyQuery = replyQuery.cursor({
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      });
-    }
-
-    const replies = await replyQuery
-      .limit(limit + 1)
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .all();
+    const replies = await this.postRepository.listReplies(postId, limit, cursor);
 
     const hasNextPage = replies.length > limit;
     const items = hasNextPage ? replies.slice(0, limit) : replies;
@@ -601,24 +381,7 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const [likes, reposts, bookmarks] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(viewerId),
-        )
-          .where((l) => l.postId.in(postIds))
-          .all(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(viewerId),
-        )
-          .where((p) => p.repostOfId.in(postIds))
-          .where((p) => p.isDeleted.eq(false))
-          .all(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(viewerId),
-        )
-          .where((b) => b.postId.in(postIds))
-          .all(),
-      ]);
+      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -638,9 +401,7 @@ export class PostsService {
   }
 
   async getAncestors(postId: string, viewerId?: string) {
-    const currentPost = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const currentPost = await this.postRepository.findById(postId);
 
     if (!currentPost) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -656,16 +417,7 @@ export class PostsService {
     let depth = 0;
     while (currentParentId && depth < 20) {
       depth++;
-      const parent: any = await this.prismaService.client.orm.public.Post.where(
-        { id: currentParentId },
-      )
-        .include("author")
-        .include("media")
-        .include("quotedPost")
-        .include("repostOf", (repost) =>
-          repost.include("author").include("media").include("quotedPost"),
-        )
-        .first();
+      const parent: any = await this.postRepository.findByIdForResponse(currentParentId);
 
       if (!parent) break;
 
@@ -689,24 +441,7 @@ export class PostsService {
 
     if (viewerId && ancestorsList.length > 0) {
       const postIds = ancestorsList.map((p: any) => p.id);
-      const [likes, reposts, bookmarks] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(viewerId),
-        )
-          .where((l) => l.postId.in(postIds))
-          .all(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(viewerId),
-        )
-          .where((p) => p.repostOfId.in(postIds))
-          .where((p) => p.isDeleted.eq(false))
-          .all(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(viewerId),
-        )
-          .where((b) => b.postId.in(postIds))
-          .all(),
-      ]);
+      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -723,9 +458,7 @@ export class PostsService {
   async repost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const targetPost = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const targetPost = await this.postRepository.findById(postId);
 
     if (!targetPost || targetPost.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -736,11 +469,7 @@ export class PostsService {
     }
 
     // Kiểm tra xem người dùng đã repost chưa
-    const existingRepost =
-      await this.prismaService.client.orm.public.Post.where({
-        authorId: userId,
-        repostOfId: postId,
-      }).first();
+    const existingRepost = await this.postRepository.findRepost(userId, postId);
 
     if (existingRepost) {
       // Idempotent: Đã repost rồi thì trả về thành công kèm số đếm hiện tại
@@ -753,33 +482,12 @@ export class PostsService {
     let result: { reposted: boolean; repostCount: number };
     let inserted = false;
     try {
-      result = await this.prismaService.client.transaction(async (tx) => {
-        await tx.orm.public.Post.create({
-          authorId: userId,
-          repostOfId: postId,
-          visibility: "PUBLIC",
-        });
-
-        const rawPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "repostCount" = "repostCount" + 1
-                    WHERE id = ${postId}
-                `
-          .affectedCount()
-          .build();
-        await tx.execute(rawPlan);
-        inserted = true;
-
-        return {
-          reposted: true,
-          repostCount: targetPost.repostCount + 1,
-        };
-      });
+      await this.postRepository.createRepostAndIncrement(postId, userId);
+      inserted = true;
+      result = { reposted: true, repostCount: targetPost.repostCount + 1 };
     } catch (error) {
       if (!this.isUniqueConstraintError(error)) throw error;
-      const latestPost = await this.prismaService.client.orm.public.Post.where({
-        id: postId,
-      }).first();
+      const latestPost = await this.postRepository.findById(postId);
       result = {
         reposted: true,
         repostCount: latestPost?.repostCount ?? targetPost.repostCount,
@@ -800,19 +508,13 @@ export class PostsService {
   async unrepost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const targetPost = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const targetPost = await this.postRepository.findById(postId);
 
     if (!targetPost) {
       throw new NotFoundException("Không tìm thấy bài viết");
     }
 
-    const existingRepost =
-      await this.prismaService.client.orm.public.Post.where({
-        authorId: userId,
-        repostOfId: postId,
-      }).first();
+    const existingRepost = await this.postRepository.findRepost(userId, postId);
 
     if (!existingRepost) {
       return {
@@ -821,42 +523,17 @@ export class PostsService {
       };
     }
 
-    return this.prismaService.client.transaction(async (tx) => {
-      const deletePlan = this.prismaService.client.raw.sql`
-                DELETE FROM "post"
-                WHERE "authorId" = ${userId} AND "repostOfId" = ${postId}
-            `
-        .affectedCount()
-        .build();
-      const { affectedRows: deletedCount } = await tx.execute(deletePlan);
-
-      if (deletedCount === 1) {
-        const decrementPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "repostCount" = GREATEST(0, "repostCount" - 1)
-                    WHERE id = ${postId}
-                `
-          .affectedCount()
-          .build();
-        await tx.execute(decrementPlan);
-      }
-
-      const latestPost = await tx.orm.public.Post.where({ id: postId }).first();
-      return {
-        reposted: false,
-        repostCount:
-          latestPost?.repostCount ??
-          Math.max(0, targetPost.repostCount - deletedCount),
-      };
-    });
+    const { deletedCount, repostCount } = await this.postRepository.removeRepostAndDecrement(postId, userId);
+    return {
+      reposted: false,
+      repostCount: repostCount ?? Math.max(0, targetPost.repostCount - deletedCount),
+    };
   }
 
   async likePost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const post = await this.postRepository.findById(postId);
 
     if (!post || post.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -869,12 +546,7 @@ export class PostsService {
       );
     }
 
-    const existingLike =
-      await this.prismaService.client.orm.public.PostLike.where((l) =>
-        l.userId.eq(userId),
-      )
-        .where((l) => l.postId.eq(postId))
-        .first();
+    const existingLike = await this.postRepository.findLike(userId, postId);
 
     if (existingLike) {
       return {
@@ -886,26 +558,12 @@ export class PostsService {
     let result: { liked: boolean; likeCount: number };
     let inserted = false;
     try {
-      result = await this.prismaService.client.transaction(async (tx) => {
-        await tx.orm.public.PostLike.create({ userId, postId });
-
-        const rawPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "likeCount" = "likeCount" + 1
-                    WHERE id = ${postId}
-                `
-          .affectedCount()
-          .build();
-        await tx.execute(rawPlan);
-        inserted = true;
-
-        return { liked: true, likeCount: post.likeCount + 1 };
-      });
+      await this.postRepository.createLikeAndIncrement(postId, userId);
+      inserted = true;
+      result = { liked: true, likeCount: post.likeCount + 1 };
     } catch (error) {
       if (!this.isUniqueConstraintError(error)) throw error;
-      const latestPost = await this.prismaService.client.orm.public.Post.where({
-        id: postId,
-      }).first();
+      const latestPost = await this.postRepository.findById(postId);
       result = {
         liked: true,
         likeCount: latestPost?.likeCount ?? post.likeCount,
@@ -926,20 +584,13 @@ export class PostsService {
   async unlikePost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const post = await this.postRepository.findById(postId);
 
     if (!post) {
       throw new NotFoundException("Không tìm thấy bài viết");
     }
 
-    const existingLike =
-      await this.prismaService.client.orm.public.PostLike.where((l) =>
-        l.userId.eq(userId),
-      )
-        .where((l) => l.postId.eq(postId))
-        .first();
+    const existingLike = await this.postRepository.findLike(userId, postId);
 
     if (!existingLike) {
       return {
@@ -948,33 +599,8 @@ export class PostsService {
       };
     }
 
-    return this.prismaService.client.transaction(async (tx) => {
-      const deletePlan = this.prismaService.client.raw.sql`
-                DELETE FROM "postLike"
-                WHERE "userId" = ${userId} AND "postId" = ${postId}
-            `
-        .affectedCount()
-        .build();
-      const { affectedRows: deletedCount } = await tx.execute(deletePlan);
-
-      if (deletedCount === 1) {
-        const decrementPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "likeCount" = GREATEST(0, "likeCount" - 1)
-                    WHERE id = ${postId}
-                `
-          .affectedCount()
-          .build();
-        await tx.execute(decrementPlan);
-      }
-
-      const latestPost = await tx.orm.public.Post.where({ id: postId }).first();
-      return {
-        liked: false,
-        likeCount:
-          latestPost?.likeCount ?? Math.max(0, post.likeCount - deletedCount),
-      };
-    });
+    const { deletedCount, likeCount } = await this.postRepository.removeLikeAndDecrement(postId, userId);
+    return { liked: false, likeCount: likeCount ?? Math.max(0, post.likeCount - deletedCount) };
   }
 
   async getPostLikes(
@@ -982,9 +608,7 @@ export class PostsService {
     query: OffsetPaginationDto,
     viewerId?: string,
   ): Promise<PostLikesResponseDto> {
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const post = await this.postRepository.findById(postId);
 
     if (!post || post.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -1001,15 +625,7 @@ export class PostsService {
     const cursor = this.decodeLikeCursor(query.cursor);
 
     if (cursor) {
-      let likeQuery = this.prismaService.client.orm.public.PostLike.where(
-        (l: any) => l.postId.eq(postId),
-      )
-        .orderBy([(l: any) => l.createdAt.desc(), (l: any) => l.userId.desc()])
-        .limit(limit + 1)
-        .include("user");
-
-      likeQuery = likeQuery.cursor(cursor);
-      const likes = await likeQuery.all();
+      const likes = await this.postRepository.listPostLikes(postId, { limit: limit + 1, cursor });
 
       const hasNextPage = likes.length > limit;
       const items = hasNextPage ? likes.slice(0, limit) : likes;
@@ -1034,21 +650,10 @@ export class PostsService {
     const page = Math.max(1, Number(query.page) || 1);
     const skip = (page - 1) * limit;
 
-    const [likes, totalAgg] = await Promise.all([
-      this.prismaService.client.orm.public.PostLike.where((l) =>
-        l.postId.eq(postId),
-      )
-        .orderBy([(l: any) => l.createdAt.desc(), (l: any) => l.userId.desc()])
-        .offset(skip)
-        .limit(limit)
-        .include("user")
-        .all(),
-      this.prismaService.client.orm.public.PostLike.where((l) =>
-        l.postId.eq(postId),
-      ).aggregate((agg) => ({ total: agg.count() })),
+    const [likes, total] = await Promise.all([
+      this.postRepository.listPostLikes(postId, { offset: skip, limit }),
+      this.postRepository.countPostLikes(postId),
     ]);
-
-    const total = Number(totalAgg.total) || 0;
     const nextCursor =
       likes.length === limit && skip + limit < total
         ? this.encodeLikeCursor(likes[likes.length - 1])
@@ -1076,9 +681,7 @@ export class PostsService {
   async bookmarkPost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const post = await this.postRepository.findById(postId);
 
     if (!post || post.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
@@ -1089,32 +692,15 @@ export class PostsService {
       throw new ForbiddenException("Bạn không có quyền lưu bài viết này");
     }
 
-    const existingBookmark =
-      await this.prismaService.client.orm.public.PostBookmark.where((b) =>
-        b.userId.eq(userId),
-      )
-        .where((b) => b.postId.eq(postId))
-        .first();
+    const existingBookmark = await this.postRepository.findBookmark(userId, postId);
 
     if (existingBookmark) {
       return { bookmarked: true };
     }
 
     try {
-      return await this.prismaService.client.transaction(async (tx) => {
-        await tx.orm.public.PostBookmark.create({ userId, postId });
-
-        const rawPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "bookmarkCount" = "bookmarkCount" + 1
-                    WHERE id = ${postId}
-                `
-          .affectedCount()
-          .build();
-        await tx.execute(rawPlan);
-
-        return { bookmarked: true };
-      });
+      await this.postRepository.createBookmarkAndIncrement(postId, userId);
+      return { bookmarked: true };
     } catch (error) {
       if (!this.isUniqueConstraintError(error)) throw error;
       return { bookmarked: true };
@@ -1124,47 +710,20 @@ export class PostsService {
   async unbookmarkPost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const post = await this.prismaService.client.orm.public.Post.where({
-      id: postId,
-    }).first();
+    const post = await this.postRepository.findById(postId);
 
     if (!post) {
       throw new NotFoundException("Không tìm thấy bài viết");
     }
 
-    const existingBookmark =
-      await this.prismaService.client.orm.public.PostBookmark.where((b) =>
-        b.userId.eq(userId),
-      )
-        .where((b) => b.postId.eq(postId))
-        .first();
+    const existingBookmark = await this.postRepository.findBookmark(userId, postId);
 
     if (!existingBookmark) {
       return { bookmarked: false };
     }
 
-    return this.prismaService.client.transaction(async (tx) => {
-      const deletePlan = this.prismaService.client.raw.sql`
-                DELETE FROM "postBookmark"
-                WHERE "userId" = ${userId} AND "postId" = ${postId}
-            `
-        .affectedCount()
-        .build();
-      const { affectedRows: deletedCount } = await tx.execute(deletePlan);
-
-      if (deletedCount === 1) {
-        const decrementPlan = this.prismaService.client.raw.sql`
-                    UPDATE "post"
-                    SET "bookmarkCount" = GREATEST(0, "bookmarkCount" - 1)
-                    WHERE id = ${postId}
-                `
-          .affectedCount()
-          .build();
-        await tx.execute(decrementPlan);
-      }
-
-      return { bookmarked: false };
-    });
+    await this.postRepository.removeBookmarkAndDecrement(postId, userId);
+    return { bookmarked: false };
   }
 
   async getBookmarks(userId: string, query: CursorPaginationDto) {
@@ -1184,10 +743,6 @@ export class PostsService {
 
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const batchSize = Math.min(100, Math.max(20, limit * 2));
-    const markerTable: any =
-      kind === "bookmark"
-        ? this.prismaService.client.orm.public.PostBookmark
-        : this.prismaService.client.orm.public.PostLike;
     let scanCursor = this.decodeMarkedCursor(query.cursor);
     const accessible: Array<{ marker: any; post: any }> = [];
     let lastScanned: any = null;
@@ -1198,13 +753,7 @@ export class PostsService {
       batchIndex < 3 && accessible.length <= limit;
       batchIndex++
     ) {
-      let markerQuery = markerTable
-        .where((b: any) => b.userId.eq(userId))
-        .orderBy([(b: any) => b.createdAt.desc(), (b: any) => b.postId.desc()]);
-      if (scanCursor) {
-        markerQuery = markerQuery.cursor(scanCursor);
-      }
-      const batch = await markerQuery.limit(batchSize).all();
+      const batch = await this.postRepository.listMarkedPostReferences(kind, userId, batchSize, scanCursor);
       if (batch.length === 0) {
         hasMore = false;
         break;
@@ -1213,16 +762,7 @@ export class PostsService {
       hasMore = batch.length === batchSize;
 
       const batchIds = batch.map((marker: any) => marker.postId);
-      const posts = await this.prismaService.client.orm.public.Post.where((p) =>
-        p.id.in(batchIds),
-      )
-        .include("author")
-        .include("media")
-        .include("quotedPost")
-        .include("repostOf", (repost) =>
-          repost.include("author").include("media").include("quotedPost"),
-        )
-        .all();
+      const posts = await this.postRepository.findPostsByIdsForResponse(batchIds);
       const postMap = new Map<string, any>(
         posts.map((post: any) => [post.id, post]),
       );
@@ -1262,28 +802,7 @@ export class PostsService {
     const repostedSet = new Set<string>();
     const bookmarkedSet = new Set<string>(kind === "bookmark" ? postIds : []);
 
-    const [likes, bookmarks, reposts] = await Promise.all([
-      kind === "like"
-        ? []
-        : this.prismaService.client.orm.public.PostLike.where((l) =>
-            l.userId.eq(userId),
-          )
-            .where((l) => l.postId.in(postIds))
-            .all(),
-      kind === "bookmark"
-        ? []
-        : this.prismaService.client.orm.public.PostBookmark.where((b) =>
-            b.userId.eq(userId),
-          )
-            .where((b) => b.postId.in(postIds))
-            .all(),
-      this.prismaService.client.orm.public.Post.where((p) =>
-        p.authorId.eq(userId),
-      )
-        .where((p) => p.repostOfId.in(postIds))
-        .where((p) => p.isDeleted.eq(false))
-        .all(),
-    ]);
+    const { likes, bookmarks, reposts } = await this.postRepository.findSecondaryMarks(kind, userId, postIds);
 
     likes.forEach((l: any) => likedSet.add(l.postId));
     bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
@@ -1311,30 +830,7 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    let feedQuery = this.prismaService.client.orm.public.Post.where((p) =>
-      p.authorId.in(targetAuthorIds),
-    )
-      .where((p) => p.isDeleted.eq(false))
-      .where((p) => p.author.some((u) => u.isActive.eq(true)))
-      .where((p) => p.author.some((u) => u.isEmailVerified.eq(true)))
-      .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
-
-    if (cursor) {
-      feedQuery = feedQuery.cursor({
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      });
-    }
-
-    const posts = await feedQuery
-      .limit(limit + 1)
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .all();
+    const posts = await this.postRepository.listFeedPosts(targetAuthorIds, limit, cursor);
 
     const hasNextPage = posts.length > limit;
     const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
@@ -1351,24 +847,7 @@ export class PostsService {
 
     if (items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const [likes, reposts, bookmarks] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(userId),
-        )
-          .where((l) => l.postId.in(postIds))
-          .all(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(userId),
-        )
-          .where((p) => p.repostOfId.in(postIds))
-          .where((p) => p.isDeleted.eq(false))
-          .all(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(userId),
-        )
-          .where((b) => b.postId.in(postIds))
-          .all(),
-      ]);
+      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(userId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -1397,42 +876,7 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    let exploreQuery = this.prismaService.client.orm.public.Post.where((p) =>
-      p.visibility.eq("PUBLIC"),
-    )
-      .where((p) => p.parentId.isNull())
-      .where((p) => p.isDeleted.eq(false))
-      .where((p) => p.author.some((u) => u.isActive.eq(true)))
-      .where((p) => p.author.some((u) => u.isEmailVerified.eq(true)))
-      .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
-
-    if (searchTerm) {
-      exploreQuery = exploreQuery.where((p) =>
-        p.content.ilike(toContainsPattern(searchTerm)),
-      );
-    }
-    if (query.mediaOnly === "true") {
-      exploreQuery = exploreQuery.where((p) =>
-        p.media.some((media) => media.type.in(["IMAGE", "VIDEO"])),
-      );
-    }
-
-    if (cursor) {
-      exploreQuery = exploreQuery.cursor({
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      });
-    }
-
-    const posts = await exploreQuery
-      .limit(limit + 1)
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .all();
+    const posts = await this.postRepository.listExplorePosts(limit, cursor, searchTerm, query.mediaOnly === "true");
 
     const hasNextPage = posts.length > limit;
     const items = hasNextPage ? posts.slice(0, limit) : posts;
@@ -1443,24 +887,7 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const [likes, reposts, bookmarks] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(viewerId),
-        )
-          .where((l) => l.postId.in(postIds))
-          .all(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(viewerId),
-        )
-          .where((p) => p.repostOfId.in(postIds))
-          .where((p) => p.isDeleted.eq(false))
-          .all(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(viewerId),
-        )
-          .where((b) => b.postId.in(postIds))
-          .all(),
-      ]);
+      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -1505,30 +932,7 @@ export class PostsService {
         ? ["PUBLIC", "FOLLOWERS"]
         : ["PUBLIC"];
 
-    let userPostsQuery = this.prismaService.client.orm.public.Post.where((p) =>
-      p.authorId.eq(targetUser.id),
-    )
-      .where((p) => p.parentId.isNull())
-      .where((p) => p.isDeleted.eq(false))
-      .where((p) => p.visibility.in(allowedVisibilities))
-      .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
-
-    if (cursor) {
-      userPostsQuery = userPostsQuery.cursor({
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      });
-    }
-
-    const posts = await userPostsQuery
-      .limit(limit + 1)
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .all();
+    const posts = await this.postRepository.listUserPosts(targetUser.id, allowedVisibilities, limit, cursor);
 
     const hasNextPage = posts.length > limit;
     const items = hasNextPage ? posts.slice(0, limit) : posts;
@@ -1539,24 +943,7 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const [likes, reposts, bookmarks] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(viewerId),
-        )
-          .where((l) => l.postId.in(postIds))
-          .all(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(viewerId),
-        )
-          .where((p) => p.repostOfId.in(postIds))
-          .where((p) => p.isDeleted.eq(false))
-          .all(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(viewerId),
-        )
-          .where((b) => b.postId.in(postIds))
-          .all(),
-      ]);
+      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -1586,30 +973,7 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    let userRepliesQuery = this.prismaService.client.orm.public.Post.where(
-      (p) => p.authorId.eq(targetUser.id),
-    )
-      .where((p) => p.parentId.isNotNull())
-      .where((p) => p.isDeleted.eq(false))
-      .orderBy([(p) => p.createdAt.desc(), (p) => p.id.desc()]);
-
-    if (cursor) {
-      userRepliesQuery = userRepliesQuery.cursor({
-        createdAt: cursor.createdAt,
-        id: cursor.id,
-      });
-    }
-
-    const posts = await userRepliesQuery
-      .limit(limit + 1)
-      .include("author")
-      .include("media")
-      .include("quotedPost")
-      .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
-      )
-      .include("parent")
-      .all();
+    const posts = await this.postRepository.listUserReplies(targetUser.id, limit, cursor);
 
     const hasNextPage = posts.length > limit;
     const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
@@ -1626,24 +990,7 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const [likes, reposts, bookmarks] = await Promise.all([
-        this.prismaService.client.orm.public.PostLike.where((l) =>
-          l.userId.eq(viewerId),
-        )
-          .where((l) => l.postId.in(postIds))
-          .all(),
-        this.prismaService.client.orm.public.Post.where((p) =>
-          p.authorId.eq(viewerId),
-        )
-          .where((p) => p.repostOfId.in(postIds))
-          .where((p) => p.isDeleted.eq(false))
-          .all(),
-        this.prismaService.client.orm.public.PostBookmark.where((b) =>
-          b.userId.eq(viewerId),
-        )
-          .where((b) => b.postId.in(postIds))
-          .all(),
-      ]);
+      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -1679,49 +1026,16 @@ export class PostsService {
   }
 
   async reconcileCounters(targetPostId?: string) {
-    let postsQuery = this.prismaService.client.orm.public.Post.where((p) =>
-      p.isDeleted.eq(false),
-    );
-
-    if (targetPostId) {
-      postsQuery = postsQuery.where((p) => p.id.eq(targetPostId));
-    }
-
-    const posts = await postsQuery.all();
+    const posts = await this.postRepository.listActivePosts(targetPostId);
     let correctedCount = 0;
     const discrepancies: any[] = [];
 
     for (const post of posts) {
-      const [likesAgg, bookmarksAgg, repostsAgg, quotesAgg, repliesAgg] =
-        await Promise.all([
-          this.prismaService.client.orm.public.PostLike.where((l) =>
-            l.postId.eq(post.id),
-          ).aggregate((agg) => ({ total: agg.count() })),
-          this.prismaService.client.orm.public.PostBookmark.where((b) =>
-            b.postId.eq(post.id),
-          ).aggregate((agg) => ({ total: agg.count() })),
-          this.prismaService.client.orm.public.Post.where((p) =>
-            p.repostOfId.eq(post.id),
-          )
-            .where((p) => p.isDeleted.eq(false))
-            .aggregate((agg) => ({ total: agg.count() })),
-          this.prismaService.client.orm.public.Post.where((p) =>
-            p.quotedPostId.eq(post.id),
-          )
-            .where((p) => p.isDeleted.eq(false))
-            .aggregate((agg) => ({ total: agg.count() })),
-          this.prismaService.client.orm.public.Post.where((p) =>
-            p.parentId.eq(post.id),
-          )
-            .where((p) => p.isDeleted.eq(false))
-            .aggregate((agg) => ({ total: agg.count() })),
-        ]);
-
-      const actualLikes = Number(likesAgg.total);
-      const actualBookmarks = Number(bookmarksAgg.total);
-      const actualReposts = Number(repostsAgg.total);
-      const actualQuotes = Number(quotesAgg.total);
-      const actualReplies = Number(repliesAgg.total);
+      const {
+        likeCount: actualLikes, bookmarkCount: actualBookmarks,
+        repostCount: actualReposts, quoteCount: actualQuotes,
+        replyCount: actualReplies,
+      } = await this.postRepository.countPostRelations(post.id);
 
       const hasDiscrepancy =
         post.likeCount !== actualLikes ||
@@ -1750,9 +1064,7 @@ export class PostsService {
           },
         });
 
-        await this.prismaService.client.orm.public.Post.where({
-          id: post.id,
-        }).update({
+        await this.postRepository.updatePostCounters(post.id, {
           likeCount: actualLikes,
           bookmarkCount: actualBookmarks,
           repostCount: actualReposts,
@@ -1889,30 +1201,4 @@ export class PostsService {
     }
   }
 
-  private async cleanupParentTombstone(tx: any, parentId: string) {
-    let currentId: string | null = parentId;
-
-    while (currentId) {
-      const rawPlan = this.prismaService.client.raw.sql`
-                UPDATE "post"
-                SET "replyCount" = GREATEST(0, "replyCount" - 1)
-                WHERE id = ${currentId}
-            `
-        .affectedCount()
-        .build();
-      await tx.execute(rawPlan);
-
-      const parent: any = await tx.orm.public.Post.where({
-        id: currentId,
-      }).first();
-
-      if (parent && parent.isDeleted && parent.replyCount === 0) {
-        await tx.orm.public.Post.where({ id: currentId }).delete();
-
-        currentId = parent.parentId;
-      } else {
-        break;
-      }
-    }
-  }
 }

@@ -166,6 +166,7 @@ graph TD
         Controllers["Controllers (HTTP Endpoints)"]
         Services["Services (Business Logic)"]
         EventBusBE["EventEmitter2 (Domain Events)"]
+        PrivateRepo["Private Repository (Module Data Access)"]
         PrismaRepo["PrismaService (Database Access)"]
     end
 
@@ -177,7 +178,8 @@ graph TD
     AppRoutes --> SharedLib
 
     Controllers --> Services
-    Services --> PrismaRepo
+    Services --> PrivateRepo
+    PrivateRepo --> PrismaRepo
     Services --> EventBusBE
 
     Features -.->|"❌ CẤM: Import trực tiếp code từ Backend"| Services
@@ -198,7 +200,7 @@ graph TD
    - `app/*` chỉ đóng vai trò là "Routing & Layout Assembler": ghép các feature components lại thành trang, cấu hình metadata và xử lý Next.js layout hierarchy.
 3. **Quy tắc Phân Tầng Backend**:
    - **Controllers**: Chỉ tiếp nhận request, validate DTO (thông qua `ValidationPipe`), trích xuất thông tin người dùng từ Decorator (`@CurrentUser()`) và gọi Services tương ứng. Không viết business logic trong Controller.
-   - **Services**: Nơi chứa toàn bộ business logic. Thực thi các thao tác đọc/ghi dữ liệu qua `PrismaService`.
+   - **Services**: Nơi chứa toàn bộ business logic. Thực thi các thao tác đọc/ghi dữ liệu qua repository nội bộ của module; chỉ repository gọi `PrismaService`.
    - **Cross-module Decoupling**: Khi một thao tác ở module này cần kích hoạt hành vi ở module khác (ví dụ: `PostsService` tạo bài viết mới cần gửi thông báo cho follower), service **không gọi trực tiếp** sang service của module khác nếu gây vòng lặp phụ thuộc (`circular dependency`). Thay vào đó, service phát ra **Domain Event** (`this.eventEmitter.emit(...)`) để module đích tự lắng nghe.
 
 ---

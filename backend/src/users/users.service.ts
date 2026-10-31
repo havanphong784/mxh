@@ -4,10 +4,8 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
-  Optional,
   UnauthorizedException,
 } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service.js";
 import { MediaService } from "../media/media.service.js";
 import { UpdateProfileDto } from "./dto/update-profile.dto.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
@@ -19,7 +17,6 @@ import type {
   UserFollowedEvent,
   UserSessionsRevokedEvent,
 } from "../events/event-types.js";
-import { toContainsPattern } from "../common/search.js";
 import {
   DomainException,
   ERROR_CODES,
@@ -30,37 +27,15 @@ import type { FollowPaginatedResponseDto } from "./dto/user-response.dto.js";
 
 @Injectable()
 export class UsersService {
-  private readonly repo: UsersRepository;
-
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly repo: UsersRepository,
     private readonly mediaService: MediaService,
     private readonly eventEmitter: EventEmitter2,
-    @Optional()
-    usersRepository?: UsersRepository,
-  ) {
-    this.repo = usersRepository ?? new UsersRepository(prisma);
-  }
+  ) {}
 
   async searchUsers(term: string, cursor?: string, requestedLimit = 20) {
-    const pattern = toContainsPattern(term);
     const limit = Math.min(50, Math.max(1, Number(requestedLimit) || 20));
-    const matchingUsers = (field: "username" | "displayName") => {
-      let query = this.prisma.client.orm.public.User.where((u) =>
-        u.isActive.eq(true),
-      )
-        .where((u) => u.isEmailVerified.eq(true))
-        .where((u) => u[field].ilike(pattern));
-      if (cursor) query = query.where((u) => u.username.gt(cursor));
-      return query
-        .orderBy((u) => u.username.asc())
-        .limit(limit + 1)
-        .all();
-    };
-    const [byUsername, byDisplayName] = await Promise.all([
-      matchingUsers("username"),
-      matchingUsers("displayName"),
-    ]);
+    const { byUsername, byDisplayName } = await this.repo.searchActiveUsers(term, cursor, limit);
     const users = [
       ...new Map(
         [...byUsername, ...byDisplayName].map((user) => [user.id, user]),
@@ -82,21 +57,11 @@ export class UsersService {
   }
 
   async suggestUsers(viewerId?: string) {
-    const candidates = await this.prisma.client.orm.public.User.where((u) =>
-      u.isActive.eq(true),
-    )
-      .where((u) => u.isEmailVerified.eq(true))
-      .orderBy((u) => u.createdAt.desc())
-      .limit(24)
-      .all();
+    const candidates = await this.repo.findSuggestionCandidates();
     const candidateIds = candidates.map((user) => user.id);
     const follows =
       viewerId && candidateIds.length > 0
-        ? await this.prisma.client.orm.public.Follow.where((f) =>
-            f.followerId.eq(viewerId),
-          )
-            .where((f) => f.followingId.in(candidateIds))
-            .all()
+        ? await this.repo.findFollowsToCandidates(viewerId, candidateIds)
         : [];
     const followedIds = new Set(follows.map((follow) => follow.followingId));
     return {
@@ -114,9 +79,7 @@ export class UsersService {
   }
 
   async getMyProfile(userId: string) {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(userId),
-    ).first();
+    const user = await this.repo.findById(userId);
 
     if (!user || !user.isActive) {
       throw new NotFoundException(
@@ -124,19 +87,9 @@ export class UsersService {
       );
     }
 
-    const [followersAgg, followingAgg] = await Promise.all([
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followingId.eq(user.id),
-      )
-        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
-        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
-        .aggregate((agg) => ({ total: agg.count() })),
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followerId.eq(user.id),
-      )
-        .where((f) => f.following.some((u) => u.isActive.eq(true)))
-        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-        .aggregate((agg) => ({ total: agg.count() })),
+    const [followersCount, followingCount] = await Promise.all([
+      this.repo.countFollowers(user.id),
+      this.repo.countFollowing(user.id),
     ]);
 
     return {
@@ -149,17 +102,15 @@ export class UsersService {
       avatarPublicId: user.avatarPublicId,
       bannerUrl: user.bannerUrl,
       bannerPublicId: user.bannerPublicId,
-      followersCount: Number(followersAgg.total),
-      followingCount: Number(followingAgg.total),
+      followersCount,
+      followingCount,
       isEmailVerified: user.isEmailVerified,
       createdAt: user.createdAt,
     };
   }
 
   async getPublicProfile(username: string, currentUserId?: string) {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.username.eq(username.toLowerCase()),
-    ).first();
+    const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
       throw new NotFoundException(
@@ -167,32 +118,13 @@ export class UsersService {
       );
     }
 
-    const shouldCheckFollow = !!currentUserId && currentUserId !== user.id;
-
-    const [followersAgg, followingAgg, followRecord] = await Promise.all([
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followingId.eq(user.id),
-      )
-        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
-        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
-        .aggregate((agg) => ({ total: agg.count() })),
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followerId.eq(user.id),
-      )
-        .where((f) => f.following.some((u) => u.isActive.eq(true)))
-        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-        .aggregate((agg) => ({ total: agg.count() })),
-      shouldCheckFollow
-        ? this.prisma.client.orm.public.Follow.where((f) =>
-            f.followerId.eq(currentUserId!),
-          )
-            .where((f) => f.followingId.eq(user.id))
-            .first()
+    const [followersCount, followingCount, followRecord] = await Promise.all([
+      this.repo.countFollowers(user.id),
+      this.repo.countFollowing(user.id),
+      currentUserId && currentUserId !== user.id
+        ? this.repo.findFollow(currentUserId, user.id)
         : Promise.resolve(null),
     ]);
-
-    const followersCount = Number(followersAgg.total);
-    const followingCount = Number(followingAgg.total);
     const isFollowing = !!followRecord;
 
     return {
@@ -210,9 +142,7 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    const currentUser = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(userId),
-    ).first();
+    const currentUser = await this.repo.findById(userId);
 
     if (!currentUser || !currentUser.isActive) {
       throw new NotFoundException("Người dùng không tồn tại hoặc đã bị khóa");
@@ -268,9 +198,7 @@ export class UsersService {
       updatePayload.bannerPublicId = dto.bannerPublicId;
 
     if (Object.keys(updatePayload).length > 0) {
-      await this.prisma.client.orm.public.User.where((u) =>
-        u.id.eq(userId),
-      ).update(updatePayload);
+      await this.repo.updateUser(userId, updatePayload);
     }
 
     await Promise.all([
@@ -278,9 +206,7 @@ export class UsersService {
       this.mediaService.deleteFile(bannerPublicIdToDelete),
     ]);
 
-    const updatedUser = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(userId),
-    ).first();
+    const updatedUser = await this.repo.findById(userId);
 
     if (!updatedUser) {
       throw new NotFoundException("Không tìm thấy người dùng");
@@ -313,9 +239,7 @@ export class UsersService {
     dto: ChangePasswordDto,
     currentSessionId?: string,
   ) {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(userId),
-    ).first();
+    const user = await this.repo.findById(userId);
 
     if (!user || !user.isActive) {
       throw new NotFoundException("Người dùng không tồn tại hoặc đã bị khóa");
@@ -334,25 +258,9 @@ export class UsersService {
 
     const newPasswordHash = await argon2.hash(dto.newPassword);
     const logoutOtherDevices = dto.logoutOtherDevices ?? true;
-    await this.prisma.client.transaction(async (tx) => {
-      await tx.orm.public.User.where((u) =>
-        u.id.eq(userId),
-      ).update({ passwordHash: newPasswordHash });
-
-      if (logoutOtherDevices) {
-        const sessions = await tx.orm.public.Session.where((s) =>
-          s.userId.eq(userId),
-        ).all();
-
-        for (const session of sessions) {
-          if (session.id !== currentSessionId) {
-            await tx.orm.public.Session.where({
-              id: session.id,
-            }).update({ isRevoked: true });
-          }
-        }
-      }
-    });
+    await this.repo.changePasswordAndRevokeSessions(
+      userId, newPasswordHash, logoutOtherDevices, currentSessionId,
+    );
 
     if (logoutOtherDevices) {
       this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
@@ -367,9 +275,7 @@ export class UsersService {
   }
 
   async followUser(currentUserId: string, targetUserId: string) {
-    const currentUser = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(currentUserId),
-    ).first();
+    const currentUser = await this.repo.findById(currentUserId);
 
     if (!currentUser || !currentUser.isActive) {
       throw new ForbiddenException(
@@ -377,9 +283,7 @@ export class UsersService {
       );
     }
 
-    const targetUser = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(targetUserId),
-    ).first();
+    const targetUser = await this.repo.findById(targetUserId);
 
     if (!targetUser || !targetUser.isActive || !targetUser.isEmailVerified) {
       throw new NotFoundException(
@@ -391,21 +295,14 @@ export class UsersService {
       throw new BadRequestException("Bạn không thể tự theo dõi chính mình");
     }
 
-    const existingFollow = await this.prisma.client.orm.public.Follow.where(
-      (f) => f.followerId.eq(currentUserId),
-    )
-      .where((f) => f.followingId.eq(targetUser.id))
-      .first();
+    const existingFollow = await this.repo.findFollow(currentUserId, targetUser.id);
 
     if (existingFollow) {
       throw new BadRequestException("Bạn đã theo dõi người dùng này rồi");
     }
 
     try {
-      await this.prisma.client.orm.public.Follow.create({
-        followerId: currentUserId,
-        followingId: targetUser.id,
-      });
+      await this.repo.createFollow(currentUserId, targetUser.id);
     } catch (error: any) {
       if (
         error?.code === "23505" ||
@@ -428,9 +325,7 @@ export class UsersService {
   }
 
   async unfollowUser(currentUserId: string, targetUserId: string) {
-    const currentUser = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(currentUserId),
-    ).first();
+    const currentUser = await this.repo.findById(currentUserId);
 
     if (!currentUser || !currentUser.isActive) {
       throw new ForbiddenException(
@@ -438,9 +333,7 @@ export class UsersService {
       );
     }
 
-    const targetUser = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(targetUserId),
-    ).first();
+    const targetUser = await this.repo.findById(targetUserId);
 
     if (!targetUser) {
       throw new NotFoundException("Người dùng không tồn tại");
@@ -450,21 +343,13 @@ export class UsersService {
       throw new BadRequestException("Thao tác không hợp lệ");
     }
 
-    const existingFollow = await this.prisma.client.orm.public.Follow.where(
-      (f) => f.followerId.eq(currentUserId),
-    )
-      .where((f) => f.followingId.eq(targetUser.id))
-      .first();
+    const existingFollow = await this.repo.findFollow(currentUserId, targetUser.id);
 
     if (!existingFollow) {
       throw new BadRequestException("Bạn chưa theo dõi người dùng này");
     }
 
-    await this.prisma.client.orm.public.Follow.where((f) =>
-      f.followerId.eq(currentUserId),
-    )
-      .where((f) => f.followingId.eq(targetUser.id))
-      .delete();
+    await this.repo.deleteFollow(currentUserId, targetUser.id);
 
     return {
       message: "Đã hủy theo dõi thành công",
@@ -475,9 +360,7 @@ export class UsersService {
     username: string,
     query: FollowPaginationDto,
   ): Promise<FollowPaginatedResponseDto> {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.username.eq(username.toLowerCase()),
-    ).first();
+    const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
       throw new NotFoundException(
@@ -489,17 +372,7 @@ export class UsersService {
     const cursor = this.decodeFollowCursor(query?.cursor);
 
     if (cursor) {
-      let followQuery = this.prisma.client.orm.public.Follow.where((f) =>
-        f.followingId.eq(user.id),
-      )
-        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
-        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
-        .orderBy([(f) => f.createdAt.desc(), (f) => f.followerId.desc()])
-        .limit(limit + 1)
-        .include("follower");
-
-      followQuery = followQuery.cursor(cursor);
-      const follows = await followQuery.all();
+      const follows = await this.repo.listFollowers(user.id, { cursor, limit: limit + 1 });
 
       const hasNextPage = follows.length > limit;
       const items = hasNextPage ? follows.slice(0, limit) : follows;
@@ -534,26 +407,10 @@ export class UsersService {
     const page = Math.max(1, Number(query?.page) || 1);
     const skip = (page - 1) * limit;
 
-    const [totalAgg, follows] = await Promise.all([
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followingId.eq(user.id),
-      )
-        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
-        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
-        .aggregate((agg) => ({ total: agg.count() })),
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followingId.eq(user.id),
-      )
-        .where((f) => f.follower.some((u) => u.isActive.eq(true)))
-        .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
-        .orderBy([(f) => f.createdAt.desc(), (f) => f.followerId.desc()])
-        .offset(skip)
-        .limit(limit)
-        .include("follower")
-        .all(),
+    const [total, follows] = await Promise.all([
+      this.repo.countFollowers(user.id),
+      this.repo.listFollowers(user.id, { offset: skip, limit }),
     ]);
-
-    const total = Number(totalAgg.total);
     const nextCursor =
       follows.length === limit && skip + limit < total
         ? this.encodeFollowCursor({
@@ -584,9 +441,7 @@ export class UsersService {
     username: string,
     query: FollowPaginationDto,
   ): Promise<FollowPaginatedResponseDto> {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.username.eq(username.toLowerCase()),
-    ).first();
+    const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
       throw new NotFoundException(
@@ -598,17 +453,7 @@ export class UsersService {
     const cursor = this.decodeFollowCursor(query?.cursor);
 
     if (cursor) {
-      let followQuery = this.prisma.client.orm.public.Follow.where((f) =>
-        f.followerId.eq(user.id),
-      )
-        .where((f) => f.following.some((u) => u.isActive.eq(true)))
-        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-        .orderBy([(f) => f.createdAt.desc(), (f) => f.followingId.desc()])
-        .limit(limit + 1)
-        .include("following");
-
-      followQuery = followQuery.cursor(cursor);
-      const follows = await followQuery.all();
+      const follows = await this.repo.listFollowing(user.id, { cursor, limit: limit + 1 });
 
       const hasNextPage = follows.length > limit;
       const items = hasNextPage ? follows.slice(0, limit) : follows;
@@ -643,26 +488,10 @@ export class UsersService {
     const page = Math.max(1, Number(query?.page) || 1);
     const skip = (page - 1) * limit;
 
-    const [totalAgg, follows] = await Promise.all([
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followerId.eq(user.id),
-      )
-        .where((f) => f.following.some((u) => u.isActive.eq(true)))
-        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-        .aggregate((agg) => ({ total: agg.count() })),
-      this.prisma.client.orm.public.Follow.where((f) =>
-        f.followerId.eq(user.id),
-      )
-        .where((f) => f.following.some((u) => u.isActive.eq(true)))
-        .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-        .orderBy([(f) => f.createdAt.desc(), (f) => f.followingId.desc()])
-        .offset(skip)
-        .limit(limit)
-        .include("following")
-        .all(),
+    const [total, follows] = await Promise.all([
+      this.repo.countFollowing(user.id),
+      this.repo.listFollowing(user.id, { offset: skip, limit }),
     ]);
-
-    const total = Number(totalAgg.total);
     const nextCursor =
       follows.length === limit && skip + limit < total
         ? this.encodeFollowCursor({
@@ -728,9 +557,7 @@ export class UsersService {
   // ==========================================
 
   async ensureActiveUser(userId: string) {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(userId),
-    ).first();
+    const user = await this.repo.findById(userId);
 
     if (!user || !user.isActive) {
       throw new DomainException(
@@ -748,7 +575,7 @@ export class UsersService {
       );
     }
 
-    return user;
+    return { id: user.id };
   }
 
   async getAuthProfile(userId: string) {
@@ -769,22 +596,30 @@ export class UsersService {
     };
   }
 
+  async getAccessSessionState(sessionId: string) {
+    const session = await this.repo.findAccessSession(sessionId);
+    if (!session) return null;
+    return {
+      userId: session.userId,
+      isRevoked: session.isRevoked,
+      expiresAt: session.expiresAt,
+      isActive: session.user.isActive,
+      isEmailVerified: session.user.isEmailVerified,
+    };
+  }
+
   async findActiveUserById(userId: string) {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.id.eq(userId),
-    ).first();
+    const user = await this.repo.findById(userId);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
       return null;
     }
 
-    return user;
+    return this.toPublicUser(user);
   }
 
   async findActiveUserByUsername(username: string) {
-    const user = await this.prisma.client.orm.public.User.where((u) =>
-      u.username.eq(username.toLowerCase()),
-    ).first();
+    const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
       throw new DomainException(
@@ -794,35 +629,38 @@ export class UsersService {
       );
     }
 
-    return user;
+    return this.toPublicUser(user);
   }
 
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
-    const follow = await this.prisma.client.orm.public.Follow.where((f) =>
-      f.followerId.eq(followerId),
-    )
-      .where((f) => f.followingId.eq(followingId))
-      .first();
-
-    return !!follow;
+    return !!(await this.repo.findFollow(followerId, followingId));
   }
 
   async getActiveFollowingIds(followerId: string): Promise<string[]> {
-    const follows = await this.prisma.client.orm.public.Follow.where((f) =>
-      f.followerId.eq(followerId),
-    )
-      .where((f) => f.following.some((u) => u.isActive.eq(true)))
-      .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
-      .all();
-
-    return follows.map((f: any) => f.followingId);
+    return this.repo.findActiveFollowingIds(followerId);
   }
 
   async getFollowerIds(followingId: string): Promise<string[]> {
-    const follows = await this.prisma.client.orm.public.Follow.where((f) =>
-      f.followingId.eq(followingId),
-    ).all();
+    return this.repo.findFollowerIds(followingId);
+  }
 
-    return follows.map((f: any) => f.followerId);
+  private toPublicUser(user: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    bio: string | null;
+    isActive: boolean;
+    isEmailVerified: boolean;
+  }) {
+    return {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      isActive: user.isActive,
+      isEmailVerified: user.isEmailVerified,
+    };
   }
 }
