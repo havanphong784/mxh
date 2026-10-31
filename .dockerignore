@@ -1,0 +1,8 @@
+**/node_modules
+**/.turbo
+**/.next
+.git
+.idea
+.env
+.env.*
+docs

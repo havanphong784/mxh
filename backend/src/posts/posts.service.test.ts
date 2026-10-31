@@ -5,24 +5,15 @@ import * as crypto from 'node:crypto';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import { PostsService } from './posts.service.js';
-import type { ConfigService } from '@nestjs/config';
-import type { EnvironmentVariables } from '../config/env.validation.js';
+import { UsersService } from '../users/users.service.js';
+import { UsersRepository } from '../users/users.repository.js';
+import { PostsRepository } from './posts.repository.js';
+import { MediaService } from '../media/media.service.js';
+import type { ActivePostResponseDto } from './dto/post-response.dto.js';
 
-function mockConfigService(overrides: Partial<EnvironmentVariables> = {}): ConfigService<EnvironmentVariables, true> {
-  const env: Partial<EnvironmentVariables> = {
-    CLOUDINARY_CLOUD_NAME: 'test-cloud',
-    CLOUDINARY_API_KEY: 'test-key',
-    CLOUDINARY_API_SECRET: 'test-secret',
-    ...overrides,
-  };
-  return {
-    get(key: string, _opts?: any) { return (env as any)[key]; },
-    getOrThrow(key: string, _opts?: any) {
-      const v = (env as any)[key];
-      if (v === undefined) throw new Error(`Missing ${key}`);
-      return v;
-    },
-  } as any;
+function createPostsService(prisma: any, media: any, events: any): PostsService {
+    const users = new UsersService(new UsersRepository(prisma), media, events);
+    return new PostsService(new PostsRepository(prisma), media, events, users);
 }
 
 const activeAuthor = (id: string) => ({
@@ -56,6 +47,161 @@ const postFixture = (overrides: Record<string, unknown>) => ({
     quoteCount: 0,
     bookmarkCount: 0,
     ...overrides,
+});
+
+test('post creation persists through PostsRepository before emitting its event', async () => {
+    const actions: string[] = [];
+    const post = postFixture({ id: 'created-post', parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const repository = {
+        async createPostWithMedia() { actions.push('create'); return post; },
+    };
+    const users = { async ensureActiveUser() {} };
+    const events = { emit() { actions.push('event'); } };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, events as any, users as any);
+
+    const result = await service.createPost('reply-author', { content: 'reply' });
+    assert.equal(result.id, 'created-post');
+    assert.deepEqual(actions, ['create', 'event']);
+});
+
+test('post editing reads and writes through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', authorId: 'author-id', parentId: null, rootId: null, content: 'old' });
+    let updatedContent: string | undefined;
+    const repository = {
+        async findByIdWithAuthorAndMedia() { return post; },
+        async updatePostAndReplies(_id: string, payload: { content?: string }) { updatedContent = payload.content; },
+        async findByIdForResponse() { return { ...post, content: updatedContent }; },
+    };
+    const users = { async ensureActiveUser() {} };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, users as any);
+
+    const result = await service.updatePost('post-id', 'author-id', { content: 'new' });
+    assert.equal((result as ActivePostResponseDto).content, 'new');
+});
+
+test('post detail reads viewer marks through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', authorId: 'author-id', author: activeAuthor('author-id'), parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const repository = {
+        async findByIdForResponse() { return post; },
+        async findViewerMarks() { return { likes: [{ postId: 'post-id' }], reposts: [], bookmarks: [] }; },
+    };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, {} as any);
+
+    const result = await service.getPostById('post-id', 'viewer-id');
+    assert.equal(result.id, 'post-id');
+    assert.equal((result as ActivePostResponseDto).interactions.isLiked, true);
+});
+
+test('post deletion commits through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', authorId: 'author-id', media: [], parentId: null, rootId: null });
+    let deleted = false;
+    const repository = {
+        async findByIdWithMedia() { return post; },
+        async deletePostRecord() { deleted = true; },
+    };
+    const users = { async ensureActiveUser() {} };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, users as any);
+
+    assert.deepEqual(await service.deletePost('post-id', 'author-id'), { message: 'Xóa bài viết thành công', id: 'post-id' });
+    assert.equal(deleted, true);
+});
+
+test('reply pagination reads through PostsRepository', async () => {
+    const root = postFixture({ id: 'root-id', parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const reply = postFixture({ id: 'reply-id', parentId: 'root-id', rootId: 'root-id', visibility: 'PUBLIC' });
+    const repository = {
+        async findByIdWithAuthor() { return root; },
+        async listReplies() { return [reply]; },
+    };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, {} as any);
+
+    const page = await service.getReplies('root-id', { limit: 20 });
+    assert.equal(page.items[0].id, 'reply-id');
+});
+
+test('ancestor traversal reads through PostsRepository', async () => {
+    const child = postFixture({ id: 'child-id', parentId: 'root-id', rootId: 'root-id' });
+    const root = postFixture({ id: 'root-id', parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const repository = {
+        async findById() { return child; },
+        async findByIdForResponse() { return root; },
+    };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, {} as any);
+
+    const result = await service.getAncestors('child-id');
+    assert.equal(result.ancestors[0].id, 'root-id');
+});
+
+test('liking a post mutates through PostsRepository before notifying the author', async () => {
+    const post = postFixture({ id: 'post-id', authorId: 'author-id', author: activeAuthor('author-id'), parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const actions: string[] = [];
+    const repository = {
+        async findById() { return post; },
+        async findLike() { return null; },
+        async createLikeAndIncrement() { actions.push('insert'); },
+    };
+    const users = { async ensureActiveUser() {} };
+    const events = { emit() { actions.push('notify'); } };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, events as any, users as any);
+
+    assert.deepEqual(await service.likePost('post-id', 'viewer-id'), { liked: true, likeCount: 1 });
+    assert.deepEqual(actions, ['insert', 'notify']);
+});
+
+test('post likes pagination reads through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const like = { user: { id: 'viewer-id', username: 'viewer', displayName: 'Viewer', avatarUrl: null, bio: null }, createdAt: new Date() };
+    const repository = {
+        async findById() { return post; },
+        async listPostLikes() { return [like]; },
+        async countPostLikes() { return 1; },
+    };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, {} as any);
+
+    const result = await service.getPostLikes('post-id', { page: 1, limit: 20 });
+    assert.equal(result.items[0].id, 'viewer-id');
+});
+
+test('bookmark pagination reads references and posts through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const repository = {
+        async listMarkedPostReferences() { return [{ postId: 'post-id', createdAt: new Date() }]; },
+        async findPostsByIdsForResponse() { return [post]; },
+        async findSecondaryMarks() { return { likes: [], bookmarks: [], reposts: [] }; },
+    };
+    const users = { async ensureActiveUser() {} };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, users as any);
+
+    const result = await service.getBookmarks('viewer-id', { limit: 20 });
+    assert.equal(result.items[0].id, 'post-id');
+});
+
+test('feed pagination reads through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', authorId: 'viewer-id', author: activeAuthor('viewer-id'), parentId: null, rootId: null, visibility: 'PUBLIC' });
+    const repository = {
+        async listFeedPosts() { return [post]; },
+        async findViewerMarks() { return { likes: [], reposts: [], bookmarks: [] }; },
+    };
+    const users = { async ensureActiveUser() {}, async getActiveFollowingIds() { return []; } };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, users as any);
+
+    const page = await service.getFeed('viewer-id', { limit: 20 });
+    assert.equal(page.items[0].id, 'post-id');
+});
+
+test('counter reconciliation reads and writes through PostsRepository', async () => {
+    const post = postFixture({ id: 'post-id', likeCount: 0 });
+    let updated = 0;
+    const repository = {
+        async listActivePosts() { return [post]; },
+        async countPostRelations() { return { likeCount: 1, bookmarkCount: 0, repostCount: 0, quoteCount: 0, replyCount: 0 }; },
+        async updatePostCounters() { updated++; },
+    };
+    const service = new PostsService(repository as unknown as PostsRepository, {} as any, {} as any, {} as any);
+
+    const result = await service.reconcileCounters('post-id');
+    assert.equal(result.correctedCount, 1);
+    assert.equal(updated, 1);
 });
 
 test('a follower of the reply author cannot read a reply in another author\'s followers-only thread', async () => {
@@ -99,7 +245,7 @@ test('a follower of the reply author cannot read a reply in another author\'s fo
             },
         },
     };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     assert.equal(await service.canView(reply, 'viewer-id'), false);
 });
@@ -125,7 +271,7 @@ test('a reply author cannot override the root thread visibility', async () => {
             },
         },
     };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     await assert.rejects(
         service.updatePost('reply-id', 'reply-author', { visibility: 'PUBLIC' }),
@@ -178,7 +324,7 @@ test('changing root visibility propagates to every reply in the thread', async (
             return callback({ orm: client.orm });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({ client } as any, {} as any, {} as any);
 
     await service.updatePost('root-id', 'root-author', { visibility: 'PRIVATE' });
 
@@ -218,7 +364,7 @@ test('a deleted followers-only root still protects its replies', async () => {
         },
     };
     const prisma = { client: { orm: { public: { Post: postTable } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     await assert.rejects(
         service.getReplies('root-id', { limit: 20 }, undefined),
@@ -251,7 +397,7 @@ test('a deleted followers-only root still protects the ancestor chain', async ()
         },
     };
     const prisma = { client: { orm: { public: { Post: postTable } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     await assert.rejects(
         service.getAncestors('reply-id', undefined),
@@ -277,9 +423,9 @@ test('a quote stops exposing the original post after it becomes private', () => 
         parentId: null,
         rootId: null,
     });
-    const service = new PostsService({} as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({} as any, {} as any, {} as any);
 
-    const response = service.toPostResponse(quote);
+    const response = service.toPostResponse(quote) as ActivePostResponseDto;
 
     assert.equal(response.quotedPost, null);
     assert.equal(response.isQuotedPostDeleted, true);
@@ -287,7 +433,7 @@ test('a quote stops exposing the original post after it becomes private', () => 
 
 test('a deleted reply keeps its reply count so descendants can be opened', () => {
     const deletedReply = postFixture({ id: 'deleted-reply', isDeleted: true, replyCount: 2 });
-    const service = new PostsService({} as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({} as any, {} as any, {} as any);
 
     assert.deepEqual(service.toPostResponse(deletedReply), {
         id: 'deleted-reply',
@@ -328,14 +474,15 @@ test('a pure repost response embeds the original public post', () => {
         repostOfId: original.id,
         repostOf: original,
     });
-    const service = new PostsService({} as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({} as any, {} as any, {} as any);
 
-    const response = service.toPostResponse(repost);
+    const response = service.toPostResponse(repost) as ActivePostResponseDto;
+    const embedded = response.repostOf as ActivePostResponseDto;
 
     assert.equal(response.repostOf?.id, 'original-id');
-    assert.equal(response.repostOf?.content, 'original content');
-    assert.equal(response.repostOf?.author.username, 'original-author');
-    assert.deepEqual(response.repostOf?.media, [{
+    assert.equal(embedded.content, 'original content');
+    assert.equal(embedded.author.username, 'original-author');
+    assert.deepEqual(embedded.media, [{
         id: 'media-id',
         publicId: 'mxh/original-author/posts/media-id',
         url: 'https://example.com/media.jpg',
@@ -407,9 +554,9 @@ test('updating a pure repost reloads the embedded original post', async () => {
             return callback({ orm: client.orm });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({ client } as any, {} as any, {} as any);
 
-    const response = await service.updatePost('repost-id', 'reposter-id', {});
+    const response = await service.updatePost('repost-id', 'reposter-id', {}) as ActivePostResponseDto;
 
     assert.equal(response.repostOf?.id, 'original-id');
     assert.ok(updatePayload?.editedAt instanceof Temporal.Instant);
@@ -473,7 +620,7 @@ test('bookmarks no longer return a followers-only post after the user unfollows 
             },
         },
     };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     const response = await service.getBookmarks('viewer-id', { limit: 20 });
 
@@ -529,7 +676,7 @@ test('bookmark pages skip inaccessible posts without losing later accessible pos
         Post: postTable,
         PostLike: { where() { return { where() { return this; }, async all() { return []; } }; } },
     } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     const firstPage = await service.getBookmarks('viewer', { limit: 1 });
     const secondPage = await service.getBookmarks('viewer', { limit: 1, cursor: firstPage.nextCursor! });
@@ -562,12 +709,12 @@ test('liked posts return viewable posts with active like state', async () => {
         PostBookmark: { where() { return { where() { return this; }, async all() { return []; } }; } },
         Post: postTable,
     } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     const response = await service.getLikedPosts('viewer', { limit: 20 });
     assert.deepEqual(response.items.map((item: any) => item.id), ['liked-post']);
-    assert.equal(response.items[0].interactions.isLiked, true);
-    assert.equal(response.items[0].interactions.isBookmarked, false);
+    assert.equal((response.items[0] as ActivePostResponseDto).interactions.isLiked, true);
+    assert.equal((response.items[0] as ActivePostResponseDto).interactions.isBookmarked, false);
     assert.equal(response.nextCursor, null);
 });
 
@@ -612,7 +759,7 @@ test('bookmarks bound scanning when many saved posts are inaccessible', async ()
         Post: postTable,
         PostLike: { where() { return { where() { return this; }, async all() { return []; } }; } },
     } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     const firstPage = await service.getBookmarks('viewer', { limit: 1 });
     assert.equal(reads, 3);
@@ -649,7 +796,7 @@ test('searching media posts keeps public root filtering and escapes the search t
         include() { return postQuery; },
         async all() { return []; },
     };
-    const service = new PostsService({ client: { orm: { public: { Post: postQuery } } } } as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({ client: { orm: { public: { Post: postQuery } } } } as any, {} as any, {} as any);
 
     await service.getExplore({ limit: 20, mediaOnly: 'true' }, undefined, '100%');
 
@@ -678,7 +825,7 @@ test('a text-only post cannot be edited into an empty post', async () => {
     };
     postQuery.update = async () => post;
     const prisma = { client };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
 
     await assert.rejects(
         service.updatePost('reply-id', 'reply-author', { content: '   ' }),
@@ -697,7 +844,7 @@ test('an invalid post cursor is ignored instead of being sent to the database', 
         async all() { return []; },
     };
     const prisma = { client: { orm: { public: { Post: query } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
     const invalidCursor = Buffer.from(JSON.stringify({ createdAt: 'not-a-date', id: null })).toString('base64url');
 
     const response = await service.getExplore({ cursor: invalidCursor, limit: 20 });
@@ -717,7 +864,7 @@ test('a valid post cursor uses a Temporal.Instant for Prisma pagination', async 
         async all() { return []; },
     };
     const prisma = { client: { orm: { public: { Post: query } } } };
-    const service = new PostsService(prisma as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService(prisma as any, {} as any, {} as any);
     const createdAt = '2026-10-26T12:34:56.123456Z';
     const cursor = Buffer.from(JSON.stringify({ createdAt, id: 'post-1' })).toString('base64url');
 
@@ -781,7 +928,7 @@ test('concurrent likes are idempotent instead of returning a unique-constraint e
             });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any, mockConfigService());
+    const service = createPostsService({ client } as any, {} as any, { emit() {} } as any);
 
     const results = await Promise.allSettled([
         service.likePost('post-id', 'viewer-id'),
@@ -847,7 +994,7 @@ test('concurrent unlikes decrement the counter only when a like row is deleted',
             });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, {} as any, mockConfigService());
+    const service = createPostsService({ client } as any, {} as any, {} as any);
 
     await Promise.all([
         service.unlikePost('post-id', 'viewer-id'),
@@ -858,6 +1005,10 @@ test('concurrent unlikes decrement the counter only when a like row is deleted',
 });
 
 test('the same Cloudinary asset cannot be attached more than once', async () => {
+    const previousSecret = process.env.CLOUDINARY_API_SECRET;
+    const previousCloud = process.env.CLOUDINARY_CLOUD_NAME;
+    process.env.CLOUDINARY_API_SECRET = 'test-secret';
+    process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud';
     const publicId = 'mxh/user-id/posts/asset-id';
     const version = '123';
     const signature = crypto
@@ -896,10 +1047,17 @@ test('the same Cloudinary asset cannot be attached more than once', async () => 
             return callback({ orm: client.orm, execute: async () => 1 });
         },
     };
-    const service = new PostsService({ client } as any, {} as any, { emit() {} } as any, mockConfigService());
+    const service = createPostsService({ client } as any, new MediaService() as any, { emit() {} } as any);
 
-    await assert.rejects(
-        service.createPost('user-id', { content: 'post', media: [media, { ...media, order: 1 }] }),
-        BadRequestException,
-    );
+    try {
+        await assert.rejects(
+            service.createPost('user-id', { content: 'post', media: [media, { ...media, order: 1 }] }),
+            BadRequestException,
+        );
+    } finally {
+        if (previousSecret === undefined) delete process.env.CLOUDINARY_API_SECRET;
+        else process.env.CLOUDINARY_API_SECRET = previousSecret;
+        if (previousCloud === undefined) delete process.env.CLOUDINARY_CLOUD_NAME;
+        else process.env.CLOUDINARY_CLOUD_NAME = previousCloud;
+    }
 });

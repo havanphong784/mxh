@@ -1,12 +1,9 @@
-import {Injectable, Logger} from "@nestjs/common";
-import {OnEvent} from "@nestjs/event-emitter";
-import {PrismaService} from "../prisma/prisma.service.js";
-import {EventsGateway} from "../gateway/events.gateway.js";
-import {Temporal} from '@js-temporal/polyfill';
-import {
-  POST_EVENTS,
-  USER_EVENTS,
-} from "../events/event-types.js";
+import { Injectable, Logger } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
+import { EventsGateway } from "../gateway/events.gateway.js";
+import { UsersService } from "../users/users.service.js";
+import { POST_EVENTS, USER_EVENTS } from "../events/event-types.js";
+import { NotificationsRepository } from "./notifications.repository.js";
 import type {
   PostCreatedEvent,
   PostLikedEvent,
@@ -21,8 +18,9 @@ export class NotificationsListener {
   private readonly logger = new Logger(NotificationsListener.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly notificationsRepository: NotificationsRepository,
     private readonly eventsGateway: EventsGateway,
+    private readonly usersService: UsersService,
   ) {}
 
   @OnEvent(POST_EVENTS.CREATED)
@@ -30,15 +28,15 @@ export class NotificationsListener {
     if (!event.isRootPost) return;
 
     try {
-      const followers = await this.prisma.client.orm.public.Follow.where((f) =>
-          f.followingId.eq(event.authorId),
-      ).all();
+      const followerIds = await this.usersService.getFollowerIds(
+        event.authorId,
+      );
 
-      if (!followers || followers.length === 0) return;
+      if (!followerIds || followerIds.length === 0) return;
 
-      for (const follow of followers) {
-        if (this.eventsGateway.isUserOnline(follow.followerId)) {
-          this.eventsGateway.pushToUser(follow.followerId, "feed:new-post", {
+      for (const followerId of followerIds) {
+        if (this.eventsGateway.isUserOnline(followerId)) {
+          this.eventsGateway.pushToUser(followerId, "feed:new-post", {
             authorId: event.authorId,
             postId: event.postId,
           });
@@ -54,25 +52,22 @@ export class NotificationsListener {
     if (event.actorId === event.postAuthorId) return;
 
     try {
-      const existing = await this.prisma.client.orm.public.Notification.where(
-        (n) => n.recipientId.eq(event.postAuthorId),
-      )
-        .where((n) => n.actorId.eq(event.actorId))
-        .where((n) => n.type.eq("LIKE"))
-        .where((n) => n.postId.eq(event.postId))
-        .first();
+      const existing = await this.notificationsRepository.findExisting(
+        event.postAuthorId,
+        event.actorId,
+        "LIKE",
+        event.postId,
+      );
 
       if (existing) {
         if (existing.isRead) {
-          await this.prisma.client.orm.public.Notification.where({
-            id: existing.id,
-          }).update({ isRead: false, createdAt: Temporal.Now.instant() });
+          await this.notificationsRepository.touchNotification(existing.id);
           await this.sendRealtimeNotification(existing.id, event.postAuthorId);
         }
         return;
       }
 
-      const created = await this.prisma.client.orm.public.Notification.create({
+      const created = await this.notificationsRepository.createNotification({
         recipientId: event.postAuthorId,
         actorId: event.actorId,
         type: "LIKE",
@@ -90,7 +85,7 @@ export class NotificationsListener {
     if (event.actorId === event.parentAuthorId) return;
 
     try {
-      const created = await this.prisma.client.orm.public.Notification.create({
+      const created = await this.notificationsRepository.createNotification({
         recipientId: event.parentAuthorId,
         actorId: event.actorId,
         type: "REPLY",
@@ -108,25 +103,22 @@ export class NotificationsListener {
     if (event.actorId === event.postAuthorId) return;
 
     try {
-      const existing = await this.prisma.client.orm.public.Notification.where(
-        (n) => n.recipientId.eq(event.postAuthorId),
-      )
-        .where((n) => n.actorId.eq(event.actorId))
-        .where((n) => n.type.eq("REPOST"))
-        .where((n) => n.postId.eq(event.postId))
-        .first();
+      const existing = await this.notificationsRepository.findExisting(
+        event.postAuthorId,
+        event.actorId,
+        "REPOST",
+        event.postId,
+      );
 
       if (existing) {
         if (existing.isRead) {
-          await this.prisma.client.orm.public.Notification.where({
-            id: existing.id,
-          }).update({ isRead: false, createdAt: Temporal.Now.instant() });
+          await this.notificationsRepository.touchNotification(existing.id);
           await this.sendRealtimeNotification(existing.id, event.postAuthorId);
         }
         return;
       }
 
-      const created = await this.prisma.client.orm.public.Notification.create({
+      const created = await this.notificationsRepository.createNotification({
         recipientId: event.postAuthorId,
         actorId: event.actorId,
         type: "REPOST",
@@ -144,7 +136,7 @@ export class NotificationsListener {
     if (event.actorId === event.quotedPostAuthorId) return;
 
     try {
-      const created = await this.prisma.client.orm.public.Notification.create({
+      const created = await this.notificationsRepository.createNotification({
         recipientId: event.quotedPostAuthorId,
         actorId: event.actorId,
         type: "QUOTE",
@@ -162,24 +154,21 @@ export class NotificationsListener {
     if (event.followerId === event.followingId) return;
 
     try {
-      const existing = await this.prisma.client.orm.public.Notification.where(
-        (n) => n.recipientId.eq(event.followingId),
-      )
-        .where((n) => n.actorId.eq(event.followerId))
-        .where((n) => n.type.eq("FOLLOW"))
-        .first();
+      const existing = await this.notificationsRepository.findExisting(
+        event.followingId,
+        event.followerId,
+        "FOLLOW",
+      );
 
       if (existing) {
         if (existing.isRead) {
-          await this.prisma.client.orm.public.Notification.where({
-            id: existing.id,
-          }).update({ isRead: false, createdAt: Temporal.Now.instant() });
+          await this.notificationsRepository.touchNotification(existing.id);
           await this.sendRealtimeNotification(existing.id, event.followingId);
         }
         return;
       }
 
-      const created = await this.prisma.client.orm.public.Notification.create({
+      const created = await this.notificationsRepository.createNotification({
         recipientId: event.followingId,
         actorId: event.followerId,
         type: "FOLLOW",
@@ -196,12 +185,8 @@ export class NotificationsListener {
     recipientId: string,
   ) {
     try {
-      const notif = await this.prisma.client.orm.public.Notification.where({
-        id: notificationId,
-      })
-        .include("actor")
-        .include("post")
-        .first();
+      const notif =
+        await this.notificationsRepository.findByIdWithDetails(notificationId);
 
       if (!notif) return;
 
@@ -226,14 +211,11 @@ export class NotificationsListener {
           : null,
       });
 
-      const unreadAgg = await this.prisma.client.orm.public.Notification.where(
-        (n) => n.recipientId.eq(recipientId),
-      )
-        .where((n) => n.isRead.eq(false))
-        .aggregate((a) => ({ count: a.count() }));
+      const unreadCount =
+        await this.notificationsRepository.countUnread(recipientId);
 
       this.eventsGateway.pushToUser(recipientId, "notification:unread-count", {
-        count: Number(unreadAgg.count) || 0,
+        count: unreadCount,
       });
     } catch (err) {
       this.logger.error(

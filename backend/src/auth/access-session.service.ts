@@ -1,16 +1,22 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { ConfigService } from "@nestjs/config";
-import { PrismaService } from "../prisma/prisma.service.js";
+import { Inject, forwardRef } from "@nestjs/common";
+import { UsersService } from "../users/users.service.js";
 import type { CurrentUserPayload } from "./decorators/current-user.decorator.js";
+import {
+  DomainException,
+  ERROR_CODES,
+} from "../common/exceptions/domain.exception.js";
+import { ConfigService } from "@nestjs/config";
 import type { EnvironmentVariables } from "../config/env.validation.js";
 
 @Injectable()
 export class AccessSessionService {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
-    private readonly configService: ConfigService<EnvironmentVariables, true>,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
+    private readonly configService?: ConfigService<EnvironmentVariables, true>,
   ) {}
 
   async verifyAccessToken(token: string): Promise<CurrentUserPayload> {
@@ -18,10 +24,20 @@ export class AccessSessionService {
 
     try {
       payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get("JWT_ACCESS_SECRET", { infer: true }),
+        secret:
+          this.configService?.get("JWT_ACCESS_SECRET", { infer: true }) ??
+          process.env.JWT_ACCESS_SECRET,
       });
-    } catch {
-      throw new UnauthorizedException("Token không hợp lệ hoặc đã hết hạn");
+    } catch (error) {
+      const code =
+        error instanceof Error && error.name === "TokenExpiredError"
+          ? ERROR_CODES.AUTH_TOKEN_EXPIRED
+          : ERROR_CODES.AUTH_UNAUTHORIZED;
+      throw new DomainException(
+        code,
+        "Token không hợp lệ hoặc đã hết hạn",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     if (!this.isAccessTokenPayload(payload)) {
@@ -30,21 +46,44 @@ export class AccessSessionService {
       );
     }
 
-    const session = await this.prisma.client.orm.public.Session.where((s) =>
-      s.id.eq(payload.sessionId),
-    )
-      .include("user")
-      .first();
+    const session = await this.usersService.getAccessSessionState(
+      payload.sessionId,
+    );
 
-    if (
-      !session ||
-      session.userId !== payload.sub ||
-      session.isRevoked ||
-      this.isExpired(session.expiresAt) ||
-      !session.user.isActive ||
-      !session.user.isEmailVerified
-    ) {
-      throw new UnauthorizedException("Phiên đăng nhập không còn hiệu lực");
+    if (!session || session.userId !== payload.sub) {
+      throw new DomainException(
+        ERROR_CODES.AUTH_SESSION_EXPIRED,
+        "Phiên đăng nhập không còn hiệu lực",
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    if (session.isRevoked) {
+      throw new DomainException(
+        ERROR_CODES.AUTH_SESSION_REVOKED,
+        "Phiên đăng nhập đã bị thu hồi",
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    if (this.isExpired(session.expiresAt)) {
+      throw new DomainException(
+        ERROR_CODES.AUTH_SESSION_EXPIRED,
+        "Phiên đăng nhập đã hết hạn",
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+    if (!session.isActive) {
+      throw new DomainException(
+        ERROR_CODES.AUTH_ACCOUNT_LOCKED,
+        "Tài khoản đã bị khóa",
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    if (!session.isEmailVerified) {
+      throw new DomainException(
+        ERROR_CODES.AUTH_EMAIL_UNVERIFIED,
+        "Tài khoản chưa xác thực email",
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     return payload;

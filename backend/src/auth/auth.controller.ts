@@ -21,6 +21,13 @@ import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
 import { ResetPasswordDto } from "./dto/reset-password.dto.js";
 import { Throttle } from "@nestjs/throttler";
+import type {
+  AuthResponseDto,
+  AuthUserDto,
+  MessageResponseDto,
+  RefreshResponseDto,
+  RegisterResponseDto,
+} from "./dto/auth-response.dto.js";
 import { ConfigService } from "@nestjs/config";
 import type { EnvironmentVariables } from "../config/env.validation.js";
 
@@ -28,20 +35,20 @@ import type { EnvironmentVariables } from "../config/env.validation.js";
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly configService: ConfigService<EnvironmentVariables, true>,
+    private readonly configService?: ConfigService<EnvironmentVariables, true>,
   ) {}
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async getMe(@CurrentUser("sub") userId: string) {
+  async getMe(@CurrentUser("sub") userId: string): Promise<AuthUserDto> {
     return this.authService.getMe(userId);
   }
 
   @Post("register")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto) {
+  async register(@Body() dto: RegisterDto): Promise<RegisterResponseDto> {
     return this.authService.register(dto);
   }
 
@@ -52,7 +59,7 @@ export class AuthController {
     @Body() dto: VerifyOtpDto,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
-  ) {
+  ): Promise<AuthResponseDto> {
     const meta = {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
@@ -70,7 +77,7 @@ export class AuthController {
   @Post("resend-otp")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async resendOtp(@Body() dto: ResendOtpDto) {
+  async resendOtp(@Body() dto: ResendOtpDto): Promise<RegisterResponseDto> {
     return this.authService.resendOtp(dto);
   }
 
@@ -81,7 +88,7 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
-  ) {
+  ): Promise<AuthResponseDto> {
     const meta = {
       userAgent: req.headers["user-agent"],
       ipAddress: req.ip,
@@ -102,8 +109,8 @@ export class AuthController {
   async logout(
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const refreshToken = req.cookies.refreshToken;
+  ): Promise<MessageResponseDto> {
+    const refreshToken = this.readRefreshTokenCookie(req);
     const result = await this.authService.logout(refreshToken);
     this.clearRefreshTokenCookie(res);
     return result;
@@ -115,8 +122,8 @@ export class AuthController {
   async refresh(
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const refreshToken = req.cookies.refreshToken;
+  ): Promise<RefreshResponseDto> {
+    const refreshToken = this.readRefreshTokenCookie(req);
     if (!refreshToken) {
       throw new UnauthorizedException(
         "Không tìm thấy refresh token trong cookie",
@@ -140,19 +147,29 @@ export class AuthController {
   @Post("forgot-password")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<MessageResponseDto> {
     return this.authService.forgotPassword(dto);
   }
 
   @Post("reset-password")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Body() dto: ResetPasswordDto) {
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<MessageResponseDto> {
     return this.authService.resetPassword(dto);
   }
 
-  private isProduction(): boolean {
-    return this.configService.get("NODE_ENV", { infer: true }) === "production";
+  private readRefreshTokenCookie(req: FastifyRequest): string | undefined {
+    const signedValue = req.cookies.refreshToken;
+    if (!signedValue) return undefined;
+    const result = req.unsignCookie(signedValue);
+    if (!result.valid || !result.value) {
+      throw new UnauthorizedException("Refresh cookie không hợp lệ");
+    }
+    return result.value;
   }
 
   private clearRefreshTokenCookie(res: FastifyReply) {
@@ -168,9 +185,17 @@ export class AuthController {
     res.setCookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: this.isProduction(),
-      sameSite: "lax",
+      sameSite: "lax", // Chống tấn công CSRF
       path: "/api/v1/auth",
       maxAge: 7 * 24 * 60 * 60,
+      signed: true,
     });
+  }
+
+  private isProduction(): boolean {
+    return (
+      (this.configService?.get("NODE_ENV", { infer: true }) ??
+        process.env.NODE_ENV) === "production"
+    );
   }
 }
