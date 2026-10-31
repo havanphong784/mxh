@@ -24,7 +24,12 @@
     "turbo": "^2.11.10"
   },
   "allowScripts": {
-    "*": true
+    "@swc/core": true,
+    "argon2": true,
+    "esbuild": true,
+    "msgpackr-extract@3.0.4": true,
+    "unrs-resolver": true,
+    "workerd@1.20260704.1": true
   },
   "dependencies": {
     "next": "16.4.3"
