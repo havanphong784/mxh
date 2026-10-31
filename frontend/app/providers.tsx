@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
-import { refreshSession } from '@/lib/axios';
-import { useAuthStore } from '@/stores/authStore';
+import React, { useEffect, useState } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
+import { refreshSession } from "@/lib/axios";
+import { useAuthStore } from "@/stores/authStore";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
@@ -16,12 +16,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Khôi phục phiên đăng nhập khi F5 hoặc mở tab mới bằng cookie HttpOnly
     refreshSession()
       .catch(() => {
-        if (active && useAuthStore.getState().accessToken === tokenBeforeRefresh) clearAuth();
+        if (
+          active &&
+          useAuthStore.getState().accessToken === tokenBeforeRefresh
+        )
+          clearAuth();
       })
       .finally(() => {
         if (active) setIsInitializing(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [clearAuth]);
 
   if (isInitializing) {
@@ -33,8 +39,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }

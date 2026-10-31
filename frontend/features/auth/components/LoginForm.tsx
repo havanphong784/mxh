@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from '@/components/ui/Button';
-import Link from 'next/link';
-import { getApiErrorMessage } from '@/lib/api-error';
+import React, { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "@/components/ui/Button";
+import Link from "next/link";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export function LoginForm() {
   const { login, isLoggingIn } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,7 +18,12 @@ export function LoginForm() {
     try {
       await login({ email, password });
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Đăng nhập không thành công. Vui lòng kiểm tra lại.'));
+      setError(
+        getApiErrorMessage(
+          err,
+          "Đăng nhập không thành công. Vui lòng kiểm tra lại.",
+        ),
+      );
     }
   };
 
@@ -36,11 +41,18 @@ export function LoginForm() {
         <input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (error) setError(null);
+          }}
           placeholder="ban@example.com"
           autoComplete="email"
           required
-          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
+          className={`w-full border rounded-[16px] px-3 py-2 text-[14px] outline-none transition-colors ${
+            error
+              ? "border-red-300 bg-red-50/30 focus:border-red-500 focus:bg-white"
+              : "border-[#efedf7] bg-[#f4f2fa] focus:border-[#1c1b29] focus:bg-[#ffffff]"
+          }`}
         />
       </div>
       <div>
@@ -50,24 +62,37 @@ export function LoginForm() {
         <input
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (error) setError(null);
+          }}
           placeholder="••••••••"
           required
           autoComplete="current-password"
-          className="w-full border border-[#efedf7] rounded-[16px] px-3 py-2 text-[14px] bg-[#f4f2fa] outline-none focus:border-[#1c1b29] focus:bg-[#ffffff] transition-colors"
+          className={`w-full border rounded-[16px] px-3 py-2 text-[14px] outline-none transition-colors ${
+            error
+              ? "border-red-300 bg-red-50/30 focus:border-red-500 focus:bg-white"
+              : "border-[#efedf7] bg-[#f4f2fa] focus:border-[#1c1b29] focus:bg-[#ffffff]"
+          }`}
         />
       </div>
       <Button type="submit" className="w-full mt-2" isLoading={isLoggingIn}>
         Đăng nhập
       </Button>
       <div className="text-right">
-        <Link href="/forgot-password" className="text-[12px] font-semibold text-[#7b78ff] hover:underline">
+        <Link
+          href="/forgot-password"
+          className="text-[12px] font-semibold text-[#7b78ff] hover:underline"
+        >
           Quên mật khẩu?
         </Link>
       </div>
       <div className="text-center mt-4 text-[13px] text-[#8e8ca3]">
-        Chưa có tài khoản?{' '}
-        <Link href="/register" className="text-[#7b78ff] hover:underline font-semibold">
+        Chưa có tài khoản?{" "}
+        <Link
+          href="/register"
+          className="text-[#7b78ff] hover:underline font-semibold"
+        >
           Đăng ký ngay
         </Link>
       </div>
