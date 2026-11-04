@@ -28,25 +28,39 @@ export class UsersRepository {
   }
 
   async createSession(data: {
-    userId: string; tokenHash: string; userAgent: string | null;
-    ipAddress: string | null; expiresAt: Temporal.Instant; isRevoked: boolean;
+    userId: string;
+    tokenHash: string;
+    userAgent: string | null;
+    ipAddress: string | null;
+    expiresAt: Temporal.Instant;
+    isRevoked: boolean;
   }) {
     return this.session.create(data);
   }
 
   async createPendingUserWithOtp(data: {
-    email: string; username: string; passwordHash: string; displayName: string;
-    codeHash: string; expiresAt: Temporal.Instant;
+    email: string;
+    username: string;
+    passwordHash: string;
+    displayName: string;
+    codeHash: string;
+    expiresAt: Temporal.Instant;
   }) {
     return this.prisma.client.transaction(async (tx) => {
       const user = await tx.orm.public.User.create({
-        email: data.email, username: data.username,
-        passwordHash: data.passwordHash, displayName: data.displayName,
+        email: data.email,
+        username: data.username,
+        passwordHash: data.passwordHash,
+        displayName: data.displayName,
         isEmailVerified: false,
       });
       await tx.orm.public.OtpVerification.create({
-        email: user.email, codeHash: data.codeHash, type: 'REGISTER_VERIFY',
-        expiresAt: data.expiresAt, attempts: 0, userId: user.id,
+        email: user.email,
+        codeHash: data.codeHash,
+        type: "REGISTER_VERIFY",
+        expiresAt: data.expiresAt,
+        attempts: 0,
+        userId: user.id,
       });
       return { id: user.id, email: user.email };
     });
@@ -56,72 +70,102 @@ export class UsersRepository {
     return this.user.where({ id: userId }).delete();
   }
 
-  async findLatestOtp(email: string, type: 'REGISTER_VERIFY' | 'FORGOT_PASSWORD') {
-    return this.prisma.client.orm.public.OtpVerification
-      .where((otp) => otp.email.eq(email))
+  async findLatestOtp(
+    email: string,
+    type: "REGISTER_VERIFY" | "FORGOT_PASSWORD",
+  ) {
+    return this.prisma.client.orm.public.OtpVerification.where((otp) =>
+      otp.email.eq(email),
+    )
       .where((otp) => otp.type.eq(type))
-      .orderBy((otp) => otp.createdAt.desc()).first();
+      .orderBy((otp) => otp.createdAt.desc())
+      .first();
   }
 
   async incrementOtpAttempts(otpId: string, attempts: number) {
-    return this.prisma.client.orm.public.OtpVerification
-      .where({ id: otpId }).update({ attempts });
+    return this.prisma.client.orm.public.OtpVerification.where({
+      id: otpId,
+    }).update({ attempts });
   }
 
   async createOtp(data: {
-    email: string; codeHash: string; type: 'REGISTER_VERIFY' | 'FORGOT_PASSWORD';
-    expiresAt: Temporal.Instant; attempts: number; userId: string;
+    email: string;
+    codeHash: string;
+    type: "REGISTER_VERIFY" | "FORGOT_PASSWORD";
+    expiresAt: Temporal.Instant;
+    attempts: number;
+    userId: string;
   }) {
     return this.prisma.client.orm.public.OtpVerification.create(data);
   }
 
   async deleteOtp(otpId: string) {
-    return this.prisma.client.orm.public.OtpVerification.where({ id: otpId }).delete();
+    return this.prisma.client.orm.public.OtpVerification.where({
+      id: otpId,
+    }).delete();
   }
 
   async activateAndCreateSession(
     email: string,
     otpId: string,
     sessionData: {
-      userId: string; tokenHash: string; userAgent: string | null;
-      ipAddress: string | null; expiresAt: Temporal.Instant; isRevoked: boolean;
+      userId: string;
+      tokenHash: string;
+      userAgent: string | null;
+      ipAddress: string | null;
+      expiresAt: Temporal.Instant;
+      isRevoked: boolean;
     },
   ) {
     return this.prisma.client.transaction(async (tx) => {
-      await tx.orm.public.User.where((user) => user.email.eq(email))
-        .update({ isEmailVerified: true });
+      await tx.orm.public.User.where((user) => user.email.eq(email)).update({
+        isEmailVerified: true,
+      });
       await tx.orm.public.OtpVerification.where({ id: otpId }).delete();
       return tx.orm.public.Session.create(sessionData);
     });
   }
 
   async resetPasswordAndRevokeSessions(
-    email: string, otpId: string, userId: string | null, passwordHash: string,
+    email: string,
+    otpId: string,
+    userId: string | null,
+    passwordHash: string,
   ) {
     await this.prisma.client.transaction(async (tx) => {
-      await tx.orm.public.User.where((user) => user.email.eq(email)).update({ passwordHash });
+      await tx.orm.public.User.where((user) => user.email.eq(email)).update({
+        passwordHash,
+      });
       await tx.orm.public.OtpVerification.where({ id: otpId }).delete();
       if (userId) {
-        await tx.orm.public.Session.where((session) => session.userId.eq(userId))
-          .update({ isRevoked: true });
+        await tx.orm.public.Session.where((session) =>
+          session.userId.eq(userId),
+        ).update({ isRevoked: true });
       }
     });
   }
 
   async findSessionByTokenHash(tokenHash: string) {
-    return this.session.where((session) => session.tokenHash.eq(tokenHash)).first();
+    return this.session
+      .where((session) => session.tokenHash.eq(tokenHash))
+      .first();
   }
 
   async revokeSessionsForUser(userId: string) {
-    return this.session.where((session) => session.userId.eq(userId))
+    return this.session
+      .where((session) => session.userId.eq(userId))
       .update({ isRevoked: true });
   }
 
   async rotateRefreshSession(
     sessionId: string,
     sessionData: {
-      userId: string; tokenHash: string; userAgent: string | null;
-      ipAddress: string | null; expiresAt: Temporal.Instant; isRevoked: boolean;
+      userId: string;
+      tokenHash: string;
+      userAgent: string | null;
+      ipAddress: string | null;
+      expiresAt: Temporal.Instant;
+      isRevoked: boolean;
     },
   ) {
     return this.prisma.client.transaction(async (tx) => {
@@ -129,7 +173,9 @@ export class UsersRepository {
         UPDATE "session"
         SET "isRevoked" = true, "updatedAt" = CURRENT_TIMESTAMP
         WHERE id = ${sessionId} AND "isRevoked" = false
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       const { affectedRows } = await tx.execute(claimPlan);
       if (affectedRows !== 1) return null;
       return tx.orm.public.Session.create(sessionData);
@@ -137,40 +183,61 @@ export class UsersRepository {
   }
 
   async revokeSessionByTokenHash(tokenHash: string): Promise<string[]> {
-    const sessions = await this.session.where((session) => session.tokenHash.eq(tokenHash)).all();
-    await this.session.where((session) => session.tokenHash.eq(tokenHash))
+    const sessions = await this.session
+      .where((session) => session.tokenHash.eq(tokenHash))
+      .all();
+    await this.session
+      .where((session) => session.tokenHash.eq(tokenHash))
       .update({ isRevoked: true });
     return sessions.map((session) => session.id);
   }
 
   async findAccessSession(sessionId: string) {
-    return this.session.where((s) => s.id.eq(sessionId)).include('user').first();
+    return this.session
+      .where((s) => s.id.eq(sessionId))
+      .include("user")
+      .first();
   }
 
-  async searchActiveUsers(term: string, cursor: string | undefined, limit: number) {
+  async searchActiveUsers(
+    term: string,
+    cursor: string | undefined,
+    limit: number,
+  ) {
     const pattern = toContainsPattern(term);
-    const matchingUsers = (field: 'username' | 'displayName') => {
-      let query = this.user.where((u) => u.isActive.eq(true))
+    const matchingUsers = (field: "username" | "displayName") => {
+      let query = this.user
+        .where((u) => u.isActive.eq(true))
         .where((u) => u.isEmailVerified.eq(true))
         .where((u) => u[field].ilike(pattern));
       if (cursor) query = query.where((u) => u.username.gt(cursor));
-      return query.orderBy((u) => u.username.asc()).limit(limit + 1).all();
+      return query
+        .orderBy((u) => u.username.asc())
+        .limit(limit + 1)
+        .all();
     };
     const [byUsername, byDisplayName] = await Promise.all([
-      matchingUsers('username'), matchingUsers('displayName'),
+      matchingUsers("username"),
+      matchingUsers("displayName"),
     ]);
     return { byUsername, byDisplayName };
   }
 
-  async findSuggestionCandidates() {
-    return this.user.where((u) => u.isActive.eq(true))
+  async findSuggestionCandidates(offset = 0) {
+    return this.user
+      .where((u) => u.isActive.eq(true))
       .where((u) => u.isEmailVerified.eq(true))
-      .orderBy((u) => u.createdAt.desc()).limit(24).all();
+      .orderBy((u) => u.createdAt.desc())
+      .offset(offset)
+      .limit(24)
+      .all();
   }
 
   async findFollowsToCandidates(viewerId: string, candidateIds: string[]) {
-    return this.follow.where((f) => f.followerId.eq(viewerId))
-      .where((f) => f.followingId.in(candidateIds)).all();
+    return this.follow
+      .where((f) => f.followerId.eq(viewerId))
+      .where((f) => f.followingId.in(candidateIds))
+      .all();
   }
 
   async createFollow(followerId: string, followingId: string) {
@@ -188,21 +255,29 @@ export class UsersRepository {
     currentSessionId?: string,
   ) {
     await this.prisma.client.transaction(async (tx) => {
-      await tx.orm.public.User.where((u) => u.id.eq(userId)).update({ passwordHash });
+      await tx.orm.public.User.where((u) => u.id.eq(userId)).update({
+        passwordHash,
+      });
       if (!logoutOtherDevices) return;
 
-      const sessions = await tx.orm.public.Session.where((s) => s.userId.eq(userId)).all();
+      const sessions = await tx.orm.public.Session.where((s) =>
+        s.userId.eq(userId),
+      ).all();
       for (const session of sessions) {
         if (session.id !== currentSessionId) {
-          await tx.orm.public.Session.where({ id: session.id }).update({ isRevoked: true });
+          await tx.orm.public.Session.where({ id: session.id }).update({
+            isRevoked: true,
+          });
         }
       }
     });
   }
 
   async deleteFollow(followerId: string, followingId: string) {
-    return this.follow.where((f) => f.followerId.eq(followerId))
-      .where((f) => f.followingId.eq(followingId)).delete();
+    return this.follow
+      .where((f) => f.followerId.eq(followerId))
+      .where((f) => f.followingId.eq(followingId))
+      .delete();
   }
 
   async findByUsername(username: string) {
@@ -219,7 +294,8 @@ export class UsersRepository {
   }
 
   async findActiveFollowingIds(followerId: string): Promise<string[]> {
-    const follows = await this.follow.where((f) => f.followerId.eq(followerId))
+    const follows = await this.follow
+      .where((f) => f.followerId.eq(followerId))
       .where((f) => f.following.some((u) => u.isActive.eq(true)))
       .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
       .all();
@@ -227,19 +303,27 @@ export class UsersRepository {
   }
 
   async findFollowerIds(followingId: string): Promise<string[]> {
-    const follows = await this.follow.where((f) => f.followingId.eq(followingId)).all();
+    const follows = await this.follow
+      .where((f) => f.followingId.eq(followingId))
+      .all();
     return follows.map((follow) => follow.followerId);
   }
 
   async listFollowers(
     userId: string,
-    options: { limit: number; offset?: number; cursor?: { createdAt: Temporal.Instant; id: string } },
+    options: {
+      limit: number;
+      offset?: number;
+      cursor?: { createdAt: Temporal.Instant; id: string };
+    },
   ) {
-    let query = this.follow.where((f) => f.followingId.eq(userId))
+    let query = this.follow
+      .where((f) => f.followingId.eq(userId))
       .where((f) => f.follower.some((u) => u.isActive.eq(true)))
       .where((f) => f.follower.some((u) => u.isEmailVerified.eq(true)))
       .orderBy([(f) => f.createdAt.desc(), (f) => f.followerId.desc()])
-      .limit(options.limit).include('follower');
+      .limit(options.limit)
+      .include("follower");
     if (options.offset !== undefined) query = query.offset(options.offset);
     if (options.cursor) query = query.cursor(options.cursor);
     return query.all();
@@ -247,13 +331,19 @@ export class UsersRepository {
 
   async listFollowing(
     userId: string,
-    options: { limit: number; offset?: number; cursor?: { createdAt: Temporal.Instant; id: string } },
+    options: {
+      limit: number;
+      offset?: number;
+      cursor?: { createdAt: Temporal.Instant; id: string };
+    },
   ) {
-    let query = this.follow.where((f) => f.followerId.eq(userId))
+    let query = this.follow
+      .where((f) => f.followerId.eq(userId))
       .where((f) => f.following.some((u) => u.isActive.eq(true)))
       .where((f) => f.following.some((u) => u.isEmailVerified.eq(true)))
       .orderBy([(f) => f.createdAt.desc(), (f) => f.followingId.desc()])
-      .limit(options.limit).include('following');
+      .limit(options.limit)
+      .include("following");
     if (options.offset !== undefined) query = query.offset(options.offset);
     if (options.cursor) query = query.cursor(options.cursor);
     return query.all();

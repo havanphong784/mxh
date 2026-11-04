@@ -18,6 +18,7 @@ import { PostFeedSkeleton } from "@/components/ui/PostSkeleton";
 import { UserRow } from "@/components/common/UserRow";
 import { useAuthStore } from "@/stores/authStore";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { invalidateFollowDependentQueries } from "@/features/users/follow-cache";
 import type { Author } from "@/types/api";
 
 export function ExploreView() {
@@ -67,12 +68,7 @@ export function ExploreView() {
     setFollowError(null);
     try {
       await usersApi.follow(person.id);
-      await queryClient.invalidateQueries({
-        queryKey: ["users", "suggestions"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["users", "profile", person.username],
-      });
+      await invalidateFollowDependentQueries(queryClient);
     } catch (error) {
       setFollowError(
         getApiErrorMessage(error, "Không thể theo dõi tài khoản này."),

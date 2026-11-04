@@ -109,6 +109,53 @@ export class MediaService {
     });
   }
 
+  verifyProfileImageReference(
+    userId: string,
+    folder: "avatars" | "banners",
+    url?: string | null,
+    publicId?: string | null,
+  ): void {
+    if (url === undefined && publicId === undefined) return;
+    if (url === null && publicId === null) return;
+
+    const cloudName =
+      this.configService?.get("CLOUDINARY_CLOUD_NAME", { infer: true }) ??
+      process.env.CLOUDINARY_CLOUD_NAME;
+    const expectedPublicIdPrefix = `mxh/${userId}/${folder}/`;
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url ?? "");
+    } catch {
+      throw new BadRequestException("Tham chiếu ảnh hồ sơ không hợp lệ");
+    }
+
+    const uploadPrefix = `/${cloudName}/image/upload/`;
+    const uploadPath = parsedUrl.pathname.startsWith(uploadPrefix)
+      ? parsedUrl.pathname.slice(uploadPrefix.length)
+      : "";
+    const versionedPath = /^v\d+\/(.+)$/.exec(uploadPath)?.[1];
+    const extension = versionedPath?.startsWith(`${publicId}.`)
+      ? versionedPath.slice(publicId!.length + 1)
+      : "";
+    const matchesAsset =
+      versionedPath === publicId || /^[a-z0-9]+$/i.test(extension);
+
+    if (
+      !cloudName ||
+      !url ||
+      !publicId?.startsWith(expectedPublicIdPrefix) ||
+      publicId.length === expectedPublicIdPrefix.length ||
+      parsedUrl.protocol !== "https:" ||
+      parsedUrl.hostname !== "res.cloudinary.com" ||
+      parsedUrl.port ||
+      parsedUrl.search ||
+      parsedUrl.hash ||
+      !matchesAsset
+    ) {
+      throw new BadRequestException("Tham chiếu ảnh hồ sơ không hợp lệ");
+    }
+  }
+
   generateUploadSignature(
     folderName: "avatars" | "banners" | "posts",
     userId: string,

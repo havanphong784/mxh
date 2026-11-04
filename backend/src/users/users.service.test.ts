@@ -5,6 +5,8 @@ import { UsersService } from './users.service.js';
 import { UsersRepository } from './users.repository.js';
 import { UsersAuthService } from './users-auth.service.js';
 import argon2 from 'argon2';
+import { BadRequestException } from '@nestjs/common';
+import { MediaService } from '../media/media.service.js';
 
 function createUsersService(prisma: any, media: any, events: any, repository?: any) {
   return new UsersService(repository ?? new UsersRepository(prisma), media, events);
@@ -107,6 +109,41 @@ test('suggestions read candidates and follows through the Users repository', asy
   assert.deepEqual((await users.suggestUsers('viewer')).items, [candidate]);
 });
 
+test('suggestions continue past followed recent users to older candidates', async () => {
+  const candidates = Array.from({ length: 25 }, (_, index) => ({
+    id: `user-${index}`,
+    username: `user-${index}`,
+    displayName: `User ${index}`,
+    avatarUrl: null,
+    bio: null,
+  }));
+  const repository = {
+    async findSuggestionCandidates(offset = 0) { return candidates.slice(offset, offset + 24); },
+    async findFollowsToCandidates(_viewerId: string, ids: string[]) {
+      return ids.filter((id) => id !== 'user-24').map((followingId) => ({ followingId }));
+    },
+  };
+  const users = createUsersService({}, {}, {}, repository);
+
+  assert.deepEqual((await users.suggestUsers('viewer')).items, [candidates[24]]);
+});
+
+test('profile update rejects an external avatar URL without an owned media reference', async () => {
+  const user = { id: 'a', isActive: true, avatarPublicId: null, bannerPublicId: null };
+  let updated = false;
+  const repository = {
+    async findById() { return user; },
+    async updateUser() { updated = true; },
+  };
+  const users = createUsersService({}, new MediaService(), {}, repository);
+
+  await assert.rejects(
+    users.updateProfile('a', { avatarUrl: 'https://tracker.example/pixel.png' }),
+    BadRequestException,
+  );
+  assert.equal(updated, false);
+});
+
 test('following another user writes through the Users repository', async () => {
   const repository = {
     async findById(id: string) {
@@ -196,6 +233,7 @@ test('a failed profile database update keeps the currently referenced media', as
   };
   const deletedPublicIds: string[] = [];
   const mediaService = {
+    verifyProfileImageReference() {},
     async deleteFile(publicId: string) {
       deletedPublicIds.push(publicId);
     },

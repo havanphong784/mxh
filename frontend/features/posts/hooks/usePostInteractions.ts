@@ -2,31 +2,40 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postsApi } from "../api";
-import { updatePostTree, type PostInteractionKind } from "../post-state";
+import {
+  restorePostInteraction,
+  updatePostTree,
+  type PostInteractionKind,
+} from "../post-state";
+import { queuePostInteraction } from "../interaction-queue";
 
 type Variables = { id: string; kind: PostInteractionKind; active: boolean };
 
 export function usePostInteractions() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ id, kind, active }: Variables) => {
-      if (kind === "like")
-        return active ? postsApi.unlikePost(id) : postsApi.likePost(id);
-      if (kind === "repost")
-        return active ? postsApi.unrepost(id) : postsApi.repost(id);
-      return active ? postsApi.unbookmark(id) : postsApi.bookmark(id);
-    },
+    mutationFn: ({ id, kind, active }: Variables) =>
+      queuePostInteraction(`${id}:${kind}`, () => {
+        if (kind === "like")
+          return active ? postsApi.unlikePost(id) : postsApi.likePost(id);
+        if (kind === "repost")
+          return active ? postsApi.unrepost(id) : postsApi.repost(id);
+        return active ? postsApi.unbookmark(id) : postsApi.bookmark(id);
+      }),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
-      const snapshots = queryClient.getQueriesData({ queryKey: ["posts"] });
       queryClient.setQueriesData({ queryKey: ["posts"] }, (old) =>
         updatePostTree(old, variables.id, variables.kind),
       );
-      return { snapshots };
     },
-    onError: (_error, _variables, context) => {
-      context?.snapshots.forEach(([key, data]) =>
-        queryClient.setQueryData(key, data),
+    onError: (_error, variables) => {
+      queryClient.setQueriesData({ queryKey: ["posts"] }, (old) =>
+        restorePostInteraction(
+          old,
+          variables.id,
+          variables.kind,
+          variables.active,
+        ),
       );
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),

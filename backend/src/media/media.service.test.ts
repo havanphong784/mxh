@@ -137,3 +137,16 @@ test('verifyMediaItems validates user ownership and Cloudinary signatures', () =
     process.env.CLOUDINARY_CLOUD_NAME = originalCloud;
   }
 });
+
+test('profile image reference must match the configured Cloudinary asset', () => {
+  const service = new MediaService({
+    get: (key: string) => key === 'CLOUDINARY_CLOUD_NAME' ? 'test-cloud' : 'test-secret',
+  } as unknown as NonNullable<ConstructorParameters<typeof MediaService>[0]>);
+  const ownId = 'mxh/user-1/avatars/photo';
+  const ownUrl = `https://res.cloudinary.com/test-cloud/image/upload/v123/${ownId}.jpg`;
+
+  assert.doesNotThrow(() => service.verifyProfileImageReference('user-1', 'avatars', ownUrl, ownId));
+  assert.throws(() => service.verifyProfileImageReference('user-1', 'avatars', 'https://tracker.example/pixel.png', ownId), HttpException);
+  assert.throws(() => service.verifyProfileImageReference('user-1', 'avatars', ownUrl, 'mxh/user-1/avatars/other'), HttpException);
+  assert.throws(() => service.verifyProfileImageReference('user-1', 'avatars', ownUrl, undefined), HttpException);
+});

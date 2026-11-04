@@ -35,7 +35,11 @@ export class UsersService {
 
   async searchUsers(term: string, cursor?: string, requestedLimit = 20) {
     const limit = Math.min(50, Math.max(1, Number(requestedLimit) || 20));
-    const { byUsername, byDisplayName } = await this.repo.searchActiveUsers(term, cursor, limit);
+    const { byUsername, byDisplayName } = await this.repo.searchActiveUsers(
+      term,
+      cursor,
+      limit,
+    );
     const users = [
       ...new Map(
         [...byUsername, ...byDisplayName].map((user) => [user.id, user]),
@@ -57,24 +61,35 @@ export class UsersService {
   }
 
   async suggestUsers(viewerId?: string) {
-    const candidates = await this.repo.findSuggestionCandidates();
-    const candidateIds = candidates.map((user) => user.id);
-    const follows =
-      viewerId && candidateIds.length > 0
-        ? await this.repo.findFollowsToCandidates(viewerId, candidateIds)
-        : [];
-    const followedIds = new Set(follows.map((follow) => follow.followingId));
+    const suggested: Awaited<
+      ReturnType<UsersRepository["findSuggestionCandidates"]>
+    > = [];
+    let offset = 0;
+    while (suggested.length < 6) {
+      const candidates = await this.repo.findSuggestionCandidates(offset);
+      if (candidates.length === 0) break;
+      const candidateIds = candidates.map((user) => user.id);
+      const follows =
+        viewerId && candidateIds.length > 0
+          ? await this.repo.findFollowsToCandidates(viewerId, candidateIds)
+          : [];
+      const followedIds = new Set(follows.map((follow) => follow.followingId));
+      suggested.push(
+        ...candidates.filter(
+          (user) => user.id !== viewerId && !followedIds.has(user.id),
+        ),
+      );
+      offset += candidates.length;
+      if (candidates.length < 24) break;
+    }
     return {
-      items: candidates
-        .filter((user) => user.id !== viewerId && !followedIds.has(user.id))
-        .slice(0, 6)
-        .map((user) => ({
-          id: user.id,
-          username: user.username,
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          bio: user.bio,
-        })),
+      items: suggested.slice(0, 6).map((user) => ({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        bio: user.bio,
+      })),
     };
   }
 
@@ -146,6 +161,23 @@ export class UsersService {
 
     if (!currentUser || !currentUser.isActive) {
       throw new NotFoundException("Người dùng không tồn tại hoặc đã bị khóa");
+    }
+
+    if (dto.avatarUrl !== undefined || dto.avatarPublicId !== undefined) {
+      this.mediaService.verifyProfileImageReference(
+        userId,
+        "avatars",
+        dto.avatarUrl,
+        dto.avatarPublicId,
+      );
+    }
+    if (dto.bannerUrl !== undefined || dto.bannerPublicId !== undefined) {
+      this.mediaService.verifyProfileImageReference(
+        userId,
+        "banners",
+        dto.bannerUrl,
+        dto.bannerPublicId,
+      );
     }
 
     const expectedAvatarPrefix = `mxh/${userId}/avatars/`;
@@ -259,7 +291,10 @@ export class UsersService {
     const newPasswordHash = await argon2.hash(dto.newPassword);
     const logoutOtherDevices = dto.logoutOtherDevices ?? true;
     await this.repo.changePasswordAndRevokeSessions(
-      userId, newPasswordHash, logoutOtherDevices, currentSessionId,
+      userId,
+      newPasswordHash,
+      logoutOtherDevices,
+      currentSessionId,
     );
 
     if (logoutOtherDevices) {
@@ -295,7 +330,10 @@ export class UsersService {
       throw new BadRequestException("Bạn không thể tự theo dõi chính mình");
     }
 
-    const existingFollow = await this.repo.findFollow(currentUserId, targetUser.id);
+    const existingFollow = await this.repo.findFollow(
+      currentUserId,
+      targetUser.id,
+    );
 
     if (existingFollow) {
       throw new BadRequestException("Bạn đã theo dõi người dùng này rồi");
@@ -343,7 +381,10 @@ export class UsersService {
       throw new BadRequestException("Thao tác không hợp lệ");
     }
 
-    const existingFollow = await this.repo.findFollow(currentUserId, targetUser.id);
+    const existingFollow = await this.repo.findFollow(
+      currentUserId,
+      targetUser.id,
+    );
 
     if (!existingFollow) {
       throw new BadRequestException("Bạn chưa theo dõi người dùng này");
@@ -372,7 +413,10 @@ export class UsersService {
     const cursor = this.decodeFollowCursor(query?.cursor);
 
     if (cursor) {
-      const follows = await this.repo.listFollowers(user.id, { cursor, limit: limit + 1 });
+      const follows = await this.repo.listFollowers(user.id, {
+        cursor,
+        limit: limit + 1,
+      });
 
       const hasNextPage = follows.length > limit;
       const items = hasNextPage ? follows.slice(0, limit) : follows;
@@ -453,7 +497,10 @@ export class UsersService {
     const cursor = this.decodeFollowCursor(query?.cursor);
 
     if (cursor) {
-      const follows = await this.repo.listFollowing(user.id, { cursor, limit: limit + 1 });
+      const follows = await this.repo.listFollowing(user.id, {
+        cursor,
+        limit: limit + 1,
+      });
 
       const hasNextPage = follows.length > limit;
       const items = hasNextPage ? follows.slice(0, limit) : follows;
@@ -581,7 +628,9 @@ export class UsersService {
   async getAuthProfile(userId: string) {
     const user = await this.repo.findById(userId);
     if (!user || !user.isActive) {
-      throw new UnauthorizedException("Tài khoản không tồn tại hoặc đã bị khóa.");
+      throw new UnauthorizedException(
+        "Tài khoản không tồn tại hoặc đã bị khóa.",
+      );
     }
     return {
       id: user.id,

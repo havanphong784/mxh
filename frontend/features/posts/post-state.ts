@@ -1,18 +1,21 @@
-import type { ActivePostItem, PostItem } from '../../types/api.ts';
+import type { ActivePostItem, PostItem } from "../../types/api.ts";
 
-export type PostInteractionKind = 'like' | 'repost' | 'bookmark';
+export type PostInteractionKind = "like" | "repost" | "bookmark";
 
 const fields = {
-  like: ['isLiked', 'likeCount'],
-  repost: ['isReposted', 'repostCount'],
-  bookmark: ['isBookmarked', 'bookmarkCount'],
+  like: ["isLiked", "likeCount"],
+  repost: ["isReposted", "repostCount"],
+  bookmark: ["isBookmarked", "bookmarkCount"],
 } as const;
 
 export function isActivePost(post: PostItem): post is ActivePostItem {
   return post.isDeleted !== true && post.isUnavailable !== true;
 }
 
-export function togglePostInteraction(post: ActivePostItem, kind: PostInteractionKind): ActivePostItem {
+export function togglePostInteraction(
+  post: ActivePostItem,
+  kind: PostInteractionKind,
+): ActivePostItem {
   const [interactionKey, counterKey] = fields[kind];
   const active = post.interactions[interactionKey];
   return {
@@ -25,12 +28,50 @@ export function togglePostInteraction(post: ActivePostItem, kind: PostInteractio
   };
 }
 
-export function updatePostTree(value: unknown, postId: string, kind: PostInteractionKind): unknown {
-  if (Array.isArray(value)) return value.map((item) => updatePostTree(item, postId, kind));
-  if (!value || typeof value !== 'object') return value;
+export function updatePostTree(
+  value: unknown,
+  postId: string,
+  kind: PostInteractionKind,
+): unknown {
+  if (Array.isArray(value))
+    return value.map((item) => updatePostTree(item, postId, kind));
+  if (!value || typeof value !== "object") return value;
   const record = value as Record<string, unknown>;
   if (record.id === postId && record.interactions && record.counters) {
     return togglePostInteraction(record as unknown as ActivePostItem, kind);
   }
-  return Object.fromEntries(Object.entries(record).map(([key, child]) => [key, updatePostTree(child, postId, kind)]));
+  return Object.fromEntries(
+    Object.entries(record).map(([key, child]) => [
+      key,
+      updatePostTree(child, postId, kind),
+    ]),
+  );
+}
+
+export function restorePostInteraction(
+  value: unknown,
+  postId: string,
+  kind: PostInteractionKind,
+  originalActive: boolean,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      restorePostInteraction(item, postId, kind, originalActive),
+    );
+  }
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  if (record.id === postId && record.interactions && record.counters) {
+    const post = record as unknown as ActivePostItem;
+    const interactionKey = fields[kind][0];
+    return post.interactions[interactionKey] === originalActive
+      ? post
+      : togglePostInteraction(post, kind);
+  }
+  return Object.fromEntries(
+    Object.entries(record).map(([key, child]) => [
+      key,
+      restorePostInteraction(child, postId, kind, originalActive),
+    ]),
+  );
 }

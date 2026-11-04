@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersApi } from "../api";
 import { toggleProfileFollow } from "../profile-state";
 import type { UserProfile } from "@/types/api";
+import { invalidateFollowDependentQueries } from "../follow-cache";
 
 export function useProfile(username: string) {
   const queryClient = useQueryClient();
@@ -26,6 +27,7 @@ export function useProfile(username: string) {
     },
     onError: (_error, _variables, context) =>
       queryClient.setQueryData(queryKey, context?.previous),
+    onSuccess: () => invalidateFollowDependentQueries(queryClient),
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
   return {

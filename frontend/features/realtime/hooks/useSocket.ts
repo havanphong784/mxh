@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { CursorDataPage, NotificationItem } from "@/types/api";
 import type { InfiniteData } from "@tanstack/react-query";
 import { notificationsApi } from "@/features/notifications/api";
+import { upsertNotification } from "@/features/notifications/cache";
 
 export function useSocket() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -42,18 +43,7 @@ export function useSocket() {
       if (useAuthStore.getState().accessToken !== accessToken) return;
       queryClient.setQueryData<InfiniteData<CursorDataPage<NotificationItem>>>(
         ["notifications"],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page, idx) => {
-              if (idx === 0) {
-                return { ...page, data: [notif, ...page.data] };
-              }
-              return page;
-            }),
-          };
-        },
+        (old) => upsertNotification(old, notif),
       );
     });
 
