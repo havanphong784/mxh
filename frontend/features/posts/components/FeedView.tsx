@@ -38,7 +38,12 @@ export function FeedView() {
   const handleRefreshFeed = () => {
     clearNewFeedNotice();
     refetch();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const region = document.getElementById("main-scroll-region");
+    if (window.matchMedia("(min-width: 768px)").matches && region) {
+      region.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (

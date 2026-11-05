@@ -1,12 +1,13 @@
-import React from 'react';
-import type {PostItem} from '@/types/api';
-import {Avatar} from '@/components/ui/Avatar';
-import {PostActionBar} from './PostActionBar';
-import {MediaGrid} from './MediaGrid';
-import {QuotedPost} from './QuotedPost';
-import {TombstoneCard} from './TombstoneCard';
-import Link from 'next/link';
-import {TimeAgo} from '@/components/common/TimeAgo';
+import React from "react";
+import type { PostItem } from "@/types/api";
+import { Avatar } from "@/components/ui/Avatar";
+import { PostActionBar } from "./PostActionBar";
+import { MediaGrid } from "./MediaGrid";
+import { QuotedPost } from "./QuotedPost";
+import { TombstoneCard } from "./TombstoneCard";
+import Link from "next/link";
+import { TimeAgo } from "@/components/common/TimeAgo";
+import { isActivePost } from "../post-state";
 
 interface PostCardProps {
   post: PostItem;
@@ -44,7 +45,11 @@ export const PostCard: React.FC<PostCardProps> = ({
       <div className="flex gap-3 sm:gap-4">
         {/* Cột Avatar tác giả */}
         <Link href={`/${post.author.username}`} className="shrink-0">
-          <Avatar src={post.author.avatarUrl} displayName={post.author.displayName} size={44} />
+          <Avatar
+            src={post.author.avatarUrl}
+            displayName={post.author.displayName}
+            size={44}
+          />
         </Link>
 
         {/* Cột Nội dung bài viết */}
@@ -58,28 +63,47 @@ export const PostCard: React.FC<PostCardProps> = ({
               >
                 {post.author.displayName}
               </Link>
-              <p className="mt-0.5 truncate text-[11px] font-semibold text-[#8e8ca3]">@{post.author.username}</p>
+              <p className="mt-0.5 truncate text-[11px] font-semibold text-[#8e8ca3]">
+                @{post.author.username}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <TimeAgo value={post.createdAt} className="text-[11px] font-semibold text-[#8e8ca3]" />
-            {isOwner && onEdit && <button onClick={onEdit} className="rounded-full px-2 py-1 text-[11px] font-bold text-[#7b78ff] hover:bg-[#eeedff]" aria-label="Chỉnh sửa bài viết">Sửa</button>}
-            {isOwner && onDelete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className="grid h-6 w-6 place-items-center rounded-full text-[11px] text-[#8e8ca3] transition-colors hover:bg-[#fff0f3] hover:text-[#e86480]"
-                title="Xóa bài viết"
-                aria-label="Xóa bài viết"
-              >
-                ✕
-              </button>
-            )}
+              <TimeAgo
+                value={post.createdAt}
+                className="text-[11px] font-semibold text-[#8e8ca3]"
+              />
+              {isOwner && onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="rounded-full px-2 py-1 text-[11px] font-bold text-[#7b78ff] hover:bg-[#eeedff]"
+                  aria-label="Chỉnh sửa bài viết"
+                >
+                  Sửa
+                </button>
+              )}
+              {isOwner && onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className="grid h-6 w-6 place-items-center rounded-full text-[11px] text-[#8e8ca3] transition-colors hover:bg-[#fff0f3] hover:text-[#e86480]"
+                  title="Xóa bài viết"
+                  aria-label="Xóa bài viết"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
-          {post.visibility !== 'PUBLIC' && <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${post.visibility === 'FOLLOWERS' ? 'bg-[#e8f5ff] text-[#438dc4]' : 'bg-[#eeedff] text-[#6864dc]'}`}>{post.visibility === 'FOLLOWERS' ? 'Người theo dõi' : 'Riêng tư'}</span>}
+          {post.visibility !== "PUBLIC" && (
+            <span
+              className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${post.visibility === "FOLLOWERS" ? "bg-[#e8f5ff] text-[#438dc4]" : "bg-[#eeedff] text-[#6864dc]"}`}
+            >
+              {post.visibility === "FOLLOWERS" ? "Người theo dõi" : "Riêng tư"}
+            </span>
+          )}
 
           {/* Nội dung bài viết */}
           <Link href={`/post/${post.id}`} scroll={false}>
@@ -89,10 +113,27 @@ export const PostCard: React.FC<PostCardProps> = ({
           </Link>
 
           {/* Lưới Media đính kèm */}
-          {post.media && post.media.length > 0 && <MediaGrid media={post.media} />}
+          {post.media && post.media.length > 0 && (
+            <MediaGrid media={post.media} />
+          )}
 
           {/* Bài viết trích dẫn (nếu có) */}
-          {post.quotedPost ? <QuotedPost post={post.quotedPost} /> : post.isQuotedPostDeleted ? <div className="mt-3 rounded-[18px] bg-[#f4f2fa] p-3 text-[13px] italic text-[#8e8ca3]">Bài viết được trích dẫn không còn khả dụng.</div> : null}
+          {post.quotedPost ? (
+            <QuotedPost post={post.quotedPost} />
+          ) : post.isQuotedPostDeleted ? (
+            <div className="mt-3 rounded-[18px] bg-[#f4f2fa] p-3 text-[13px] italic text-[#8e8ca3]">
+              Bài viết được trích dẫn không còn khả dụng.
+            </div>
+          ) : null}
+
+          {post.repostOfId &&
+            (post.repostOf && isActivePost(post.repostOf) ? (
+              <QuotedPost post={post.repostOf} />
+            ) : (
+              <div className="mt-3 rounded-[18px] bg-[#f4f2fa] p-3 text-[13px] italic text-[#8e8ca3]">
+                Bài viết được đăng lại không còn khả dụng.
+              </div>
+            ))}
 
           {/* Thanh tương tác dưới bài viết */}
           <PostActionBar

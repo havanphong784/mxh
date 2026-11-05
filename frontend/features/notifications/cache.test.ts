@@ -25,6 +25,7 @@ test("a reactivated notification appears once at the top of the list", () => {
   } as InfiniteData<CursorDataPage<NotificationItem>>;
 
   const result = upsertNotification(cached, newer);
+  assert.ok(result);
 
   assert.deepEqual(
     result.pages.flatMap((page) => page.data.map((item) => item.id)),

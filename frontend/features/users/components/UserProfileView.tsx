@@ -111,7 +111,7 @@ export function UserProfileView({ username }: { username: string }) {
           />
         </>
       )}
-      {isOwner && (
+      {isOwner && editing && (
         <EditProfileModal
           profile={profile.data}
           isOpen={editing}
