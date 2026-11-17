@@ -32,6 +32,17 @@ model User {
 
   notifications       Notification[]    @relation("UserNotifications")
   notificationActions Notification[]    @relation("UserNotificationActions")
+
+  conversationParticipants ConversationParticipant[]
+  sentMessages            Message[]                  @relation("MessageSender")
+}
+
+enum ConversationType {
+  DIRECT
+}
+
+enum MessageType {
+  TEXT
 }
 
 model Session {
@@ -218,4 +229,52 @@ model Notification {
 
   @@index([recipientId, isRead, createdAt])
   @@index([recipientId, createdAt])
+}
+
+model Conversation {
+  id          String           @id @default(cuid(2))
+  type        ConversationType @default(DIRECT)
+  directKey   String           @unique
+  createdAt   DateTime         @default(now())
+  updatedAt   temporal.updatedAt()
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([updatedAt])
+}
+
+model ConversationParticipant {
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId        String
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt DateTime?
+  joinedAt   DateTime @default(now())
+
+  @@id([conversationId, userId])
+  @@index([userId, lastReadAt])
+}
+
+model Message {
+  id             String         @id @default(cuid(2))
+  conversationId String
+  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  clientMessageId String
+  type            MessageType @default(TEXT)
+  body            String
+
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  @@unique([senderId, clientMessageId])
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
 }

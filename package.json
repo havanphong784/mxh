@@ -32,6 +32,6 @@
     "workerd@1.20260704.1": true
   },
   "dependencies": {
-    "next": "16.4.3"
+    "next": "^16.4.6"
   }
 }

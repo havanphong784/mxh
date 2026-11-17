@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useMessagingStore } from "@/stores/messagingStore";
 import { useAuthStore } from "@/stores/authStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { navigationItems, NavIcon } from "@/components/common/navigation";
@@ -10,6 +11,7 @@ import { navigationItems, NavIcon } from "@/components/common/navigation";
 export function Sidebar() {
   const pathname = usePathname();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const messageUnreadCount = useMessagingStore((state) => state.unreadCount);
   const username = useAuthStore((state) => state.user?.username);
   const displayName = useAuthStore((state) => state.user?.displayName);
   const avatarUrl = useAuthStore((state) => state.user?.avatarUrl);
@@ -41,6 +43,11 @@ export function Sidebar() {
                 {item.key === "notifications" && unreadCount > 0 && (
                   <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff8da1] px-1 text-[9px] font-bold text-white">
                     {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+                {item.key === "messages" && messageUnreadCount > 0 && (
+                  <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#45ad8a] px-1 text-[9px] font-bold text-white">
+                    {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
                   </span>
                 )}
               </Link>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useMessagingStore } from "@/stores/messagingStore";
 import { useAuthStore } from "@/stores/authStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { navigationItems, NavIcon } from "@/components/common/navigation";
@@ -10,6 +11,7 @@ import { navigationItems, NavIcon } from "@/components/common/navigation";
 export function MobileNav() {
   const pathname = usePathname();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const messageUnreadCount = useMessagingStore((state) => state.unreadCount);
   const username = useAuthStore((state) => state.user?.username);
   const displayName = useAuthStore((state) => state.user?.displayName);
   const avatarUrl = useAuthStore((state) => state.user?.avatarUrl);
@@ -28,6 +30,9 @@ export function MobileNav() {
           <NavIcon name={item.key} className="h-5 w-5" />
           {item.key === "notifications" && unreadCount > 0 && (
             <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ff8da1]" />
+          )}
+          {item.key === "messages" && messageUnreadCount > 0 && (
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#45ad8a]" />
           )}
         </Link>
       ))}

@@ -1,5 +1,5 @@
 export type NavKey =
-  "feed" | "explore" | "notifications" | "bookmarks" | "liked";
+  "feed" | "explore" | "notifications" | "bookmarks" | "liked" | "messages";
 
 export const navigationItems: {
   key: NavKey;
@@ -28,6 +28,13 @@ export const navigationItems: {
     label: "Thông báo",
     glyph: "🔔",
     color: "bg-[#fff0f3] text-[#ee7790]",
+  },
+  {
+    key: "messages",
+    href: "/messages",
+    label: "Tin nhắn",
+    glyph: "✉",
+    color: "bg-[#e9f8f2] text-[#45ad8a]",
   },
   {
     key: "bookmarks",

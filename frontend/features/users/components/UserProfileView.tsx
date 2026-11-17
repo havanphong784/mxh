@@ -57,6 +57,7 @@ export function UserProfileView({ username }: { username: string }) {
         profile={profile.data}
         isOwner={isOwner}
         onEdit={() => setEditing(true)}
+        onMessage={() => router.push(`/messages?user=${profile.data!.id}`)}
         onFollow={() =>
           currentUserId ? profile.toggleFollow() : router.push("/login")
         }

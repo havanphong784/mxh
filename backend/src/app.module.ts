@@ -10,6 +10,7 @@ import { UsersModule } from "./users/users.module.js";
 import { PostsModule } from "./posts/posts.module.js";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { NotificationsModule } from "./notifications/notifications.module.js";
+import { MessagingModule } from "./messaging/messaging.module.js";
 import { GatewayModule } from "./gateway/gateway.module.js";
 import { TieredThrottlerGuard } from "./common/guards/tiered-throttler.guard.js";
 import { IdempotencyService } from "./common/idempotency/idempotency.service.js";
@@ -38,6 +39,7 @@ import { envValidationSchema } from "./config/env.validation.js";
     ]),
     PostsModule,
     NotificationsModule,
+    MessagingModule,
   ],
   controllers: [AppController],
   providers: [

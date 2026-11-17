@@ -1,3 +1,15 @@
+# Kiểm thử messaging
+
+Kiểm thử tích hợp REST và WebSocket với PostgreSQL thật, bao gồm phân trang, phân quyền, gửi tin nhắn, chống tạo trùng khi retry, realtime và trạng thái đã đọc. Chỉ chạy với **database PostgreSQL cục bộ dành riêng cho kiểm thử**, đã tạo schema và chạy migration. Không trỏ tới database production hoặc database có dữ liệu cần giữ.
+
+Từ thư mục `backend`, đặt `MESSAGING_TEST_DATABASE_URL` tới database đó rồi chạy:
+
+```bash
+MESSAGING_TEST_DATABASE_URL='postgresql://postgres:password@localhost:5432/mxh_test' npm run test:messaging:integration
+```
+
+Lệnh từ chối host không phải loopback và từ chối `NODE_ENV=production`. Kiểm thử tự đặt `DATABASE_URL` theo biến trên, tạo các tài khoản fixture ngẫu nhiên rồi xóa chúng khi kết thúc; nó không tạo migration hoặc xóa schema. Kiểm thử đơn vị messaging không cần database: `npm run test:messaging`.
+
 # Dữ liệu mẫu để kiểm thử
 
 Sau khi đã tạo database và chạy migration, từ thư mục `backend`:

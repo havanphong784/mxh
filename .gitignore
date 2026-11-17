@@ -24,6 +24,8 @@ coverage/
 !frontend/lib/navigation-state.test.ts
 !frontend/features/**/*.test.ts
 !backend/src/common/search.test.ts
+!backend/src/messaging/messaging.service.test.ts
+!backend/src/notifications/notifications.listener.test.ts
 /.superpowers/
 /.prowl/
 /.codex/

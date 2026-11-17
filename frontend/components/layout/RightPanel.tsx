@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuthStore } from "@/stores/authStore";
-import { useNotificationStore } from "@/stores/notificationStore";
 import { CalendarCard } from "./CalendarCard";
 
 export function RightPanel() {
@@ -11,7 +10,6 @@ export function RightPanel() {
   const displayName = useAuthStore((state) => state.user?.displayName);
   const avatarUrl = useAuthStore((state) => state.user?.avatarUrl);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   return (
     <aside
@@ -66,82 +64,7 @@ export function RightPanel() {
             )}
           </div>
         </div>
-
-        <div className="mt-8">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[15px] font-extrabold text-[#1c1b29]">
-              Khám phá nhanh
-            </h3>
-            <span className="text-[18px] text-[#7b78ff]" aria-hidden="true">
-              ✦
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Link
-              href="/explore"
-              className="group rounded-[20px] bg-[#eef7ff] p-4 transition hover:-translate-y-0.5"
-            >
-              <span
-                className="grid h-9 w-9 place-items-center rounded-[12px] bg-[#64b5f6] text-[18px] text-white"
-                aria-hidden="true"
-              >
-                ⌕
-              </span>
-              <span className="mt-4 block text-[12px] font-bold text-[#1c1b29]">
-                Bài công khai
-              </span>
-              <span className="mt-1 block text-[10px] text-[#6d6a82]">
-                Từ cộng đồng ↗
-              </span>
-            </Link>
-            <Link
-              href="/bookmarks"
-              className="group rounded-[20px] bg-[#fff3e1] p-4 transition hover:-translate-y-0.5"
-            >
-              <span
-                className="grid h-9 w-9 place-items-center rounded-[12px] bg-[#ffd166] text-[18px] text-[#1c1b29]"
-                aria-hidden="true"
-              >
-                ◇
-              </span>
-              <span className="mt-4 block text-[12px] font-bold text-[#1c1b29]">
-                Bài đã lưu
-              </span>
-              <span className="mt-1 block text-[10px] text-[#6d6a82]">
-                Xem lại ↗
-              </span>
-            </Link>
-          </div>
-        </div>
-
-        <Link
-          href="/notifications"
-          className="mt-7 flex items-center gap-3 rounded-[20px] bg-[#fff0f3] p-4 transition hover:bg-[#ffe8ee]"
-        >
-          <span
-            className="grid h-10 w-10 place-items-center rounded-[14px] bg-[#ff8da1] text-xl text-white"
-            aria-hidden="true"
-          >
-            ♡
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[12px] font-bold text-[#1c1b29]">
-              Thông báo
-            </span>
-            <span className="mt-0.5 block text-[10px] text-[#6d6a82]">
-              {unreadCount > 0
-                ? `${unreadCount} mục chưa đọc`
-                : "Bạn đã xem hết"}
-            </span>
-          </span>
-          <span className="text-[#ff8da1]" aria-hidden="true">
-            ↗
-          </span>
-        </Link>
         <CalendarCard />
-        <p className="mt-8 text-center text-[10px] leading-4 text-[#8e8ca3]">
-          MXH · Một góc nhỏ để kết nối mỗi ngày
-        </p>
       </div>
     </aside>
   );

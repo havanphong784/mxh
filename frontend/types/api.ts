@@ -192,3 +192,46 @@ export interface RegisterResponse {
 export interface UnreadCountResponse {
   count: number;
 }
+
+export interface MessagingUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+}
+
+export interface MessageItem {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  clientMessageId: string;
+  type: "TEXT";
+  body: string | null;
+  createdAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+  status?: "sending" | "sent" | "failed";
+}
+
+export interface ConversationItem {
+  id: string;
+  type: "DIRECT";
+  participant: MessagingUser;
+  lastMessage: MessageItem | null;
+  unreadCount: number;
+  updatedAt: string;
+}
+
+export interface MessagingPage<T> {
+  data: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface NewMessageEvent {
+  conversationId: string;
+  message: MessageItem;
+  senderId: string;
+  recipientId: string;
+}

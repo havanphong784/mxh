@@ -2,10 +2,12 @@ import { create } from "zustand";
 import type { Author } from "../types/api.ts";
 import { queryClient } from "../lib/query-client.ts";
 import { useNotificationStore } from "./notificationStore.ts";
+import { useMessagingStore } from "./messagingStore.ts";
 
 function clearAccountData() {
   queryClient.clear();
   useNotificationStore.getState().reset();
+  useMessagingStore.getState().reset();
 }
 
 interface AuthState {

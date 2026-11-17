@@ -8,6 +8,7 @@ export interface ProfileHeaderProps {
   isOwner: boolean;
   onFollow: () => void;
   onEdit: () => void;
+  onMessage?: () => void;
   isFollowPending: boolean;
   onLogout?: () => void;
   isLoggingOut?: boolean;
@@ -18,6 +19,7 @@ export function ProfileHeader({
   isOwner,
   onFollow,
   onEdit,
+  onMessage,
   isFollowPending,
   onLogout,
   isLoggingOut = false,
@@ -60,13 +62,20 @@ export function ProfileHeader({
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outlined"
-              onClick={onFollow}
-              isLoading={isFollowPending}
-            >
-              {profile.isFollowing ? "Đang theo dõi" : "Theo dõi"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {onMessage && (
+                <Button variant="primary" onClick={onMessage}>
+                  Nhắn tin
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                onClick={onFollow}
+                isLoading={isFollowPending}
+              >
+                {profile.isFollowing ? "Đang theo dõi" : "Theo dõi"}
+              </Button>
+            </div>
           )}
         </div>
         <h2 className="mt-3 text-[20px] font-extrabold text-[#1c1b29]">
