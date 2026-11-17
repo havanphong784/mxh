@@ -11,6 +11,8 @@ build/
 *.tsbuildinfo
 .DS_Store
 coverage/
+playwright-report/
+test-results/
 .turbo/
 /docs/
 /docs/mxh_posts_api.postman_collection.json

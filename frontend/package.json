@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test 'lib/**/*.test.ts' 'features/**/*.test.ts'"
+    "test": "node --experimental-strip-types --test 'lib/**/*.test.ts' 'features/**/*.test.ts'",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.2",
@@ -22,6 +23,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -29,6 +31,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "^16.4.3",
+    "pg": "^8.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

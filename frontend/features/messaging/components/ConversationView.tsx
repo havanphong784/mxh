@@ -149,6 +149,7 @@ export function ConversationView({
       </header>
       <div
         ref={scrollRootRef}
+        data-testid="conversation-message-list"
         className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6"
       >
         {messagesError && (

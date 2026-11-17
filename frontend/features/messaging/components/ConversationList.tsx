@@ -55,7 +55,11 @@ export function ConversationList({
           Trò chuyện với những người bạn quan tâm.
         </p>
       </div>
-      <div ref={scrollRootRef} className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div
+        ref={scrollRootRef}
+        data-testid="conversation-list"
+        className="min-h-0 flex-1 overflow-y-auto p-2"
+      >
         {error && (
           <div
             role="alert"

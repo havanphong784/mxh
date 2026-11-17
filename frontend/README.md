@@ -1,3 +1,21 @@
+# Kiểm thử E2E messaging
+
+Playwright chạy luồng hai tài khoản trên Chromium: bắt đầu từ hồ sơ, mở deep link, gửi/nhận realtime, kiểm tra unread/read, tải tin cũ và điều hướng mobile. Test tự chạy backend trên cổng `5100` và frontend trên `3100`.
+
+Chỉ dùng PostgreSQL local **dành riêng cho E2E**, tên database phải là `mxh_e2e`. `db init` tạo schema và `seed` thêm dữ liệu mẫu; test chỉ xóa hội thoại giữa hai tài khoản E2E trước và sau khi chạy. Không dùng database production hoặc database có dữ liệu cần giữ.
+
+```bash
+npm exec --workspace frontend -- playwright install chromium
+export E2E_DATABASE_URL='postgresql://postgres:password@localhost:5432/mxh_e2e?schema=public'
+npm exec --workspace backend -- prisma db init --db "$E2E_DATABASE_URL"
+DATABASE_URL="$E2E_DATABASE_URL" npm run seed --workspace backend
+npm run test:e2e --workspace frontend
+```
+
+Mặc định test đăng nhập `minhthu@example.test` và `quanghuy@example.test` với `Demo1234!`. Đặt `SEED_PASSWORD` khi seed và `E2E_USER_PASSWORD` khi chạy test nếu dùng mật khẩu khác; có thể thay email qua `E2E_USER_A_EMAIL` và `E2E_USER_B_EMAIL`.
+
+## Next.js
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
