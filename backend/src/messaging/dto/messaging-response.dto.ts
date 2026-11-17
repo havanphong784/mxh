@@ -1,3 +1,5 @@
+import type { Temporal } from "@js-temporal/polyfill";
+
 export interface MessagingUserDto {
   id: string;
   username: string;
@@ -13,9 +15,9 @@ export interface MessageResponseDto {
   clientMessageId: string;
   type: "TEXT";
   body: string | null;
-  createdAt: unknown;
-  editedAt: unknown | null;
-  deletedAt: unknown | null;
+  createdAt: Temporal.Instant;
+  editedAt: Temporal.Instant | null;
+  deletedAt: Temporal.Instant | null;
 }
 
 export interface ConversationResponseDto {
@@ -24,7 +26,7 @@ export interface ConversationResponseDto {
   participant: MessagingUserDto;
   lastMessage: MessageResponseDto | null;
   unreadCount: number;
-  updatedAt: unknown;
+  updatedAt: Temporal.Instant;
 }
 
 export interface ConversationPageDto {

@@ -25,3 +25,14 @@ Seed tạo 19 tài khoản, hơn 100 bài viết và các quan hệ theo dõi, t
 Đăng nhập với `minhthu@example.test` (hoặc tài khoản đã xác minh khác) và mật khẩu `Demo1234!`. Đặt `SEED_PASSWORD` để chọn mật khẩu khác **trước lần chạy đầu**. `quocbao@example.test` chưa xác minh email; `thuha@example.test` không hoạt động; `mocmai@example.test` có hồ sơ trống. Email `.test` chỉ dùng cho dữ liệu giả, không gửi thư được.
 
 Lệnh chạy lại không nhân bản và không ghi đè nội dung bản ghi seed đã được chỉnh sửa; bộ đếm tương tác của bài seed được đồng bộ từ các quan hệ thực tế. Seed chỉ chạy khi `NODE_ENV` khác `production` và URL database trỏ tới localhost. Với database thử nghiệm ở máy khác, thêm `--allow-remote`. Ảnh và video tham chiếu tài nguyên công khai; nếu thiết bị không có mạng, nội dung văn bản và quan hệ vẫn dùng được nhưng media sẽ không hiển thị.
+
+## Dependency và Prisma 8 RC
+
+Prisma CLI `8.0.0-rc.15` và ORM `8.0.0-rc.11` được ghim để dùng cùng cú pháp contract hiện tại. Root `package.json` đặt `overrides` trong phạm vi `@prisma/dev` cho các dependency đã có bản vá bảo mật; lockfile cũng cập nhật các dependency của công cụ lint và CLI. Khi nâng Prisma, kiểm tra lại contract và loại bỏ từng override khi dependency upstream đã có bản vá tương ứng.
+
+Từ thư mục gốc, kiểm tra toàn bộ dependency và riêng dependency production:
+
+```bash
+npm audit
+npm audit --omit=dev
+```

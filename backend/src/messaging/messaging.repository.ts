@@ -25,8 +25,8 @@ export class MessagingRepository {
   async findActiveUser(userId: string) {
     return this.user
       .where({ id: userId })
-      .where((user: any) => user.isActive.eq(true))
-      .where((user: any) => user.isEmailVerified.eq(true))
+      .where((user) => user.isActive.eq(true))
+      .where((user) => user.isEmailVerified.eq(true))
       .first();
   }
 
@@ -35,7 +35,7 @@ export class MessagingRepository {
   }
 
   async createDirectConversation(directKey: string, userIds: string[]) {
-    return this.prisma.client.transaction(async (tx: any) => {
+    return this.prisma.client.transaction(async (tx) => {
       const conversation = await tx.orm.public.Conversation.create({
         directKey,
         type: "DIRECT",
@@ -68,7 +68,7 @@ export class MessagingRepository {
   async findConversationWithParticipants(conversationId: string) {
     return this.conversation
       .where({ id: conversationId })
-      .include("participants", (query: any) => query.include("user"))
+      .include("participants", (query) => query.include("user"))
       .first();
   }
 
@@ -105,13 +105,12 @@ export class MessagingRepository {
     return this.participant.where({ conversationId, userId }).first();
   }
 
-  async findLatestMessage(conversationId: string) {
+  async findLatestMessage(
+    conversationId: string,
+  ): Promise<MessageRecord | null> {
     const messages = await this.message
       .where({ conversationId })
-      .orderBy([
-        (item: any) => item.createdAt.desc(),
-        (item: any) => item.id.desc(),
-      ])
+      .orderBy([(item) => item.createdAt.desc(), (item) => item.id.desc()])
       .limit(1)
       .all();
     return messages[0] ?? null;
@@ -124,10 +123,7 @@ export class MessagingRepository {
   ) {
     let query = this.message
       .where({ conversationId })
-      .orderBy([
-        (item: any) => item.createdAt.desc(),
-        (item: any) => item.id.desc(),
-      ]);
+      .orderBy([(item) => item.createdAt.desc(), (item) => item.id.desc()]);
 
     if (cursor) query = query.cursor(cursor);
 
@@ -151,7 +147,7 @@ export class MessagingRepository {
     clientMessageId: string;
     body: string;
   }) {
-    return this.prisma.client.transaction(async (tx: any) => {
+    return this.prisma.client.transaction(async (tx) => {
       const existing = await tx.orm.public.Message.where({
         senderId: data.senderId,
         clientMessageId: data.clientMessageId,
@@ -173,7 +169,7 @@ export class MessagingRepository {
       });
 
       return {
-        message: await tx.orm.public.Message.where({ id: created.id }).first(),
+        message: created,
         created: true,
       };
     });
@@ -196,13 +192,13 @@ export class MessagingRepository {
   ): Promise<number> {
     let query = this.message
       .where({ conversationId })
-      .where((item: any) => item.senderId.neq(userId));
+      .where((item) => item.senderId.neq(userId));
 
     if (lastReadAt) {
-      query = query.where((item: any) => item.createdAt.gt(lastReadAt));
+      query = query.where((item) => item.createdAt.gt(lastReadAt));
     }
 
-    const result = await query.aggregate((item: any) => ({
+    const result = await query.aggregate((item) => ({
       count: item.count(),
     }));
     return Number(result.count) || 0;
@@ -212,3 +208,15 @@ export class MessagingRepository {
     return this.listParticipantsForUser(userId);
   }
 }
+
+export type ConversationWithParticipants = NonNullable<
+  Awaited<ReturnType<MessagingRepository["findConversationWithParticipants"]>>
+>;
+
+export type ConversationParticipantRecord = NonNullable<
+  Awaited<ReturnType<MessagingRepository["findParticipant"]>>
+>;
+
+export type MessageRecord = NonNullable<
+  Awaited<ReturnType<MessagingRepository["findMessageByClientId"]>>
+>;

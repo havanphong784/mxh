@@ -9,6 +9,11 @@ import { Temporal } from "@js-temporal/polyfill";
 import { EventsGateway } from "../gateway/events.gateway.js";
 import { MESSAGE_EVENTS } from "../events/event-types.js";
 import { MessagingRepository } from "./messaging.repository.js";
+import type {
+  ConversationParticipantRecord,
+  ConversationWithParticipants,
+  MessageRecord,
+} from "./messaging.repository.js";
 import { ConversationPaginationDto } from "./dto/conversation-pagination.dto.js";
 import { CreateDirectConversationDto } from "./dto/create-direct-conversation.dto.js";
 import { SendMessageDto } from "./dto/send-message.dto.js";
@@ -156,9 +161,7 @@ export class MessagingService {
       limit,
       cursor,
     );
-    const data = result.items.map((message: any) =>
-      this.toMessageResponse(message),
-    );
+    const data = result.items.map((message) => this.toMessageResponse(message));
     const nextCursor =
       result.hasMore && data.length
         ? this.encodeMessageCursor(data[0].createdAt, data[0].id)
@@ -198,7 +201,7 @@ export class MessagingService {
       return this.toMessageResponse(existing);
     }
 
-    let message: any;
+    let message: MessageRecord;
     let created = false;
     try {
       const result = await this.messagingRepository.createMessage({
@@ -207,19 +210,8 @@ export class MessagingService {
         clientMessageId: dto.clientMessageId,
         body,
       });
-      if (
-        result &&
-        typeof result === "object" &&
-        "message" in result &&
-        "created" in result
-      ) {
-        message = result.message;
-        created = result.created === true;
-      } else {
-        // Compatibility for repository test doubles and older adapters.
-        message = result;
-        created = true;
-      }
+      message = result.message;
+      created = result.created;
     } catch {
       const retried = await this.messagingRepository.findMessageByClientId(
         userId,
@@ -332,8 +324,8 @@ export class MessagingService {
   }
 
   private async toConversationResponse(
-    conversation: any,
-    participant: any,
+    conversation: ConversationWithParticipants,
+    participant: ConversationParticipantRecord | undefined,
     userId: string,
   ): Promise<ConversationResponseDto> {
     const participantRecord = this.getOtherParticipantRecord(
@@ -365,10 +357,11 @@ export class MessagingService {
     };
   }
 
-  private getOtherParticipantRecord(conversation: any, userId: string) {
-    return (conversation.participants ?? []).find(
-      (item: any) => item.userId !== userId,
-    );
+  private getOtherParticipantRecord(
+    conversation: ConversationWithParticipants,
+    userId: string,
+  ) {
+    return conversation.participants.find((item) => item.userId !== userId);
   }
 
   private async getOtherParticipant(conversationId: string, userId: string) {
@@ -383,7 +376,7 @@ export class MessagingService {
     return participant;
   }
 
-  private toUserResponse(user: any): MessagingUserDto {
+  private toUserResponse(user: MessagingUserDto): MessagingUserDto {
     return {
       id: user.id,
       username: user.username,
@@ -393,7 +386,7 @@ export class MessagingService {
     };
   }
 
-  private toMessageResponse(message: any): MessageResponseDto {
+  private toMessageResponse(message: MessageRecord): MessageResponseDto {
     return {
       id: message.id,
       conversationId: message.conversationId,
@@ -449,13 +442,13 @@ export class MessagingService {
     return undefined;
   }
 
-  private encodeConversationCursor(updatedAt: unknown, id: string) {
+  private encodeConversationCursor(updatedAt: Temporal.Instant, id: string) {
     return Buffer.from(
       JSON.stringify({ updatedAt: String(updatedAt), id }),
     ).toString("base64");
   }
 
-  private encodeMessageCursor(createdAt: unknown, id: string) {
+  private encodeMessageCursor(createdAt: Temporal.Instant, id: string) {
     return Buffer.from(
       JSON.stringify({ createdAt: String(createdAt), id }),
     ).toString("base64");
