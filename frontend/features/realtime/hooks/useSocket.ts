@@ -19,6 +19,7 @@ import { notificationsApi } from "@/features/notifications/api";
 import { upsertNotification } from "@/features/notifications/cache";
 import { messagingApi } from "@/features/messaging/api";
 import { upsertMessage, updateConversation } from "@/features/messaging/cache";
+import { reconcileMessagingAfterReconnect } from "../messaging-reconnect";
 
 export function useSocket() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -35,6 +36,9 @@ export function useSocket() {
     }
 
     const socket = initSocket(accessToken);
+    let hasConnected = socket.connected;
+    let unreadCountRevision = 0;
+    let unreadCountRequestRevision = 0;
     notificationsApi
       .unreadCount()
       .then((response) => {
@@ -43,10 +47,38 @@ export function useSocket() {
         }
       })
       .catch(() => undefined);
+
+    socket.on("connect", () => {
+      if (!hasConnected) {
+        hasConnected = true;
+        return;
+      }
+      if (useAuthStore.getState().accessToken !== accessToken) return;
+
+      const revision = unreadCountRevision;
+      const requestRevision = ++unreadCountRequestRevision;
+      void reconcileMessagingAfterReconnect({
+        queryClient,
+        getUnreadCount: async () =>
+          (await messagingApi.unreadCount()).data.count,
+        setUnreadCount: setMessageUnreadCount,
+        isCurrent: () =>
+          useAuthStore.getState().accessToken === accessToken &&
+          unreadCountRevision === revision &&
+          unreadCountRequestRevision === requestRevision,
+      });
+    });
+
+    const initialUnreadCountRevision = ++unreadCountRequestRevision;
+    const initialEventRevision = unreadCountRevision;
     messagingApi
       .unreadCount()
       .then((response) => {
-        if (useAuthStore.getState().accessToken === accessToken) {
+        if (
+          useAuthStore.getState().accessToken === accessToken &&
+          unreadCountRevision === initialEventRevision &&
+          unreadCountRequestRevision === initialUnreadCountRevision
+        ) {
           setMessageUnreadCount(response.data.count);
         }
       })
@@ -68,6 +100,7 @@ export function useSocket() {
 
     socket.on("conversation:unread-count", (data: { count: number }) => {
       if (useAuthStore.getState().accessToken === accessToken) {
+        unreadCountRevision += 1;
         setMessageUnreadCount(data.count);
       }
     });
