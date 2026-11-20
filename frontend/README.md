@@ -1,54 +1,32 @@
-# Kiểm thử E2E messaging
+# MXH · giao diện web
 
-Playwright chạy luồng hai tài khoản trên Chromium: bắt đầu từ hồ sơ, mở deep link, gửi/nhận realtime, kiểm tra unread/read, tải tin cũ và điều hướng mobile. Test tự chạy backend trên cổng `5100` và frontend trên `3100`.
+Frontend React + TypeScript + Vite, viết mới dựa trên hợp đồng REST và Socket.IO của backend hiện tại. Không chạy trên Next.js.
 
-Chỉ dùng PostgreSQL local **dành riêng cho E2E**, tên database phải là `mxh_e2e`. `db init` tạo schema và `seed` thêm dữ liệu mẫu; test chỉ xóa hội thoại giữa hai tài khoản E2E trước và sau khi chạy. Không dùng database production hoặc database có dữ liệu cần giữ.
+## Chạy cục bộ
 
-```bash
-npm exec --workspace frontend -- playwright install chromium
-export E2E_DATABASE_URL='postgresql://postgres:password@localhost:5432/mxh_e2e?schema=public'
-npm exec --workspace backend -- prisma db init --db "$E2E_DATABASE_URL"
-DATABASE_URL="$E2E_DATABASE_URL" npm run seed --workspace backend
-npm run test:e2e --workspace frontend
+Cần Node.js 22.18+ và backend đã được cấu hình. Tại thư mục gốc repo:
+
+```sh
+npm ci
+npm run dev -w backend
+# Terminal khác:
+npm run dev -w frontend
 ```
 
-Mặc định test đăng nhập `minhthu@example.test` và `quanghuy@example.test` với `Demo1234!`. Đặt `SEED_PASSWORD` khi seed và `E2E_USER_PASSWORD` khi chạy test nếu dùng mật khẩu khác; có thể thay email qua `E2E_USER_A_EMAIL` và `E2E_USER_B_EMAIL`.
+Mở `http://localhost:3000`. Vite chuyển tiếp `/api/v1` và `/socket.io` đến `http://localhost:5000`. Nếu backend chạy cổng khác, sao chép `frontend/.env.example` thành `frontend/.env.local` và sửa `MXH_BACKEND_URL`.
 
-## Next.js
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+npm run lint -w frontend
+npm test -w frontend
+npm run build -w frontend
+# Khi Vite đang chạy và Chromium của Playwright đã được cài:
+npm run test:browser -w frontend
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Triển khai
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Phục vụ `frontend/dist/` bằng static host. Chuyển tiếp `/api/v1/*` và `/socket.io/*` (bao gồm WebSocket upgrade) đến backend **trước** quy tắc fallback về `index.html` cho các URL của app. Cấu hình cùng origin là lựa chọn mặc định; cookie làm mới phiên có `SameSite=Lax` và chỉ được gửi bảo mật khi backend ở production. Nếu frontend phải gọi backend trực tiếp, đặt `VITE_API_ORIGIN` thành origin HTTPS của backend (không có `/api/v1`) trước lúc build, cập nhật CORS và dùng cùng site để cookie refresh hoạt động. Không đặt secret vào biến `VITE_*`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Kiểm thử với backend thật
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Với backend cấu hình **database cục bộ riêng cho kiểm thử** và đã nạp seed theo `backend/README.md`, chạy `MXH_LIVE_TEST_URL=http://localhost:3000 npm run test:live -w frontend`. Bài kiểm thử tạo bài viết, dấu trang và tin nhắn thật; không chạy trên database cần giữ dữ liệu. Có thể đặt `MXH_TEST_PASSWORD` nếu seed được tạo bằng mật khẩu khác.
