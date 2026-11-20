@@ -49,9 +49,9 @@ Tài liệu này là **Cẩm Nang Vận Hành & Ứng Cứu Sự Cố (Productio
 
 | Tên biến | Bắt buộc | Ví dụ giá trị | Mục đích & Giải thích |
 | :--- | :---: | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | Có | `https://api.mxh.domain/api/v1` | URL gốc của RESTful API phục vụ Axios Client. |
-| `NEXT_PUBLIC_SOCKET_URL` | Có | `https://api.mxh.domain` | Địa chỉ kết nối WebSocket của Socket.IO Gateway. |
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Có | `mxh-prod` | Cloud name phục vụ client upload trực tiếp lên Cloudinary API. |
+| `VITE_API_ORIGIN` | Không | `https://api.mxh.domain` | Origin của REST và Socket.IO, không có `/api/v1`. Mặc định để trống và dùng proxy cùng origin. Đặt trước khi build. |
+
+Build bằng `npm run build -w frontend` và phục vụ `frontend/dist/` bằng static host. Chuyển tiếp `/api/v1/*` và `/socket.io/*` (hỗ trợ WebSocket upgrade) tới backend trước quy tắc fallback về `index.html`. Khi dùng origin riêng, cấu hình CORS đúng origin frontend và dùng cùng site để giữ phiên refresh. Chữ ký và thông tin Cloudinary công khai được cấp qua API, không cấu hình secret ở frontend.
 
 ---
 
@@ -67,7 +67,7 @@ graph TB
 
     subgraph CDNAndEdge ["Edge & CDN Layer (Cloudflare / Vercel Edge)"]
         WAF["WAF & DDoS Mitigation<br/>(Cloudflare Pro)"]
-        FrontendVercel["Frontend Deployment (Vercel / Next.js)<br/>• Edge CDN Caching Assets<br/>• Next.js App Router Hybrid Render"]
+        FrontendVercel["Frontend — React + Vite<br/>• Static dist assets<br/>• SPA route fallback"]
     end
 
     subgraph CoreBackendCluster ["Backend Infrastructure (Docker Cluster / VPS)"]

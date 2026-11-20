@@ -31,9 +31,6 @@
     "unrs-resolver": true,
     "workerd@1.20260704.1": true
   },
-  "dependencies": {
-    "next": "^16.4.6"
-  },
   "overrides": {
     "@prisma/dev": {
       "@hono/node-server": "2.1.9",
