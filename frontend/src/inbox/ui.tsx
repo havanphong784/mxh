@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { User } from "../session";
+import { InfiniteScrollSentinel } from "../infinite-scroll";
 
 type IconName =
   "message" | "bell" | "write" | "back" | "search" | "check" | "send";
@@ -97,6 +98,8 @@ export function Pager({
   more,
   reload,
   label = "Tải thêm",
+  root,
+  rootMargin,
 }: {
   cursor?: string | null;
   busy: "refresh" | "more" | null;
@@ -104,6 +107,8 @@ export function Pager({
   more: () => void;
   reload: () => void;
   label?: string;
+  root?: Element | null;
+  rootMargin?: string;
 }) {
   if (failure === "refresh")
     return (
@@ -114,6 +119,12 @@ export function Pager({
   if (!cursor) return null;
   return (
     <div className="mx-inbox-pager">
+      <InfiniteScrollSentinel
+        enabled={!busy && !!cursor}
+        onVisible={more}
+        root={root}
+        rootMargin={rootMargin}
+      />
       <button type="button" className="button" disabled={!!busy} onClick={more}>
         {busy === "more" ? "Đang tải…" : label}
       </button>

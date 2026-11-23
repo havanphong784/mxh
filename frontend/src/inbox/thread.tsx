@@ -199,6 +199,8 @@ export function Thread({
           cursor={history.page?.cursor}
           more={loadOlder}
           label="Tải tin nhắn cũ hơn"
+          root={log.current}
+          rootMargin="320px 0px 0px 0px"
         />
         {!messages && !history.failure && <Status text="Đang tải tin nhắn…" />}
         {messages?.length === 0 && (

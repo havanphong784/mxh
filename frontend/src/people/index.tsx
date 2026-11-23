@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { api } from "../api";
+import { InfiniteScrollSentinel } from "../infinite-scroll";
 import type { User } from "../session";
 import { UserTimeline } from "../social";
 import { Settings } from "./settings";
@@ -288,6 +289,10 @@ function PagedPeople({
       )}
       {page.nextCursor ? (
         <div className="people-list-footer">
+          <InfiniteScrollSentinel
+            enabled={!loadingMore}
+            onVisible={() => void more(page.nextCursor!)}
+          />
           <button
             className="button"
             type="button"

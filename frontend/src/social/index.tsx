@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { InfiniteScrollSentinel } from "../infinite-scroll";
 import type { User } from "../session";
 import { Composer } from "./composer";
 import {
@@ -253,6 +254,10 @@ function PageRows({
       ) : (
         page.next && (
           <div className="social-more">
+            <InfiniteScrollSentinel
+              enabled={page.status !== "more"}
+              onVisible={loadMore}
+            />
             <button
               type="button"
               className="button"
