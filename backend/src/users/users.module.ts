@@ -8,7 +8,11 @@ import { AuthModule } from "../auth/auth.module.js";
 import { PostsModule } from "../posts/posts.module.js";
 
 @Module({
-  imports: [forwardRef(() => AuthModule), forwardRef(() => MediaModule), forwardRef(() => PostsModule)],
+  imports: [
+    forwardRef(() => AuthModule),
+    forwardRef(() => MediaModule),
+    forwardRef(() => PostsModule),
+  ],
   controllers: [UsersController],
   providers: [UsersService, UsersAuthService, UsersRepository],
   exports: [UsersService, UsersAuthService],

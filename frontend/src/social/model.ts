@@ -65,6 +65,24 @@ export type Post =
       replyCount?: number;
     };
 export type Page = { items: Post[]; nextCursor: string | null };
+export type PostLikeUser = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio?: string | null;
+  likedAt?: string;
+};
+export type PostLikesPage = {
+  items: PostLikeUser[];
+  nextCursor: string | null;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
 export type Toggle = "like" | "repost" | "bookmark";
 export type Placement = { parentId?: string; quotedPostId?: string };
 export const MAX_MEDIA = 10;

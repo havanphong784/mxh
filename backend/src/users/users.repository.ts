@@ -140,7 +140,9 @@ export class UsersRepository {
       if (userId) {
         await tx.orm.public.Session.where((session) =>
           session.userId.eq(userId),
-        ).update({ isRevoked: true });
+        ).update({
+          isRevoked: true,
+        });
       }
     });
   }

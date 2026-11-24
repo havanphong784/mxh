@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "lint": "turbo run lint",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
+    "check:write": "biome check --write .",
+    "lint": "biome check . && turbo run lint",
     "test": "turbo run test",
     "prepare": "husky"
   },
@@ -15,6 +19,7 @@
     "frontend"
   ],
   "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@types/pg": "^8.23.1",

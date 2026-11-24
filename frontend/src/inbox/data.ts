@@ -89,7 +89,11 @@ export const markThreadRead = (id: string, signal: AbortSignal) =>
 export const markNoticeRead = (id: string, signal: AbortSignal) =>
   api<{ success: boolean; id: string }>(
     `/notifications/${encodeURIComponent(id)}/read`,
-    { method: "PATCH", auth: true, signal },
+    {
+      method: "PATCH",
+      auth: true,
+      signal,
+    },
   );
 export const markAllNoticesRead = (signal: AbortSignal) =>
   api<{ success: boolean; count: number }>("/notifications/read-all", {

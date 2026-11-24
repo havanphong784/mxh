@@ -44,7 +44,9 @@ const { AllExceptionsFilter } =
 const app = await NestFactory.create<NestFastifyApplication>(
   AppModule,
   new FastifyAdapter(),
-  { logger: false },
+  {
+    logger: false,
+  },
 );
 const createdUserIds: string[] = [];
 const sockets: WebSocket[] = [];
@@ -174,12 +176,16 @@ try {
   const conversation = await request<ConversationResponseDto>(
     "/conversations/direct",
     aliceToken,
-    { targetUserId: bob.id },
+    {
+      targetUserId: bob.id,
+    },
   );
   const same = await request<ConversationResponseDto>(
     "/conversations/direct",
     bobToken,
-    { targetUserId: alice.id },
+    {
+      targetUserId: alice.id,
+    },
   );
   assert.equal(same.id, conversation.id);
 

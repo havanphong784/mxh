@@ -202,7 +202,11 @@ export class PostsService {
       updatePayload.visibility = dto.visibility;
     }
 
-    await this.postRepository.updatePostAndReplies(postId, updatePayload, dto.visibility);
+    await this.postRepository.updatePostAndReplies(
+      postId,
+      updatePayload,
+      dto.visibility,
+    );
 
     const updated = await this.postRepository.findByIdForResponse(postId);
 
@@ -262,7 +266,9 @@ export class PostsService {
   async canView(post: any, viewerId?: string): Promise<boolean> {
     let visibilitySource = post;
     if (post.rootId) {
-      visibilitySource = await this.postRepository.findByIdWithAuthor(post.rootId);
+      visibilitySource = await this.postRepository.findByIdWithAuthor(
+        post.rootId,
+      );
 
       if (!visibilitySource) {
         return false;
@@ -329,7 +335,9 @@ export class PostsService {
     const bookmarkedSet = new Set<string>();
 
     if (viewerId) {
-      const marks = await this.postRepository.findViewerMarks(viewerId, [postId]);
+      const marks = await this.postRepository.findViewerMarks(viewerId, [
+        postId,
+      ]);
       if (marks.likes.length > 0) likedSet.add(postId);
       if (marks.reposts.length > 0) repostedSet.add(postId);
       if (marks.bookmarks.length > 0) bookmarkedSet.add(postId);
@@ -370,7 +378,11 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    const replies = await this.postRepository.listReplies(postId, limit, cursor);
+    const replies = await this.postRepository.listReplies(
+      postId,
+      limit,
+      cursor,
+    );
 
     const hasNextPage = replies.length > limit;
     const items = hasNextPage ? replies.slice(0, limit) : replies;
@@ -381,7 +393,8 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
+      const { likes, reposts, bookmarks } =
+        await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -417,7 +430,8 @@ export class PostsService {
     let depth = 0;
     while (currentParentId && depth < 20) {
       depth++;
-      const parent: any = await this.postRepository.findByIdForResponse(currentParentId);
+      const parent: any =
+        await this.postRepository.findByIdForResponse(currentParentId);
 
       if (!parent) break;
 
@@ -441,7 +455,8 @@ export class PostsService {
 
     if (viewerId && ancestorsList.length > 0) {
       const postIds = ancestorsList.map((p: any) => p.id);
-      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
+      const { likes, reposts, bookmarks } =
+        await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -523,10 +538,12 @@ export class PostsService {
       };
     }
 
-    const { deletedCount, repostCount } = await this.postRepository.removeRepostAndDecrement(postId, userId);
+    const { deletedCount, repostCount } =
+      await this.postRepository.removeRepostAndDecrement(postId, userId);
     return {
       reposted: false,
-      repostCount: repostCount ?? Math.max(0, targetPost.repostCount - deletedCount),
+      repostCount:
+        repostCount ?? Math.max(0, targetPost.repostCount - deletedCount),
     };
   }
 
@@ -599,8 +616,12 @@ export class PostsService {
       };
     }
 
-    const { deletedCount, likeCount } = await this.postRepository.removeLikeAndDecrement(postId, userId);
-    return { liked: false, likeCount: likeCount ?? Math.max(0, post.likeCount - deletedCount) };
+    const { deletedCount, likeCount } =
+      await this.postRepository.removeLikeAndDecrement(postId, userId);
+    return {
+      liked: false,
+      likeCount: likeCount ?? Math.max(0, post.likeCount - deletedCount),
+    };
   }
 
   async getPostLikes(
@@ -625,7 +646,10 @@ export class PostsService {
     const cursor = this.decodeLikeCursor(query.cursor);
 
     if (cursor) {
-      const likes = await this.postRepository.listPostLikes(postId, { limit: limit + 1, cursor });
+      const likes = await this.postRepository.listPostLikes(postId, {
+        limit: limit + 1,
+        cursor,
+      });
 
       const hasNextPage = likes.length > limit;
       const items = hasNextPage ? likes.slice(0, limit) : likes;
@@ -692,7 +716,10 @@ export class PostsService {
       throw new ForbiddenException("Bạn không có quyền lưu bài viết này");
     }
 
-    const existingBookmark = await this.postRepository.findBookmark(userId, postId);
+    const existingBookmark = await this.postRepository.findBookmark(
+      userId,
+      postId,
+    );
 
     if (existingBookmark) {
       return { bookmarked: true };
@@ -716,7 +743,10 @@ export class PostsService {
       throw new NotFoundException("Không tìm thấy bài viết");
     }
 
-    const existingBookmark = await this.postRepository.findBookmark(userId, postId);
+    const existingBookmark = await this.postRepository.findBookmark(
+      userId,
+      postId,
+    );
 
     if (!existingBookmark) {
       return { bookmarked: false };
@@ -753,7 +783,12 @@ export class PostsService {
       batchIndex < 3 && accessible.length <= limit;
       batchIndex++
     ) {
-      const batch = await this.postRepository.listMarkedPostReferences(kind, userId, batchSize, scanCursor);
+      const batch = await this.postRepository.listMarkedPostReferences(
+        kind,
+        userId,
+        batchSize,
+        scanCursor,
+      );
       if (batch.length === 0) {
         hasMore = false;
         break;
@@ -762,7 +797,8 @@ export class PostsService {
       hasMore = batch.length === batchSize;
 
       const batchIds = batch.map((marker: any) => marker.postId);
-      const posts = await this.postRepository.findPostsByIdsForResponse(batchIds);
+      const posts =
+        await this.postRepository.findPostsByIdsForResponse(batchIds);
       const postMap = new Map<string, any>(
         posts.map((post: any) => [post.id, post]),
       );
@@ -802,7 +838,8 @@ export class PostsService {
     const repostedSet = new Set<string>();
     const bookmarkedSet = new Set<string>(kind === "bookmark" ? postIds : []);
 
-    const { likes, bookmarks, reposts } = await this.postRepository.findSecondaryMarks(kind, userId, postIds);
+    const { likes, bookmarks, reposts } =
+      await this.postRepository.findSecondaryMarks(kind, userId, postIds);
 
     likes.forEach((l: any) => likedSet.add(l.postId));
     bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
@@ -824,13 +861,18 @@ export class PostsService {
   async getFeed(userId: string, query: CursorPaginationDto) {
     await this.ensureActiveUser(userId);
 
-    const followingIds = await this.getUsersService().getActiveFollowingIds(userId);
+    const followingIds =
+      await this.getUsersService().getActiveFollowingIds(userId);
     const targetAuthorIds = [userId, ...followingIds];
 
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    const posts = await this.postRepository.listFeedPosts(targetAuthorIds, limit, cursor);
+    const posts = await this.postRepository.listFeedPosts(
+      targetAuthorIds,
+      limit,
+      cursor,
+    );
 
     const hasNextPage = posts.length > limit;
     const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
@@ -847,7 +889,8 @@ export class PostsService {
 
     if (items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(userId, postIds);
+      const { likes, reposts, bookmarks } =
+        await this.postRepository.findViewerMarks(userId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -876,7 +919,12 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    const posts = await this.postRepository.listExplorePosts(limit, cursor, searchTerm, query.mediaOnly === "true");
+    const posts = await this.postRepository.listExplorePosts(
+      limit,
+      cursor,
+      searchTerm,
+      query.mediaOnly === "true",
+    );
 
     const hasNextPage = posts.length > limit;
     const items = hasNextPage ? posts.slice(0, limit) : posts;
@@ -887,7 +935,8 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
+      const { likes, reposts, bookmarks } =
+        await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -932,7 +981,12 @@ export class PostsService {
         ? ["PUBLIC", "FOLLOWERS"]
         : ["PUBLIC"];
 
-    const posts = await this.postRepository.listUserPosts(targetUser.id, allowedVisibilities, limit, cursor);
+    const posts = await this.postRepository.listUserPosts(
+      targetUser.id,
+      allowedVisibilities,
+      limit,
+      cursor,
+    );
 
     const hasNextPage = posts.length > limit;
     const items = hasNextPage ? posts.slice(0, limit) : posts;
@@ -943,7 +997,8 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
+      const { likes, reposts, bookmarks } =
+        await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -973,7 +1028,11 @@ export class PostsService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
     const cursor = this.decodeCursor(query.cursor);
 
-    const posts = await this.postRepository.listUserReplies(targetUser.id, limit, cursor);
+    const posts = await this.postRepository.listUserReplies(
+      targetUser.id,
+      limit,
+      cursor,
+    );
 
     const hasNextPage = posts.length > limit;
     const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
@@ -990,7 +1049,8 @@ export class PostsService {
 
     if (viewerId && items.length > 0) {
       const postIds = items.map((p: any) => p.id);
-      const { likes, reposts, bookmarks } = await this.postRepository.findViewerMarks(viewerId, postIds);
+      const { likes, reposts, bookmarks } =
+        await this.postRepository.findViewerMarks(viewerId, postIds);
 
       likes.forEach((l: any) => likedSet.add(l.postId));
       reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
@@ -1032,8 +1092,10 @@ export class PostsService {
 
     for (const post of posts) {
       const {
-        likeCount: actualLikes, bookmarkCount: actualBookmarks,
-        repostCount: actualReposts, quoteCount: actualQuotes,
+        likeCount: actualLikes,
+        bookmarkCount: actualBookmarks,
+        repostCount: actualReposts,
+        quoteCount: actualQuotes,
         replyCount: actualReplies,
       } = await this.postRepository.countPostRelations(post.id);
 
@@ -1200,5 +1262,4 @@ export class PostsService {
       return null;
     }
   }
-
 }

@@ -54,8 +54,9 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     // Scope key theo user ID (nếu đã xác thực) hoặc theo IP
-    const user = (request as unknown as { user?: { sub?: string; id?: string } })
-      .user;
+    const user = (
+      request as unknown as { user?: { sub?: string; id?: string } }
+    ).user;
     const scope = user?.sub || user?.id || request.ip || "anonymous";
     const scopedKey = `${scope}:${sanitizedKey}`;
 

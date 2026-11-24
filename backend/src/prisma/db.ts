@@ -1,13 +1,12 @@
-import 'dotenv/config';
-import postgres from '@prisma/orm-postgres/runtime';
-import contractJson from './contract.json' with { type: 'json' };
-import {Contract} from "./contract.js";
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import contractJson from "./contract.json" with { type: "json" };
+import { Contract } from "./contract.js";
 
 export const db = postgres<Contract>({
   contractJson,
-  url: process.env['DATABASE_URL']!,
+  url: process.env["DATABASE_URL"]!,
 });
-
 
 // Option mặc định của db
 // connectionTimeoutMillis 20000s

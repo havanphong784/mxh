@@ -6,11 +6,24 @@ export interface RequestOptions {
   idempotencyKey?: string;
 }
 
+export type ApiErrorDetails = {
+  code?: string;
+  errors?: string[];
+  requestId?: string;
+};
+
 export class ApiError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  readonly code?: string;
+  readonly errors?: string[];
+  readonly requestId?: string;
+
+  constructor(status: number, message: string, details: ApiErrorDetails = {}) {
     super(message);
     this.status = status;
+    this.code = details.code;
+    this.errors = details.errors;
+    this.requestId = details.requestId;
     this.name = "ApiError";
   }
 }
@@ -26,17 +39,36 @@ async function readResponse<T>(response: Response): Promise<T> {
       throw new ApiError(502, "Máy chủ trả về dữ liệu không hợp lệ.");
   }
   if (!response.ok) {
-    const raw = (payload as { message?: unknown } | undefined)?.message;
-    const message = Array.isArray(raw)
-      ? raw
-          .filter((item): item is string => typeof item === "string")
-          .join(" · ")
-      : raw;
+    const envelope = payload as
+      | {
+          message?: unknown;
+          code?: unknown;
+          errors?: unknown;
+          requestId?: unknown;
+        }
+      | undefined;
+    const raw = envelope?.message;
+    const errors = Array.isArray(envelope?.errors)
+      ? envelope.errors.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : Array.isArray(raw)
+        ? raw.filter((item): item is string => typeof item === "string")
+        : undefined;
+    const message = Array.isArray(raw) ? errors?.join(" · ") : raw;
     throw new ApiError(
       response.status,
       typeof message === "string" && message
         ? message
         : `Không thể hoàn tất yêu cầu (${response.status}).`,
+      {
+        code: typeof envelope?.code === "string" ? envelope.code : undefined,
+        errors: errors?.length ? errors : undefined,
+        requestId:
+          typeof envelope?.requestId === "string"
+            ? envelope.requestId
+            : (response.headers.get("x-request-id") ?? undefined),
+      },
     );
   }
   return payload as T;

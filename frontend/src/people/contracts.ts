@@ -218,7 +218,10 @@ export function createPeopleClient(api: Request, upload: typeof fetch = fetch) {
       if (problem) throw new Error(problem);
       return api<PeoplePage>(
         `/users/search?${pageQuery(cursor, query.trim())}`,
-        { auth: false, signal },
+        {
+          auth: false,
+          signal,
+        },
       );
     },
     suggestions(auth: boolean, signal?: AbortSignal) {

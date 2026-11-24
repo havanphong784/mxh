@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { VerifiedMediaItem } from "../media/media.service.js";
-import type { Temporal } from '@js-temporal/polyfill';
-import { toContainsPattern } from '../common/search.js';
+import type { Temporal } from "@js-temporal/polyfill";
+import { toContainsPattern } from "../common/search.js";
 
 @Injectable()
 export class PostsRepository {
@@ -33,42 +33,55 @@ export class PostsRepository {
   }
 
   async findByIdWithAuthorAndMedia(postId: string) {
-    return this.post.where({ id: postId }).include('author').include('media').first();
+    return this.post
+      .where({ id: postId })
+      .include("author")
+      .include("media")
+      .first();
   }
 
   async findByIdForResponse(postId: string) {
-    return this.post.where({ id: postId })
-      .include('author')
-      .include('media')
-      .include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost'))
+    return this.post
+      .where({ id: postId })
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
       .first();
   }
 
   async updatePostAndReplies(
     postId: string,
     payload: Record<string, any>,
-    visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE',
+    visibility?: "PUBLIC" | "FOLLOWERS" | "PRIVATE",
   ) {
     await this.prisma.client.transaction(async (tx) => {
       await tx.orm.public.Post.where({ id: postId }).update(payload);
       if (visibility !== undefined) {
-        await tx.orm.public.Post.where((post) => post.rootId.eq(postId))
-          .update({ visibility });
+        await tx.orm.public.Post.where((post) => post.rootId.eq(postId)).update(
+          { visibility },
+        );
       }
     });
   }
 
   async findViewerMarks(viewerId: string, postIds: string[]) {
     const [likes, reposts, bookmarks] = await Promise.all([
-      this.like.where((like) => like.userId.eq(viewerId))
-        .where((like) => like.postId.in(postIds)).all(),
-      this.post.where((post) => post.authorId.eq(viewerId))
+      this.like
+        .where((like) => like.userId.eq(viewerId))
+        .where((like) => like.postId.in(postIds))
+        .all(),
+      this.post
+        .where((post) => post.authorId.eq(viewerId))
         .where((post) => post.repostOfId.in(postIds))
-        .where((post) => post.isDeleted.eq(false)).all(),
-      this.bookmark.where((bookmark) => bookmark.userId.eq(viewerId))
-        .where((bookmark) => bookmark.postId.in(postIds)).all(),
+        .where((post) => post.isDeleted.eq(false))
+        .all(),
+      this.bookmark
+        .where((bookmark) => bookmark.userId.eq(viewerId))
+        .where((bookmark) => bookmark.postId.in(postIds))
+        .all(),
     ]);
     return { likes, reposts, bookmarks };
   }
@@ -78,24 +91,33 @@ export class PostsRepository {
     limit: number,
     cursor?: { createdAt: Temporal.Instant; id: string } | null,
   ) {
-    let query = this.post.where((post) => post.parentId.eq(postId))
+    let query = this.post
+      .where((post) => post.parentId.eq(postId))
       .orderBy([(post) => post.createdAt.asc(), (post) => post.id.asc()]);
     if (cursor) query = query.cursor(cursor);
-    return query.limit(limit + 1)
-      .include('author')
-      .include('media')
-      .include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost'))
+    return query
+      .limit(limit + 1)
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
       .all();
   }
 
   async createRepostAndIncrement(postId: string, userId: string) {
     await this.prisma.client.transaction(async (tx) => {
-      await tx.orm.public.Post.create({ authorId: userId, repostOfId: postId, visibility: 'PUBLIC' });
+      await tx.orm.public.Post.create({
+        authorId: userId,
+        repostOfId: postId,
+        visibility: "PUBLIC",
+      });
       const plan = this.prisma.client.raw.sql`
         UPDATE "post" SET "repostCount" = "repostCount" + 1 WHERE id = ${postId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       await tx.execute(plan);
     });
   }
@@ -104,12 +126,16 @@ export class PostsRepository {
     return this.prisma.client.transaction(async (tx) => {
       const deletePlan = this.prisma.client.raw.sql`
         DELETE FROM "post" WHERE "authorId" = ${userId} AND "repostOfId" = ${postId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       const { affectedRows: deletedCount } = await tx.execute(deletePlan);
       if (deletedCount === 1) {
         const decrementPlan = this.prisma.client.raw.sql`
           UPDATE "post" SET "repostCount" = GREATEST(0, "repostCount" - 1) WHERE id = ${postId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(decrementPlan);
       }
       const latestPost = await tx.orm.public.Post.where({ id: postId }).first();
@@ -122,7 +148,9 @@ export class PostsRepository {
       await tx.orm.public.PostLike.create({ userId, postId });
       const plan = this.prisma.client.raw.sql`
         UPDATE "post" SET "likeCount" = "likeCount" + 1 WHERE id = ${postId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       await tx.execute(plan);
     });
   }
@@ -131,12 +159,16 @@ export class PostsRepository {
     return this.prisma.client.transaction(async (tx) => {
       const deletePlan = this.prisma.client.raw.sql`
         DELETE FROM "postLike" WHERE "userId" = ${userId} AND "postId" = ${postId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       const { affectedRows: deletedCount } = await tx.execute(deletePlan);
       if (deletedCount === 1) {
         const decrementPlan = this.prisma.client.raw.sql`
           UPDATE "post" SET "likeCount" = GREATEST(0, "likeCount" - 1) WHERE id = ${postId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(decrementPlan);
       }
       const latestPost = await tx.orm.public.Post.where({ id: postId }).first();
@@ -149,7 +181,9 @@ export class PostsRepository {
       await tx.orm.public.PostBookmark.create({ userId, postId });
       const plan = this.prisma.client.raw.sql`
         UPDATE "post" SET "bookmarkCount" = "bookmarkCount" + 1 WHERE id = ${postId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       await tx.execute(plan);
     });
   }
@@ -158,12 +192,16 @@ export class PostsRepository {
     await this.prisma.client.transaction(async (tx) => {
       const deletePlan = this.prisma.client.raw.sql`
         DELETE FROM "postBookmark" WHERE "userId" = ${userId} AND "postId" = ${postId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       const { affectedRows: deletedCount } = await tx.execute(deletePlan);
       if (deletedCount === 1) {
         const decrementPlan = this.prisma.client.raw.sql`
           UPDATE "post" SET "bookmarkCount" = GREATEST(0, "bookmarkCount" - 1) WHERE id = ${postId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(decrementPlan);
       }
     });
@@ -171,68 +209,108 @@ export class PostsRepository {
 
   async listPostLikes(
     postId: string,
-    options: { limit: number; offset?: number; cursor?: { createdAt: Temporal.Instant; userId: string } },
+    options: {
+      limit: number;
+      offset?: number;
+      cursor?: { createdAt: Temporal.Instant; userId: string };
+    },
   ) {
-    let query = this.like.where((like) => like.postId.eq(postId))
+    let query = this.like
+      .where((like) => like.postId.eq(postId))
       .orderBy([(like) => like.createdAt.desc(), (like) => like.userId.desc()])
-      .limit(options.limit).include('user');
+      .limit(options.limit)
+      .include("user");
     if (options.offset !== undefined) query = query.offset(options.offset);
     if (options.cursor) query = query.cursor(options.cursor);
     return query.all();
   }
 
   async countPostLikes(postId: string): Promise<number> {
-    const aggregate = await this.like.where((like) => like.postId.eq(postId))
+    const aggregate = await this.like
+      .where((like) => like.postId.eq(postId))
       .aggregate((item) => ({ total: item.count() }));
     return Number(aggregate.total) || 0;
   }
 
   async listMarkedPostReferences(
-    kind: 'bookmark' | 'like',
+    kind: "bookmark" | "like",
     userId: string,
     limit: number,
     cursor?: { createdAt: Temporal.Instant; postId: string } | null,
   ) {
-    const table: any = kind === 'bookmark' ? this.bookmark : this.like;
-    let query = table.where((mark: any) => mark.userId.eq(userId))
-      .orderBy([(mark: any) => mark.createdAt.desc(), (mark: any) => mark.postId.desc()]);
+    const table: any = kind === "bookmark" ? this.bookmark : this.like;
+    let query = table
+      .where((mark: any) => mark.userId.eq(userId))
+      .orderBy([
+        (mark: any) => mark.createdAt.desc(),
+        (mark: any) => mark.postId.desc(),
+      ]);
     if (cursor) query = query.cursor(cursor);
     return query.limit(limit).all();
   }
 
   async findPostsByIdsForResponse(postIds: string[]) {
-    return this.post.where((post) => post.id.in(postIds))
-      .include('author').include('media').include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost'))
+    return this.post
+      .where((post) => post.id.in(postIds))
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
       .all();
   }
 
-  async findSecondaryMarks(kind: 'bookmark' | 'like', userId: string, postIds: string[]) {
+  async findSecondaryMarks(
+    kind: "bookmark" | "like",
+    userId: string,
+    postIds: string[],
+  ) {
     const [likes, bookmarks, reposts] = await Promise.all([
-      kind === 'like' ? [] : this.like.where((like) => like.userId.eq(userId))
-        .where((like) => like.postId.in(postIds)).all(),
-      kind === 'bookmark' ? [] : this.bookmark.where((bookmark) => bookmark.userId.eq(userId))
-        .where((bookmark) => bookmark.postId.in(postIds)).all(),
-      this.post.where((post) => post.authorId.eq(userId))
+      kind === "like"
+        ? []
+        : this.like
+            .where((like) => like.userId.eq(userId))
+            .where((like) => like.postId.in(postIds))
+            .all(),
+      kind === "bookmark"
+        ? []
+        : this.bookmark
+            .where((bookmark) => bookmark.userId.eq(userId))
+            .where((bookmark) => bookmark.postId.in(postIds))
+            .all(),
+      this.post
+        .where((post) => post.authorId.eq(userId))
         .where((post) => post.repostOfId.in(postIds))
-        .where((post) => post.isDeleted.eq(false)).all(),
+        .where((post) => post.isDeleted.eq(false))
+        .all(),
     ]);
     return { likes, bookmarks, reposts };
   }
 
   async listFeedPosts(
-    authorIds: string[], limit: number, cursor?: { createdAt: Temporal.Instant; id: string } | null,
+    authorIds: string[],
+    limit: number,
+    cursor?: { createdAt: Temporal.Instant; id: string } | null,
   ) {
-    let query = this.post.where((post) => post.authorId.in(authorIds))
+    let query = this.post
+      .where((post) => post.authorId.in(authorIds))
       .where((post) => post.isDeleted.eq(false))
       .where((post) => post.author.some((user) => user.isActive.eq(true)))
-      .where((post) => post.author.some((user) => user.isEmailVerified.eq(true)))
+      .where((post) =>
+        post.author.some((user) => user.isEmailVerified.eq(true)),
+      )
       .orderBy([(post) => post.createdAt.desc(), (post) => post.id.desc()]);
     if (cursor) query = query.cursor(cursor);
-    return query.limit(limit + 1).include('author').include('media').include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost')).all();
+    return query
+      .limit(limit + 1)
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
+      .all();
   }
 
   async listExplorePosts(
@@ -241,49 +319,80 @@ export class PostsRepository {
     searchTerm?: string,
     mediaOnly = false,
   ) {
-    let query = this.post.where((post) => post.visibility.eq('PUBLIC'))
+    let query = this.post
+      .where((post) => post.visibility.eq("PUBLIC"))
       .where((post) => post.parentId.isNull())
       .where((post) => post.isDeleted.eq(false))
       .where((post) => post.author.some((user) => user.isActive.eq(true)))
-      .where((post) => post.author.some((user) => user.isEmailVerified.eq(true)))
+      .where((post) =>
+        post.author.some((user) => user.isEmailVerified.eq(true)),
+      )
       .orderBy([(post) => post.createdAt.desc(), (post) => post.id.desc()]);
-    if (searchTerm) query = query.where((post) => post.content.ilike(toContainsPattern(searchTerm)));
-    if (mediaOnly) query = query.where((post) => post.media.some((media) => media.type.in(['IMAGE', 'VIDEO'])));
+    if (searchTerm)
+      query = query.where((post) =>
+        post.content.ilike(toContainsPattern(searchTerm)),
+      );
+    if (mediaOnly)
+      query = query.where((post) =>
+        post.media.some((media) => media.type.in(["IMAGE", "VIDEO"])),
+      );
     if (cursor) query = query.cursor(cursor);
-    return query.limit(limit + 1).include('author').include('media').include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost')).all();
+    return query
+      .limit(limit + 1)
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
+      .all();
   }
 
   async listUserPosts(
     authorId: string,
-    visibilities: Array<'PUBLIC' | 'FOLLOWERS' | 'PRIVATE'>,
+    visibilities: Array<"PUBLIC" | "FOLLOWERS" | "PRIVATE">,
     limit: number,
     cursor?: { createdAt: Temporal.Instant; id: string } | null,
   ) {
-    let query = this.post.where((post) => post.authorId.eq(authorId))
+    let query = this.post
+      .where((post) => post.authorId.eq(authorId))
       .where((post) => post.parentId.isNull())
       .where((post) => post.isDeleted.eq(false))
       .where((post) => post.visibility.in(visibilities))
       .orderBy([(post) => post.createdAt.desc(), (post) => post.id.desc()]);
     if (cursor) query = query.cursor(cursor);
-    return query.limit(limit + 1).include('author').include('media').include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost')).all();
+    return query
+      .limit(limit + 1)
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
+      .all();
   }
 
   async listUserReplies(
-    authorId: string, limit: number, cursor?: { createdAt: Temporal.Instant; id: string } | null,
+    authorId: string,
+    limit: number,
+    cursor?: { createdAt: Temporal.Instant; id: string } | null,
   ) {
-    let query = this.post.where((post) => post.authorId.eq(authorId))
+    let query = this.post
+      .where((post) => post.authorId.eq(authorId))
       .where((post) => post.parentId.isNotNull())
       .where((post) => post.isDeleted.eq(false))
       .orderBy([(post) => post.createdAt.desc(), (post) => post.id.desc()]);
     if (cursor) query = query.cursor(cursor);
-    return query.limit(limit + 1).include('author').include('media').include('quotedPost')
-      .include('repostOf', (repost) =>
-        repost.include('author').include('media').include('quotedPost'))
-      .include('parent').all();
+    return query
+      .limit(limit + 1)
+      .include("author")
+      .include("media")
+      .include("quotedPost")
+      .include("repostOf", (repost) =>
+        repost.include("author").include("media").include("quotedPost"),
+      )
+      .include("parent")
+      .all();
   }
 
   async listActivePosts(targetPostId?: string) {
@@ -294,17 +403,22 @@ export class PostsRepository {
 
   async countPostRelations(postId: string) {
     const [likes, bookmarks, reposts, quotes, replies] = await Promise.all([
-      this.like.where((like) => like.postId.eq(postId))
+      this.like
+        .where((like) => like.postId.eq(postId))
         .aggregate((item) => ({ total: item.count() })),
-      this.bookmark.where((bookmark) => bookmark.postId.eq(postId))
+      this.bookmark
+        .where((bookmark) => bookmark.postId.eq(postId))
         .aggregate((item) => ({ total: item.count() })),
-      this.post.where((post) => post.repostOfId.eq(postId))
+      this.post
+        .where((post) => post.repostOfId.eq(postId))
         .where((post) => post.isDeleted.eq(false))
         .aggregate((item) => ({ total: item.count() })),
-      this.post.where((post) => post.quotedPostId.eq(postId))
+      this.post
+        .where((post) => post.quotedPostId.eq(postId))
         .where((post) => post.isDeleted.eq(false))
         .aggregate((item) => ({ total: item.count() })),
-      this.post.where((post) => post.parentId.eq(postId))
+      this.post
+        .where((post) => post.parentId.eq(postId))
         .where((post) => post.isDeleted.eq(false))
         .aggregate((item) => ({ total: item.count() })),
     ]);
@@ -317,28 +431,50 @@ export class PostsRepository {
     };
   }
 
-  async updatePostCounters(postId: string, counts: {
-    likeCount: number; bookmarkCount: number; repostCount: number;
-    quoteCount: number; replyCount: number;
-  }) {
+  async updatePostCounters(
+    postId: string,
+    counts: {
+      likeCount: number;
+      bookmarkCount: number;
+      repostCount: number;
+      quoteCount: number;
+      replyCount: number;
+    },
+  ) {
     return this.post.where({ id: postId }).update(counts);
   }
 
   async deletePostRecord(
     postId: string,
-    post: { quotedPostId: string | null; repostOfId: string | null; parentId: string | null },
+    post: {
+      quotedPostId: string | null;
+      repostOfId: string | null;
+      parentId: string | null;
+    },
   ) {
     await this.prisma.client.transaction(async (tx) => {
-      const repliesCount = await tx.orm.public.Post.where((reply) => reply.parentId.eq(postId))
-        .aggregate((aggregate) => ({ total: aggregate.count() }));
+      const repliesCount = await tx.orm.public.Post.where((reply) =>
+        reply.parentId.eq(postId),
+      ).aggregate((aggregate) => ({ total: aggregate.count() }));
       const hasReplies = Number(repliesCount.total) > 0;
 
       if (hasReplies) {
-        await tx.orm.public.Post.where({ id: postId }).update({ isDeleted: true, content: null });
-        await tx.orm.public.PostMedia.where((media) => media.postId.eq(postId)).delete();
-        await tx.orm.public.PostLike.where((like) => like.postId.eq(postId)).delete();
-        await tx.orm.public.PostBookmark.where((bookmark) => bookmark.postId.eq(postId)).delete();
-        await tx.orm.public.Post.where((repost) => repost.repostOfId.eq(postId)).delete();
+        await tx.orm.public.Post.where({ id: postId }).update({
+          isDeleted: true,
+          content: null,
+        });
+        await tx.orm.public.PostMedia.where((media) =>
+          media.postId.eq(postId),
+        ).delete();
+        await tx.orm.public.PostLike.where((like) =>
+          like.postId.eq(postId),
+        ).delete();
+        await tx.orm.public.PostBookmark.where((bookmark) =>
+          bookmark.postId.eq(postId),
+        ).delete();
+        await tx.orm.public.Post.where((repost) =>
+          repost.repostOfId.eq(postId),
+        ).delete();
       } else {
         await tx.orm.public.Post.where({ id: postId }).delete();
       }
@@ -347,14 +483,18 @@ export class PostsRepository {
         const plan = this.prisma.client.raw.sql`
           UPDATE "post" SET "quoteCount" = GREATEST(0, "quoteCount" - 1)
           WHERE id = ${post.quotedPostId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(plan);
       }
       if (post.repostOfId) {
         const plan = this.prisma.client.raw.sql`
           UPDATE "post" SET "repostCount" = GREATEST(0, "repostCount" - 1)
           WHERE id = ${post.repostOfId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(plan);
       }
       if (!hasReplies && post.parentId) {
@@ -369,9 +509,13 @@ export class PostsRepository {
       const plan = this.prisma.client.raw.sql`
         UPDATE "post" SET "replyCount" = GREATEST(0, "replyCount" - 1)
         WHERE id = ${currentId}
-      `.affectedCount().build();
+      `
+        .affectedCount()
+        .build();
       await tx.execute(plan);
-      const parent: any = await tx.orm.public.Post.where({ id: currentId }).first();
+      const parent: any = await tx.orm.public.Post.where({
+        id: currentId,
+      }).first();
       if (parent && parent.isDeleted && parent.replyCount === 0) {
         await tx.orm.public.Post.where({ id: currentId }).delete();
         currentId = parent.parentId;
@@ -402,7 +546,7 @@ export class PostsRepository {
   async createPostWithMedia(data: {
     authorId: string;
     content: string | null;
-    visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE';
+    visibility: "PUBLIC" | "FOLLOWERS" | "PRIVATE";
     parentId: string | null;
     rootId: string | null;
     quotedPostId: string | null;
@@ -422,7 +566,9 @@ export class PostsRepository {
         const plan = this.prisma.client.raw.sql`
           UPDATE "post" SET "replyCount" = "replyCount" + 1
           WHERE id = ${data.parentId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(plan);
       }
 
@@ -430,7 +576,9 @@ export class PostsRepository {
         const plan = this.prisma.client.raw.sql`
           UPDATE "post" SET "quoteCount" = "quoteCount" + 1
           WHERE id = ${data.quotedPostId}
-        `.affectedCount().build();
+        `
+          .affectedCount()
+          .build();
         await tx.execute(plan);
       }
 
@@ -448,13 +596,13 @@ export class PostsRepository {
       }
 
       return tx.orm.public.Post.where({ id: post.id })
-        .include('author')
-        .include('media')
-        .include('quotedPost')
-        .include('repostOf', (repost) =>
-          repost.include('author').include('media').include('quotedPost'))
+        .include("author")
+        .include("media")
+        .include("quotedPost")
+        .include("repostOf", (repost) =>
+          repost.include("author").include("media").include("quotedPost"),
+        )
         .first();
     });
   }
-
 }

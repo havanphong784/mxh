@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import argon2 from 'argon2';
-import { UsersRepository } from './users.repository.js';
-import type { Temporal } from '@js-temporal/polyfill';
+import { Injectable } from "@nestjs/common";
+import argon2 from "argon2";
+import { UsersRepository } from "./users.repository.js";
+import type { Temporal } from "@js-temporal/polyfill";
 
 /** Public UsersModule facade for authentication flows. */
 @Injectable()
@@ -25,8 +25,12 @@ export class UsersAuthService {
   }
 
   async createSession(data: {
-    userId: string; tokenHash: string; userAgent: string | null;
-    ipAddress: string | null; expiresAt: Temporal.Instant; isRevoked: boolean;
+    userId: string;
+    tokenHash: string;
+    userAgent: string | null;
+    ipAddress: string | null;
+    expiresAt: Temporal.Instant;
+    isRevoked: boolean;
   }) {
     const session = await this.repo.createSession(data);
     return { id: session.id };
@@ -37,8 +41,12 @@ export class UsersAuthService {
   }
 
   async createPendingUserWithOtp(data: {
-    email: string; username: string; passwordHash: string; displayName: string;
-    codeHash: string; expiresAt: Temporal.Instant;
+    email: string;
+    username: string;
+    passwordHash: string;
+    displayName: string;
+    codeHash: string;
+    expiresAt: Temporal.Instant;
   }) {
     return this.repo.createPendingUserWithOtp(data);
   }
@@ -47,7 +55,10 @@ export class UsersAuthService {
     await this.repo.deleteUserById(userId);
   }
 
-  async findLatestOtp(email: string, type: 'REGISTER_VERIFY' | 'FORGOT_PASSWORD') {
+  async findLatestOtp(
+    email: string,
+    type: "REGISTER_VERIFY" | "FORGOT_PASSWORD",
+  ) {
     const otp = await this.repo.findLatestOtp(email, type);
     if (!otp) return null;
     return {
@@ -65,8 +76,12 @@ export class UsersAuthService {
   }
 
   async createOtp(data: {
-    email: string; codeHash: string; type: 'REGISTER_VERIFY' | 'FORGOT_PASSWORD';
-    expiresAt: Temporal.Instant; attempts: number; userId: string;
+    email: string;
+    codeHash: string;
+    type: "REGISTER_VERIFY" | "FORGOT_PASSWORD";
+    expiresAt: Temporal.Instant;
+    attempts: number;
+    userId: string;
   }) {
     const otp = await this.repo.createOtp(data);
     return { id: otp.id };
@@ -80,18 +95,34 @@ export class UsersAuthService {
     email: string,
     otpId: string,
     sessionData: {
-      userId: string; tokenHash: string; userAgent: string | null;
-      ipAddress: string | null; expiresAt: Temporal.Instant; isRevoked: boolean;
+      userId: string;
+      tokenHash: string;
+      userAgent: string | null;
+      ipAddress: string | null;
+      expiresAt: Temporal.Instant;
+      isRevoked: boolean;
     },
   ) {
-    const session = await this.repo.activateAndCreateSession(email, otpId, sessionData);
+    const session = await this.repo.activateAndCreateSession(
+      email,
+      otpId,
+      sessionData,
+    );
     return { id: session.id };
   }
 
   async resetPasswordAndRevokeSessions(
-    email: string, otpId: string, userId: string | null, passwordHash: string,
+    email: string,
+    otpId: string,
+    userId: string | null,
+    passwordHash: string,
   ) {
-    return this.repo.resetPasswordAndRevokeSessions(email, otpId, userId, passwordHash);
+    return this.repo.resetPasswordAndRevokeSessions(
+      email,
+      otpId,
+      userId,
+      passwordHash,
+    );
   }
 
   async findSessionByTokenHash(tokenHash: string) {
@@ -113,11 +144,18 @@ export class UsersAuthService {
   async rotateRefreshSession(
     sessionId: string,
     sessionData: {
-      userId: string; tokenHash: string; userAgent: string | null;
-      ipAddress: string | null; expiresAt: Temporal.Instant; isRevoked: boolean;
+      userId: string;
+      tokenHash: string;
+      userAgent: string | null;
+      ipAddress: string | null;
+      expiresAt: Temporal.Instant;
+      isRevoked: boolean;
     },
   ) {
-    const session = await this.repo.rotateRefreshSession(sessionId, sessionData);
+    const session = await this.repo.rotateRefreshSession(
+      sessionId,
+      sessionData,
+    );
     return session ? { id: session.id } : null;
   }
 
@@ -126,9 +164,16 @@ export class UsersAuthService {
   }
 
   private toAuthUser(user: {
-    id: string; email: string; username: string; displayName: string;
-    avatarUrl: string | null; bannerUrl: string | null; bio: string | null;
-    isActive: boolean; isEmailVerified: boolean; createdAt: unknown;
+    id: string;
+    email: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    bannerUrl: string | null;
+    bio: string | null;
+    isActive: boolean;
+    isEmailVerified: boolean;
+    createdAt: unknown;
   }) {
     return {
       id: user.id,

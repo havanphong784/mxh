@@ -37,7 +37,10 @@ export class NotificationsService {
           typeof decoded.id === "string" &&
           decoded.id.length > 0
         ) {
-          cursor = { createdAt: Temporal.Instant.from(decoded.createdAt), id: decoded.id };
+          cursor = {
+            createdAt: Temporal.Instant.from(decoded.createdAt),
+            id: decoded.id,
+          };
         }
       } catch {
         // Cursor không hợp lệ thì bỏ qua

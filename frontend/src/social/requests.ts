@@ -1,7 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { appendPage, isActive, mergePostChange, pagePath } from "./model";
-import type { Page, Post, PostChange, Toggle } from "./model";
+import type { Page, Post, PostChange, PostLikesPage, Toggle } from "./model";
+
+export function readPostLikes(
+  postId: string,
+  cursor: string | null,
+  auth: boolean,
+  signal: AbortSignal,
+) {
+  return api<PostLikesPage>(
+    pagePath(`/posts/${encodeURIComponent(postId)}/likes`, cursor),
+    {
+      auth,
+      signal,
+    },
+  );
+}
 
 export function errorLabel(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : "";

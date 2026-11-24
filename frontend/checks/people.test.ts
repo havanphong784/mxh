@@ -257,7 +257,10 @@ test("uploads only the signed Cloudinary multipart fields without app credential
   };
   assert.deepEqual(
     await createPeopleClient(api, upload).uploadImage("avatars", file),
-    { url: secureUrl, publicId: "mxh/1/avatars/cat" },
+    {
+      url: secureUrl,
+      publicId: "mxh/1/avatars/cat",
+    },
   );
   assert.deepEqual(calls, [
     {

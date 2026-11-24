@@ -82,19 +82,39 @@ test("reconnect refreshes both inboxes and only matching new messages refresh th
   });
   assert.deepEqual(
     realtimeImpact("conversation:new-message", { conversationId: "c2" }, "c1"),
-    { counts: true, messages: true, thread: false, notifications: false },
+    {
+      counts: true,
+      messages: true,
+      thread: false,
+      notifications: false,
+    },
   );
   assert.deepEqual(
     realtimeImpact("conversation:new-message", { conversationId: "c1" }, "c1"),
-    { counts: true, messages: true, thread: true, notifications: false },
+    {
+      counts: true,
+      messages: true,
+      thread: true,
+      notifications: false,
+    },
   );
   assert.deepEqual(
     realtimeImpact("conversation:read", { conversationId: "c1" }, "c1"),
-    { counts: true, messages: true, thread: false, notifications: false },
+    {
+      counts: true,
+      messages: true,
+      thread: false,
+      notifications: false,
+    },
   );
   assert.deepEqual(
     realtimeImpact("notification:unread-count", { count: 3 }, "c1"),
-    { counts: true, messages: false, thread: false, notifications: true },
+    {
+      counts: true,
+      messages: false,
+      thread: false,
+      notifications: true,
+    },
   );
   assert.equal(realtimeImpact("unrelated", null, "c1"), null);
 });

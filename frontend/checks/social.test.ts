@@ -230,11 +230,19 @@ test("composer produces separate reply and quote bodies and permits valid media-
   });
   assert.deepEqual(
     composePayload(" Xin chào ", "FOLLOWERS", [], { parentId: "p" }),
-    { content: "Xin chào", visibility: "FOLLOWERS", parentId: "p" },
+    {
+      content: "Xin chào",
+      visibility: "FOLLOWERS",
+      parentId: "p",
+    },
   );
   assert.deepEqual(
     composePayload("Góc nhìn mới", "PUBLIC", [], { quotedPostId: "q" }),
-    { content: "Góc nhìn mới", visibility: "PUBLIC", quotedPostId: "q" },
+    {
+      content: "Góc nhìn mới",
+      visibility: "PUBLIC",
+      quotedPostId: "q",
+    },
   );
   assert.throws(
     () => composePayload("", "PUBLIC", [], { quotedPostId: "q" }),
@@ -287,7 +295,9 @@ test("reply edit payloads omit visibility because backend rejects it", async () 
   const { editPayload } = await import("../src/social/model.ts");
   assert.deepEqual(
     editPayload({ parentId: "parent" }, "Sửa reply", "PRIVATE"),
-    { content: "Sửa reply" },
+    {
+      content: "Sửa reply",
+    },
   );
   assert.deepEqual(editPayload({ parentId: null }, "Sửa bài", "PRIVATE"), {
     content: "Sửa bài",

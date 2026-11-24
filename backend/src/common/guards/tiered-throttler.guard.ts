@@ -34,10 +34,18 @@ export class TieredThrottlerGuard extends ThrottlerGuard {
     const authHeader = req.headers?.authorization;
     if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
       try {
-        const payload: unknown = await this.jwtService.verifyAsync(authHeader.slice(7), {
-          secret: process.env.JWT_ACCESS_SECRET,
-        });
-        if (payload && typeof payload === "object" && "sub" in payload && typeof payload.sub === "string") {
+        const payload: unknown = await this.jwtService.verifyAsync(
+          authHeader.slice(7),
+          {
+            secret: process.env.JWT_ACCESS_SECRET,
+          },
+        );
+        if (
+          payload &&
+          typeof payload === "object" &&
+          "sub" in payload &&
+          typeof payload.sub === "string"
+        ) {
           return `user:${payload.sub}`;
         }
       } catch {
