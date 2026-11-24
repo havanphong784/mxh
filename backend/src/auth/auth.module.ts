@@ -11,18 +11,7 @@ import { UsersModule } from "../users/users.module.js";
 @Module({
   imports: [MailModule, JwtModule.register({}), forwardRef(() => UsersModule)],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    AccessSessionService,
-    JwtAuthGuard,
-    OptionalJwtAuthGuard,
-  ],
-  exports: [
-    AuthService,
-    AccessSessionService,
-    JwtAuthGuard,
-    OptionalJwtAuthGuard,
-    JwtModule,
-  ],
+  providers: [AuthService, AccessSessionService, JwtAuthGuard, OptionalJwtAuthGuard],
+  exports: [AuthService, AccessSessionService, JwtAuthGuard, OptionalJwtAuthGuard, JwtModule],
 })
 export class AuthModule {}

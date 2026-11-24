@@ -1,26 +1,12 @@
 export type Area = "social" | "people" | "inbox" | "auth" | "missing";
 type Route = { area: Area; path: string; private: boolean };
-const auth = new Set([
-  "/login",
-  "/register",
-  "/verify-otp",
-  "/forgot-password",
-  "/reset-password",
-]);
-const social = new Set([
-  "/",
-  "/explore",
-  "/search",
-  "/bookmarks",
-  "/likes",
-  "/compose",
-]);
+const auth = new Set(["/login", "/register", "/verify-otp", "/forgot-password", "/reset-password"]);
+const social = new Set(["/", "/explore", "/search", "/bookmarks", "/likes", "/compose"]);
 export function resolveRoute(input: string): Route {
   const url = new URL(input, "http://mxh.local");
   const p = url.pathname.replace(/\/$/, "") || "/";
   const path = `${p}${url.search}`;
-  if (p === "/liked")
-    return { area: "social", path: `/likes${url.search}`, private: true };
+  if (p === "/liked") return { area: "social", path: `/likes${url.search}`, private: true };
   if (p === "/settings/security")
     return { area: "people", path: `/settings${url.search}`, private: true };
   if (auth.has(p)) return { area: "auth", path, private: false };
@@ -46,12 +32,7 @@ export function resolveRoute(input: string): Route {
 }
 
 export function safeReturn(value: string | null) {
-  if (
-    !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//") ||
-    /[\\\u0000- ]/.test(value)
-  )
+  if (!value || !value.startsWith("/") || value.startsWith("//") || /[\\\u0000- ]/.test(value))
     return "/";
   const route = resolveRoute(value);
   return route.area === "auth" || route.area === "missing" ? "/" : route.path;

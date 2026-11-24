@@ -10,8 +10,7 @@ export function inboxRoute(path: string): InboxRoute {
   if (pathname === "/notifications") return { kind: "notifications" };
   if (pathname === "/messages") {
     const to = url.searchParams.get("to")?.trim() || null;
-    if (to || url.searchParams.get("new") === "1")
-      return { kind: "compose", to };
+    if (to || url.searchParams.get("new") === "1") return { kind: "compose", to };
   }
   const match = /^\/messages\/([^/]+)$/.exec(pathname);
   if (match) {
@@ -37,9 +36,7 @@ export type WindowPage<T> = Page<T> & { depth: number };
 
 /** Keep each ID's first position and its most recently supplied value. */
 export function mergeById<T extends Identified>(first: T[], second: T[]) {
-  return [
-    ...new Map([...first, ...second].map((item) => [item.id, item])).values(),
-  ];
+  return [...new Map([...first, ...second].map((item) => [item.id, item])).values()];
 }
 
 export async function readWindow<T extends Identified>(
@@ -51,9 +48,7 @@ export async function readWindow<T extends Identified>(
   do {
     const page = await read(result.cursor);
     result = {
-      items: prepend
-        ? mergeById(page.items, result.items)
-        : mergeById(result.items, page.items),
+      items: prepend ? mergeById(page.items, result.items) : mergeById(result.items, page.items),
       cursor: page.cursor,
       depth: result.depth + 1,
     };
@@ -70,16 +65,10 @@ export function messageDraft(
 ): MessageDraft | null {
   const body = input.trim();
   if (!body || body.length > 2000) return null;
-  return previous?.body === body
-    ? previous
-    : { body, clientMessageId: makeId() };
+  return previous?.body === body ? previous : { body, clientMessageId: makeId() };
 }
 
-export function realtimeImpact(
-  event: string,
-  data: unknown,
-  threadId?: string,
-) {
+export function realtimeImpact(event: string, data: unknown, threadId?: string) {
   const current =
     !!threadId &&
     typeof data === "object" &&
@@ -88,15 +77,10 @@ export function realtimeImpact(
     data.conversationId === threadId;
   const connected = event === "connect";
   const messages =
-    connected ||
-    event === "conversation:new-message" ||
-    event === "conversation:read";
+    connected || event === "conversation:new-message" || event === "conversation:read";
   const notifications =
-    connected ||
-    event === "notification:new" ||
-    event === "notification:unread-count";
-  if (!messages && !notifications && event !== "conversation:unread-count")
-    return null;
+    connected || event === "notification:new" || event === "notification:unread-count";
+  if (!messages && !notifications && event !== "conversation:unread-count") return null;
   return {
     counts: true,
     messages,

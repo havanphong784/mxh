@@ -51,12 +51,7 @@ export class IdempotencyService implements OnModuleDestroy {
     });
   }
 
-  setCompleted(
-    key: string,
-    statusCode: number,
-    body: unknown,
-    ttlMs = 300_000,
-  ): void {
+  setCompleted(key: string, statusCode: number, body: unknown, ttlMs = 300_000): void {
     const now = Date.now();
     this.storage.set(key, {
       status: "COMPLETED",

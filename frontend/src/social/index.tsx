@@ -146,11 +146,7 @@ function SearchForm({ route }: { route: SocialRoute }) {
         <button type="submit" className="button button-primary">
           Tìm bài
         </button>
-        <a
-          hidden
-          ref={submitLink}
-          href={searchUrl(input.trim(), Boolean(mediaOnly))}
-        >
+        <a hidden ref={submitLink} href={searchUrl(input.trim(), Boolean(mediaOnly))}>
           Mở kết quả tìm kiếm
         </a>
       </form>
@@ -160,21 +156,13 @@ function SearchForm({ route }: { route: SocialRoute }) {
         </p>
       )}
       <nav className="social-filters" aria-label="Lọc theo tệp đính kèm">
-        <a
-          href={searchUrl(q, false, base)}
-          aria-current={!mediaOnly ? "page" : undefined}
-        >
+        <a href={searchUrl(q, false, base)} aria-current={!mediaOnly ? "page" : undefined}>
           Tất cả
         </a>
-        <a
-          href={searchUrl(q, true, base)}
-          aria-current={mediaOnly ? "page" : undefined}
-        >
+        <a href={searchUrl(q, true, base)} aria-current={mediaOnly ? "page" : undefined}>
           <Icon name="image" /> Có tệp đính kèm
         </a>
-        <a href={q ? `/people?${new URLSearchParams({ q })}` : "/people"}>
-          Tìm tài khoản
-        </a>
+        <a href={q ? `/people?${new URLSearchParams({ q })}` : "/people"}>Tìm tài khoản</a>
       </nav>
     </div>
   );
@@ -254,10 +242,7 @@ function PageRows({
       ) : (
         page.next && (
           <div className="social-more">
-            <InfiniteScrollSentinel
-              enabled={page.status !== "more"}
-              onVisible={loadMore}
-            />
+            <InfiniteScrollSentinel enabled={page.status !== "more"} onVisible={loadMore} />
             <button
               type="button"
               className="button"
@@ -300,10 +285,7 @@ function PostListing({
   useEffect(() => {
     if (view !== "home" || !user) return;
     const receive = (event: Event) => {
-      if (
-        (event as CustomEvent<{ event: string }>).detail.event ===
-        "feed:new-post"
-      ) {
+      if ((event as CustomEvent<{ event: string }>).detail.event === "feed:new-post") {
         seenVersion.current++;
         setLatest(true);
       }
@@ -344,11 +326,7 @@ function PostListing({
         pages={pages}
         user={user}
         empty={empty}
-        hint={
-          view === "home" && !user
-            ? "Quay lại sau để xem những bài công khai mới."
-            : hint
-        }
+        hint={view === "home" && !user ? "Quay lại sau để xem những bài công khai mới." : hint}
         action={
           view === "home" && user ? (
             <a className="button" href="/explore">
@@ -403,10 +381,7 @@ function Thread({
         </div>
       )}
       {ancestorPosts.length > 0 && (
-        <ol
-          className="social-post-list social-ancestors"
-          aria-label="Bài viết trước đó"
-        >
+        <ol className="social-post-list social-ancestors" aria-label="Bài viết trước đó">
           {ancestorPosts.map((item) => (
             <li key={item.id}>
               <PostCard post={item} user={user} change={change} threaded />
@@ -446,9 +421,7 @@ function Thread({
           user={user}
           empty="Chưa có lời trả lời"
           hint={
-            isActive(post) && !post.repostOfId
-              ? "Bạn có thể mở đầu cuộc trò chuyện."
-              : undefined
+            isActive(post) && !post.repostOfId ? "Bạn có thể mở đầu cuộc trò chuyện." : undefined
           }
           change={change}
           threaded
@@ -484,9 +457,7 @@ function PostDetail({ id, user }: { id: string; user: User | null }) {
             user={user}
             changePost={(change) =>
               query.setData((current) =>
-                current
-                  ? (mergePostChange(current, change, true) ?? undefined)
-                  : undefined,
+                current ? (mergePostChange(current, change, true) ?? undefined) : undefined,
               )
             }
           />
@@ -542,11 +513,7 @@ export function Social({ path, user }: { path: string; user: User | null }) {
     <div className="social-slice" key={key}>
       <Heading
         title={title}
-        text={
-          view === "home" && !user
-            ? "Bài viết công khai mới từ cộng đồng."
-            : description
-        }
+        text={view === "home" && !user ? "Bài viết công khai mới từ cộng đồng." : description}
         actions={
           view === "home" && user ? (
             <a href={composePath({})} className="button">
@@ -555,9 +522,7 @@ export function Social({ path, user }: { path: string; user: User | null }) {
           ) : undefined
         }
       />
-      {(view === "search" || view === "explore") && (
-        <SearchForm route={route} />
-      )}
+      {(view === "search" || view === "explore") && <SearchForm route={route} />}
       {view === "search" && route.endpoint && (
         <h2 className="social-results">Kết quả cho “{route.q}”</h2>
       )}
@@ -566,11 +531,7 @@ export function Social({ path, user }: { path: string; user: User | null }) {
       ) : route.endpoint ? (
         <PostListing endpoint={route.endpoint} user={user} view={view} />
       ) : (
-        <Message
-          title={
-            route.q ? "Từ khóa chưa hợp lệ" : "Tìm bài viết trong cộng đồng"
-          }
-        >
+        <Message title={route.q ? "Từ khóa chưa hợp lệ" : "Tìm bài viết trong cộng đồng"}>
           {route.q
             ? "Nhập từ 2 đến 100 ký tự để tìm bài viết."
             : "Nhập ít nhất 2 ký tự để bắt đầu."}
@@ -594,11 +555,7 @@ function TimelineRows({
     <PageRows
       pages={pages}
       user={user}
-      empty={
-        replies
-          ? "Chưa có lời trả lời để hiển thị"
-          : "Chưa có bài viết để hiển thị"
-      }
+      empty={replies ? "Chưa có lời trả lời để hiển thị" : "Chưa có bài viết để hiển thị"}
     />
   );
 }
@@ -616,10 +573,7 @@ export function UserTimeline({
   const replies = tab?.username === username && tab.replies;
   const endpoint = timelinePath(username, replies);
   return (
-    <section
-      className="social-slice social-embedded"
-      aria-label={`Bài viết của @${username}`}
-    >
+    <section className="social-slice social-embedded" aria-label={`Bài viết của @${username}`}>
       <div className="social-filters" role="group" aria-label="Loại bài viết">
         <button
           type="button"

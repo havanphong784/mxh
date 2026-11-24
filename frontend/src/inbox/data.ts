@@ -46,23 +46,17 @@ async function collection<T>(
 }
 
 export const threadHref = (id: string) => `/messages/${encodeURIComponent(id)}`;
-const conversationPath = (id: string) =>
-  `/conversations/${encodeURIComponent(id)}`;
+const conversationPath = (id: string) => `/conversations/${encodeURIComponent(id)}`;
 export const readConversations = (cursor: string | null, signal: AbortSignal) =>
   collection<Conversation>("/conversations", cursor, signal);
 export const readNotices = (cursor: string | null, signal: AbortSignal) =>
   collection<Notice>("/notifications", cursor, signal);
-export const readThread = (
-  id: string,
-  cursor: string | null,
-  signal: AbortSignal,
-) => collection<Message>(`${conversationPath(id)}/messages`, cursor, signal);
+export const readThread = (id: string, cursor: string | null, signal: AbortSignal) =>
+  collection<Message>(`${conversationPath(id)}/messages`, cursor, signal);
 export const readConversation = (id: string, signal: AbortSignal) =>
   api<Conversation>(conversationPath(id), { auth: true, signal });
-export const unreadCount = (
-  kind: "conversations" | "notifications",
-  signal: AbortSignal,
-) => api<{ count: number }>(`/${kind}/unread-count`, { auth: true, signal });
+export const unreadCount = (kind: "conversations" | "notifications", signal: AbortSignal) =>
+  api<{ count: number }>(`/${kind}/unread-count`, { auth: true, signal });
 export const startDirect = (targetUserId: string, signal: AbortSignal) =>
   api<Conversation>("/conversations/direct", {
     method: "POST",
@@ -70,11 +64,7 @@ export const startDirect = (targetUserId: string, signal: AbortSignal) =>
     body: { targetUserId },
     signal,
   });
-export const sendMessage = (
-  id: string,
-  body: MessageDraft,
-  signal: AbortSignal,
-) =>
+export const sendMessage = (id: string, body: MessageDraft, signal: AbortSignal) =>
   api<Message>(`${conversationPath(id)}/messages`, {
     method: "POST",
     auth: true,
@@ -87,14 +77,11 @@ export const markThreadRead = (id: string, signal: AbortSignal) =>
     { method: "POST", auth: true, signal },
   );
 export const markNoticeRead = (id: string, signal: AbortSignal) =>
-  api<{ success: boolean; id: string }>(
-    `/notifications/${encodeURIComponent(id)}/read`,
-    {
-      method: "PATCH",
-      auth: true,
-      signal,
-    },
-  );
+  api<{ success: boolean; id: string }>(`/notifications/${encodeURIComponent(id)}/read`, {
+    method: "PATCH",
+    auth: true,
+    signal,
+  });
 export const markAllNoticesRead = (signal: AbortSignal) =>
   api<{ success: boolean; count: number }>("/notifications/read-all", {
     method: "POST",

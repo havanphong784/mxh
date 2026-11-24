@@ -27,9 +27,7 @@ export class NotificationsService {
     let cursor: { createdAt: Temporal.Instant; id: string } | undefined;
     if (query.cursor) {
       try {
-        const decoded = JSON.parse(
-          Buffer.from(query.cursor, "base64").toString("utf8"),
-        );
+        const decoded = JSON.parse(Buffer.from(query.cursor, "base64").toString("utf8"));
         if (
           typeof decoded === "object" &&
           decoded !== null &&
@@ -47,11 +45,7 @@ export class NotificationsService {
       }
     }
 
-    const items = await this.notificationsRepository.findManyWithCursor(
-      userId,
-      limit,
-      cursor,
-    );
+    const items = await this.notificationsRepository.findManyWithCursor(userId, limit, cursor);
 
     const hasMore = items.length > limit;
     const dataItems = hasMore ? items.slice(0, limit) : items;
@@ -59,9 +53,9 @@ export class NotificationsService {
     let nextCursor: string | null = null;
     if (hasMore && dataItems.length > 0) {
       const last = dataItems[dataItems.length - 1];
-      nextCursor = Buffer.from(
-        JSON.stringify({ createdAt: last.createdAt, id: last.id }),
-      ).toString("base64");
+      nextCursor = Buffer.from(JSON.stringify({ createdAt: last.createdAt, id: last.id })).toString(
+        "base64",
+      );
     }
 
     return {
@@ -76,12 +70,8 @@ export class NotificationsService {
     return { count };
   }
 
-  async markAsRead(
-    userId: string,
-    notificationId: string,
-  ): Promise<MarkReadResultDto> {
-    const notification =
-      await this.notificationsRepository.findById(notificationId);
+  async markAsRead(userId: string, notificationId: string): Promise<MarkReadResultDto> {
+    const notification = await this.notificationsRepository.findById(notificationId);
 
     if (!notification || notification.recipientId !== userId) {
       throw new NotFoundException("Thông báo không tồn tại");
@@ -91,11 +81,7 @@ export class NotificationsService {
       await this.notificationsRepository.markAsRead(notificationId);
 
       const unread = await this.getUnreadCount(userId);
-      this.eventsGateway.pushToUser(
-        userId,
-        "notification:unread-count",
-        unread,
-      );
+      this.eventsGateway.pushToUser(userId, "notification:unread-count", unread);
     }
 
     return {
@@ -105,8 +91,7 @@ export class NotificationsService {
   }
 
   async markAllAsRead(userId: string): Promise<MarkAllReadResultDto> {
-    const affectedRows =
-      await this.notificationsRepository.markAllAsRead(userId);
+    const affectedRows = await this.notificationsRepository.markAllAsRead(userId);
 
     this.eventsGateway.pushToUser(userId, "notification:unread-count", {
       count: 0,

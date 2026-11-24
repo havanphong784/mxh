@@ -21,9 +21,7 @@ const glyphs: Record<string, ReactNode> = {
   ),
   mail: <path d="M3 4.5h18v12H9l-6 4v-16Zm4.5 6h9" />,
   bookmark: <path d="M6 4h12v16l-6-4-6 4z" />,
-  heart: (
-    <path d="M12 20S3 15 3 9a4.5 4.5 0 0 1 9-1 4.5 4.5 0 0 1 9 1c0 6-9 11-9 11Z" />
-  ),
+  heart: <path d="M12 20S3 15 3 9a4.5 4.5 0 0 1 9-1 4.5 4.5 0 0 1 9 1c0 6-9 11-9 11Z" />,
   person: (
     <>
       <circle cx="12" cy="8" r="3.5" />
@@ -87,16 +85,10 @@ export function Logo() {
     </a>
   );
 }
-export function Avatar({
-  user,
-}: {
-  user: Pick<User, "displayName" | "avatarUrl">;
-}) {
+export function Avatar({ user }: { user: Pick<User, "displayName" | "avatarUrl"> }) {
   const words = user.displayName.trim().split(/\s+/).filter(Boolean);
   const initials = words.length
-    ? `${words[0][0]}${words.length > 1 ? (words.at(-1)?.[0] ?? "") : ""}`.toLocaleUpperCase(
-        "vi",
-      )
+    ? `${words[0][0]}${words.length > 1 ? (words.at(-1)?.[0] ?? "") : ""}`.toLocaleUpperCase("vi")
     : "?";
   return (
     <span className="shell-avatar" aria-hidden="true">
@@ -106,31 +98,14 @@ export function Avatar({
 }
 export function Engraving() {
   return (
-    <svg
-      className="engraving"
-      viewBox="0 0 440 275"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg className="engraving" viewBox="0 0 440 275" fill="none" aria-hidden="true">
       <defs>
-        <pattern
-          id="desk-grid"
-          width="18"
-          height="18"
-          patternUnits="userSpaceOnUse"
-        >
+        <pattern id="desk-grid" width="18" height="18" patternUnits="userSpaceOnUse">
           <path d="M18 0H0v18" stroke="#7e9b86" strokeOpacity=".23" />
         </pattern>
       </defs>
       <rect x="25" y="18" width="390" height="239" fill="url(#desk-grid)" />
-      <circle
-        cx="218"
-        cy="137"
-        r="93"
-        stroke="#dce9d8"
-        strokeOpacity=".32"
-        strokeDasharray="3 6"
-      />
+      <circle cx="218" cy="137" r="93" stroke="#dce9d8" strokeOpacity=".32" strokeDasharray="3 6" />
       <circle cx="218" cy="137" r="112" stroke="#dce9d8" strokeOpacity=".24" />
       <path
         d="M25 31V18h13m364 0h13v13m0 213v13h-13m-364 0H25v-13"

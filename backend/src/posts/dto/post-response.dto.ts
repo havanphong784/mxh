@@ -108,7 +108,9 @@ export interface UnavailablePostResponseDto {
 }
 
 export type PostResponseDto =
-  ActivePostResponseDto | DeletedPostResponseDto | UnavailablePostResponseDto;
+  | ActivePostResponseDto
+  | DeletedPostResponseDto
+  | UnavailablePostResponseDto;
 
 export class PostResponseMapper {
   static fromEntity(
@@ -128,10 +130,7 @@ export class PostResponseMapper {
       };
     }
 
-    if (
-      post.author &&
-      (!post.author.isActive || !post.author.isEmailVerified)
-    ) {
+    if (post.author && (!post.author.isActive || !post.author.isEmailVerified)) {
       return {
         id: post.id,
         isUnavailable: true,
@@ -141,12 +140,8 @@ export class PostResponseMapper {
     }
 
     const isLiked = options?.likedSet ? options.likedSet.has(post.id) : false;
-    const isReposted = options?.repostedSet
-      ? options.repostedSet.has(post.id)
-      : false;
-    const isBookmarked = options?.bookmarkedSet
-      ? options.bookmarkedSet.has(post.id)
-      : false;
+    const isReposted = options?.repostedSet ? options.repostedSet.has(post.id) : false;
+    const isBookmarked = options?.bookmarkedSet ? options.bookmarkedSet.has(post.id) : false;
 
     let quotedPostData: QuotedPostResponseDto | null = null;
     let isQuotedPostDeleted = false;

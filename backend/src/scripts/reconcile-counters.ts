@@ -4,9 +4,7 @@ import { AppModule } from "../app.module.js";
 import { PostsService } from "../posts/posts.service.js";
 
 async function run() {
-  console.log(
-    "--- BẮT ĐẦU ĐỐI SOÁT BỘ ĐẾM BÀI VIẾT (POST COUNTERS RECONCILIATION) ---",
-  );
+  console.log("--- BẮT ĐẦU ĐỐI SOÁT BỘ ĐẾM BÀI VIẾT (POST COUNTERS RECONCILIATION) ---");
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn"],
   });
@@ -17,9 +15,7 @@ async function run() {
 
     console.log(`\n Quét hoàn tất:`);
     console.log(`- Tổng số bài viết đã kiểm tra: ${result.totalScanned}`);
-    console.log(
-      `- Số bài viết có sai lệch đã được hiệu chỉnh: ${result.correctedCount}`,
-    );
+    console.log(`- Số bài viết có sai lệch đã được hiệu chỉnh: ${result.correctedCount}`);
 
     if (result.discrepancies.length > 0) {
       console.log("\nChi tiết các bài viết đã được sửa sai:");

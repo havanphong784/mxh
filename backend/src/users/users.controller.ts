@@ -41,25 +41,19 @@ export class UsersController {
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
-  async getMyProfile(
-    @CurrentUser("sub") userId: string,
-  ): Promise<MyProfileResponseDto> {
+  async getMyProfile(@CurrentUser("sub") userId: string): Promise<MyProfileResponseDto> {
     return this.usersService.getMyProfile(userId);
   }
 
   @Get("search")
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async searchUsers(
-    @Query() query: SearchQueryDto,
-  ): Promise<CursorPage<UserSummaryDto>> {
+  async searchUsers(@Query() query: SearchQueryDto): Promise<CursorPage<UserSummaryDto>> {
     return this.usersService.searchUsers(query.q, query.cursor, query.limit);
   }
 
   @Get("suggestions")
   @UseGuards(OptionalJwtAuthGuard)
-  async suggestUsers(
-    @CurrentUser("sub") viewerId?: string,
-  ): Promise<{ items: UserSummaryDto[] }> {
+  async suggestUsers(@CurrentUser("sub") viewerId?: string): Promise<{ items: UserSummaryDto[] }> {
     return this.usersService.suggestUsers(viewerId);
   }
 

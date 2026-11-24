@@ -10,9 +10,7 @@ export interface PurgeRetentionResult {
   deletedTombstonePosts: number;
 }
 
-export async function executePurgeRetention(
-  prisma: PrismaService,
-): Promise<PurgeRetentionResult> {
+export async function executePurgeRetention(prisma: PrismaService): Promise<PurgeRetentionResult> {
   // 1. Purge expired OTPs older than 1 day
   const otpPlan = prisma.client.raw.sql`
     DELETE FROM "otpVerification"
@@ -48,14 +46,15 @@ export async function executePurgeRetention(
     .affectedCount()
     .build();
 
-  const [otpRes, sessionRes, notifRes, postRes] =
-    await prisma.client.transaction(async (tx: any) => {
+  const [otpRes, sessionRes, notifRes, postRes] = await prisma.client.transaction(
+    async (tx: any) => {
       const o = await tx.execute(otpPlan);
       const s = await tx.execute(sessionPlan);
       const n = await tx.execute(notifPlan);
       const p = await tx.execute(postPlan);
       return [o, s, n, p];
-    });
+    },
+  );
 
   return {
     deletedOtps: otpRes?.affectedRows ?? 0,
@@ -66,9 +65,7 @@ export async function executePurgeRetention(
 }
 
 async function run() {
-  console.log(
-    "--- BẮT ĐẦU DỌN DẸP DỮ LIỆU ĐỊNH KỲ (DATA RETENTION & PURGE WORKER) ---",
-  );
+  console.log("--- BẮT ĐẦU DỌN DẸP DỮ LIỆU ĐỊNH KỲ (DATA RETENTION & PURGE WORKER) ---");
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn"],
   });
@@ -79,15 +76,9 @@ async function run() {
 
     console.log(`\n Kết quả dọn dẹp:`);
     console.log(`- OTP hết hạn đã xóa: ${result.deletedOtps}`);
-    console.log(
-      `- Phiên (Session) cũ/revoked đã xóa: ${result.deletedSessions}`,
-    );
-    console.log(
-      `- Thông báo (Notification) đã đọc >90 ngày: ${result.deletedNotifications}`,
-    );
-    console.log(
-      `- Tombstone Post mồ côi (replyCount = 0): ${result.deletedTombstonePosts}`,
-    );
+    console.log(`- Phiên (Session) cũ/revoked đã xóa: ${result.deletedSessions}`);
+    console.log(`- Thông báo (Notification) đã đọc >90 ngày: ${result.deletedNotifications}`);
+    console.log(`- Tombstone Post mồ côi (replyCount = 0): ${result.deletedTombstonePosts}`);
     console.log("\n Dọn dẹp hoàn tất thành công!");
   } catch (error) {
     console.error(" Lỗi trong quá trình dọn dẹp:", error);

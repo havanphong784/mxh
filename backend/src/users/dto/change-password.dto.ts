@@ -24,8 +24,7 @@ export class ChangePasswordDto {
       minSymbols: 0,
     },
     {
-      message:
-        "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số",
+      message: "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số",
     },
   )
   newPassword!: string;

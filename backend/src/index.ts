@@ -2,10 +2,7 @@ import "reflect-metadata";
 import * as crypto from "node:crypto";
 import { Temporal } from "@js-temporal/polyfill";
 import { NestFactory } from "@nestjs/core";
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from "@nestjs/platform-fastify";
+import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module.js";
 import "dotenv/config";
 import fastifyCookie from "@fastify/cookie";
@@ -28,9 +25,7 @@ async function bootstrap() {
   const adapter = new FastifyAdapter({
     logger: true,
     requestIdHeader: "x-request-id",
-    genReqId: (req: {
-      headers: Record<string, string | string[] | undefined>;
-    }) => {
+    genReqId: (req: { headers: Record<string, string | string[] | undefined> }) => {
       const existingId = req.headers["x-request-id"];
       if (typeof existingId === "string" && existingId.trim().length > 0) {
         return existingId.trim();
@@ -43,24 +38,15 @@ async function bootstrap() {
     reply.header("x-request-id", request.id);
   });
 
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    adapter,
-  );
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter);
 
-  const configService =
-    app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
+  const configService = app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
   app.enableCors({
     origin: configService.get("CORS_ORIGIN", { infer: true }),
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "x-request-id",
-      "Idempotency-Key",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization", "x-request-id", "Idempotency-Key"],
     exposedHeaders: ["x-request-id"],
   });
 

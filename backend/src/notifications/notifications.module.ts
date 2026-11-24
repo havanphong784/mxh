@@ -10,11 +10,7 @@ import { UsersModule } from "../users/users.module.js";
 @Module({
   imports: [AuthModule, GatewayModule, UsersModule],
   controllers: [NotificationsController],
-  providers: [
-    NotificationsService,
-    NotificationsListener,
-    NotificationsRepository,
-  ],
+  providers: [NotificationsService, NotificationsListener, NotificationsRepository],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

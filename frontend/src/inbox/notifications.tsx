@@ -38,8 +38,7 @@ export function Notifications({
     setError(false);
     setAnnouncement("");
     void write<{ success: boolean }>(
-      (signal) =>
-        id ? markNoticeRead(id, signal) : markAllNoticesRead(signal),
+      (signal) => (id ? markNoticeRead(id, signal) : markAllNoticesRead(signal)),
       (result) => {
         setPending(false);
         if (!result.success) {
@@ -47,14 +46,10 @@ export function Notifications({
           return;
         }
         notices.update((current) =>
-          current.map((notice) =>
-            !id || notice.id === id ? { ...notice, isRead: true } : notice,
-          ),
+          current.map((notice) => (!id || notice.id === id ? { ...notice, isRead: true } : notice)),
         );
         setAnnouncement(
-          id
-            ? "Đã đánh dấu thông báo là đã đọc."
-            : "Đã đánh dấu tất cả thông báo là đã đọc.",
+          id ? "Đã đánh dấu thông báo là đã đọc." : "Đã đánh dấu tất cả thông báo là đã đọc.",
         );
         onRead();
       },
@@ -66,10 +61,7 @@ export function Notifications({
   }
 
   return (
-    <section
-      className="mx-inbox-panel mx-inbox-notices"
-      aria-labelledby="mx-inbox-notice-title"
-    >
+    <section className="mx-inbox-panel mx-inbox-notices" aria-labelledby="mx-inbox-notice-title">
       <header className="mx-inbox-panel-head">
         <h2 id="mx-inbox-notice-title">Hoạt động</h2>
         <button
@@ -90,10 +82,7 @@ export function Notifications({
       {items && items.length > 0 && (
         <ul className="mx-inbox-list" aria-label="Thông báo">
           {items.map((notice) => (
-            <li
-              key={notice.id}
-              className={`mx-inbox-notice${notice.isRead ? "" : " is-unread"}`}
-            >
+            <li key={notice.id} className={`mx-inbox-notice${notice.isRead ? "" : " is-unread"}`}>
               <Avatar person={notice.actor} />
               <div className="mx-inbox-notice-copy">
                 <p>
@@ -110,9 +99,7 @@ export function Notifications({
                 </p>
                 {notice.post && (
                   <blockquote>
-                    <a href={postHref(notice.post)}>
-                      {notice.post.content || "Mở bài viết"}
-                    </a>
+                    <a href={postHref(notice.post)}>{notice.post.content || "Mở bài viết"}</a>
                   </blockquote>
                 )}
                 <Time value={notice.createdAt} />

@@ -31,13 +31,9 @@ const labels: Record<Toggle, [string, string]> = {
 
 function Time({ value, id }: { value: string; id: string }) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime()))
-    return <a href={postPath(id)}>Xem bài viết</a>;
+  if (Number.isNaN(date.getTime())) return <a href={postPath(id)}>Xem bài viết</a>;
   return (
-    <a
-      href={postPath(id)}
-      aria-label={`Mở bài viết lúc ${dateFormat.format(date)}`}
-    >
+    <a href={postPath(id)} aria-label={`Mở bài viết lúc ${dateFormat.format(date)}`}>
       <time dateTime={value}>{dateFormat.format(date)}</time>
     </a>
   );
@@ -79,27 +75,14 @@ function EditPost({
         />
       </label>
       <div className="social-compose-tools">
-        <VisibilityPicker
-          value={visibility}
-          onChange={setVisibility}
-          disabled={busy}
-        />
+        <VisibilityPicker value={visibility} onChange={setVisibility} disabled={busy} />
         <span className="social-count" data-over={length > MAX_CONTENT}>
           {length}/{MAX_CONTENT}
         </span>
-        <button
-          className="button"
-          type="button"
-          disabled={busy}
-          onClick={cancel}
-        >
+        <button className="button" type="button" disabled={busy} onClick={cancel}>
           Hủy
         </button>
-        <button
-          className="button button-primary"
-          type="submit"
-          disabled={disabled}
-        >
+        <button className="button button-primary" type="submit" disabled={disabled}>
           {busy ? "Đang lưu…" : "Lưu thay đổi"}
         </button>
       </div>
@@ -114,13 +97,7 @@ type CardProps = {
   featured?: boolean;
   threaded?: boolean;
 };
-export function PostCard({
-  post,
-  user,
-  change,
-  featured,
-  threaded,
-}: CardProps) {
+export function PostCard({ post, user, change, featured, threaded }: CardProps) {
   const target = repostTarget(post);
   const [panel, setPanel] = useState<"edit" | "delete" | null>(null);
   const [busy, setBusy] = useState<Toggle | "edit" | "delete" | null>(null);
@@ -146,12 +123,7 @@ export function PostCard({
       await task(controller.signal);
     } catch (failure) {
       if (!controller.signal.aborted)
-        setError(
-          errorLabel(
-            failure,
-            "Không thực hiện được thao tác. Vui lòng thử lại.",
-          ),
-        );
+        setError(errorLabel(failure, "Không thực hiện được thao tác. Vui lòng thử lại."));
     } finally {
       lock.current = false;
       if (!controller.signal.aborted) setBusy(null);
@@ -168,11 +140,7 @@ export function PostCard({
       <article className="social-post social-tombstone">
         <div>
           <Icon name="post" />
-          <p>
-            {post.isDeleted
-              ? "Bài viết đã được xóa."
-              : "Bài viết không còn khả dụng."}
-          </p>
+          <p>{post.isDeleted ? "Bài viết đã được xóa." : "Bài viết không còn khả dụng."}</p>
         </div>
         {!featured && Boolean(post.replyCount) && (
           <a href={postPath(post.id)}>Xem cuộc trò chuyện</a>
@@ -221,11 +189,7 @@ export function PostCard({
               : response?.reposted) ?? true)
         : false;
       const countKey =
-        action === "like"
-          ? "likeCount"
-          : action === "repost"
-            ? "repostCount"
-            : "bookmarkCount";
+        action === "like" ? "likeCount" : action === "repost" ? "repostCount" : "bookmarkCount";
       const count =
         action === "like"
           ? response?.likeCount
@@ -233,11 +197,7 @@ export function PostCard({
             ? response?.repostCount
             : undefined;
       const flag =
-        action === "like"
-          ? "isLiked"
-          : action === "bookmark"
-            ? "isBookmarked"
-            : "isReposted";
+        action === "like" ? "isLiked" : action === "bookmark" ? "isBookmarked" : "isReposted";
       if (wrapper) setViewerState({ ...source.interactions, [flag]: active });
       change({
         id: source.id,
@@ -248,9 +208,7 @@ export function PostCard({
           count ??
           Math.max(
             0,
-            source.counters[countKey] +
-              Number(active) -
-              Number(source.interactions[flag]),
+            source.counters[countKey] + Number(active) - Number(source.interactions[flag]),
           ),
       });
       if (authoredWrapper && action === "repost" && !active)
@@ -341,18 +299,13 @@ export function PostCard({
     <article
       className="social-post"
       data-featured={Boolean(featured)}
-      aria-label={
-        target ? `Bài viết của ${target.author.displayName}` : "Bài đăng lại"
-      }
+      aria-label={target ? `Bài viết của ${target.author.displayName}` : "Bài đăng lại"}
     >
       {wrapper && (
         <p className="social-repost-label">
           <Icon name="repost" />
           <span>
-            <a href={profilePath(post.author.username)}>
-              {post.author.displayName}
-            </a>{" "}
-            đã đăng lại
+            <a href={profilePath(post.author.username)}>{post.author.displayName}</a> đã đăng lại
           </span>
           {featured && <Time id={post.id} value={post.createdAt} />}
         </p>
@@ -393,16 +346,10 @@ export function PostCard({
               href={profilePath(target.author.username)}
               aria-label={`Hồ sơ của ${target.author.displayName}`}
             >
-              <Avatar
-                key={target.author.avatarUrl ?? target.author.id}
-                user={target.author}
-              />
+              <Avatar key={target.author.avatarUrl ?? target.author.id} user={target.author} />
             </a>
             <div className="social-byline-text">
-              <a
-                className="social-author"
-                href={profilePath(target.author.username)}
-              >
+              <a className="social-author" href={profilePath(target.author.username)}>
                 {target.author.displayName}
               </a>
               <span>@{target.author.username}</span>
@@ -436,16 +383,11 @@ export function PostCard({
           ) : (
             <div className="social-post-body">
               {!threaded && target.parentId && (
-                <a
-                  className="social-reply-context"
-                  href={postPath(target.parentId)}
-                >
+                <a className="social-reply-context" href={postPath(target.parentId)}>
                   <Icon name="reply" /> Đang trả lời một bài viết
                 </a>
               )}
-              {target.content && (
-                <p className="social-post-copy">{target.content}</p>
-              )}
+              {target.content && <p className="social-post-copy">{target.content}</p>}
               <MediaView media={target.media} />
               {target.quotedPostId && (
                 <div className="social-quote">
@@ -457,9 +399,7 @@ export function PostCard({
                           ? `${target.quotedPost.author.displayName} · @${target.quotedPost.author.username}`
                           : "Xem bài được trích dẫn"}
                       </a>
-                      {target.quotedPost.content && (
-                        <p>{target.quotedPost.content}</p>
-                      )}
+                      {target.quotedPost.content && <p>{target.quotedPost.content}</p>}
                       <MediaView media={target.quotedPost.media} />
                     </>
                   ) : (
@@ -505,20 +445,13 @@ export function PostCard({
             </div>
           )}
           {target.visibility !== "PUBLIC" && (
-            <p className="social-visibility-note">
-              {VISIBILITIES[target.visibility]}
-            </p>
+            <p className="social-visibility-note">{VISIBILITIES[target.visibility]}</p>
           )}
-          <footer
-            className="social-post-actions"
-            aria-label="Tương tác bài viết"
-          >
+          <footer className="social-post-actions" aria-label="Tương tác bài viết">
             <a
               className="social-post-action"
               href={
-                featured && !wrapper
-                  ? "#social-replies"
-                  : postPath(target.id) + "#social-replies"
+                featured && !wrapper ? "#social-replies" : postPath(target.id) + "#social-replies"
               }
               aria-label={`Xem ${target.counters.replyCount} trả lời`}
               title="Trả lời"
@@ -528,11 +461,7 @@ export function PostCard({
                 <span>{countFormat.format(target.counters.replyCount)}</span>
               )}
             </a>
-            {actionButton(
-              "like",
-              Boolean(viewer?.isLiked),
-              target.counters.likeCount,
-            )}
+            {actionButton("like", Boolean(viewer?.isLiked), target.counters.likeCount)}
             {(target.visibility === "PUBLIC" || reposted) &&
               actionButton("repost", reposted, target.counters.repostCount)}
             {target.visibility === "PUBLIC" && (
@@ -548,11 +477,7 @@ export function PostCard({
                 )}
               </a>
             )}
-            {actionButton(
-              "bookmark",
-              Boolean(viewer?.isBookmarked),
-              target.counters.bookmarkCount,
-            )}
+            {actionButton("bookmark", Boolean(viewer?.isBookmarked), target.counters.bookmarkCount)}
           </footer>
           {error && (
             <p className="social-error" role="alert">

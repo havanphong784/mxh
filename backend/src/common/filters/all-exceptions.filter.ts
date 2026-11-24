@@ -31,9 +31,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let errors: string[] | null = null;
 
     const requestId =
-      (request.id as string) ||
-      (request.headers["x-request-id"] as string) ||
-      "unknown";
+      (request.id as string) || (request.headers["x-request-id"] as string) || "unknown";
 
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
@@ -43,10 +41,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       if (typeof exceptionResponse === "string") {
         message = exceptionResponse;
-      } else if (
-        typeof exceptionResponse === "object" &&
-        exceptionResponse !== null
-      ) {
+      } else if (typeof exceptionResponse === "object" && exceptionResponse !== null) {
         const resObj = exceptionResponse as ExceptionResponseObject;
 
         if (typeof resObj.code === "string") {

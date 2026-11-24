@@ -20,8 +20,7 @@ export function createSocketRecovery(
   let cancelRetry: (() => void) | undefined;
 
   async function recover() {
-    if (disposed || pending || cancelRetry || socket.active || socket.connected)
-      return;
+    if (disposed || pending || cancelRetry || socket.active || socket.connected) return;
     pending = true;
     try {
       const token = await refresh();

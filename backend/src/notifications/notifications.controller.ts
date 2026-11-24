@@ -37,9 +37,7 @@ export class NotificationsController {
 
   @Get("unread-count")
   @Throttle({ default: { limit: 120, ttl: 60000 } })
-  async getUnreadCount(
-    @CurrentUser("sub") userId: string,
-  ): Promise<UnreadCountResponseDto> {
+  async getUnreadCount(@CurrentUser("sub") userId: string): Promise<UnreadCountResponseDto> {
     return this.notificationsService.getUnreadCount(userId);
   }
 
@@ -56,9 +54,7 @@ export class NotificationsController {
   @Post("read-all")
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async markAllAsRead(
-    @CurrentUser("sub") userId: string,
-  ): Promise<MarkAllReadResultDto> {
+  async markAllAsRead(@CurrentUser("sub") userId: string): Promise<MarkAllReadResultDto> {
     return this.notificationsService.markAllAsRead(userId);
   }
 }

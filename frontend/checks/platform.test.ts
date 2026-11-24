@@ -18,10 +18,10 @@ test("concurrent expired requests reuse one refresh and retry with its token", a
       : new Response(null, { status: 401 });
   });
   client.setToken("expired");
-  assert.deepEqual(
-    await Promise.all([client.request("/items/1"), client.request("/items/2")]),
-    [{ id: "1" }, { id: "2" }],
-  );
+  assert.deepEqual(await Promise.all([client.request("/items/1"), client.request("/items/2")]), [
+    { id: "1" },
+    { id: "2" },
+  ]);
   assert.equal(refreshes, 1);
 });
 
@@ -71,8 +71,7 @@ test("refresh retries preserve write idempotency and errors expose API messages"
   const { createClient } = await loadApi();
   const keys: (string | null)[] = [];
   const client = createClient("", async (url, init) => {
-    if (String(url).endsWith("/auth/refresh"))
-      return Response.json({ accessToken: "fresh" });
+    if (String(url).endsWith("/auth/refresh")) return Response.json({ accessToken: "fresh" });
     keys.push(new Headers(init?.headers).get("Idempotency-Key"));
     return keys.length === 1
       ? new Response(null, { status: 401 })

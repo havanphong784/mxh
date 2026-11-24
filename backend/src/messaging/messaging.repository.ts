@@ -53,13 +53,10 @@ export class MessagingRepository {
   }
 
   async findConversationForUser(conversationId: string, userId: string) {
-    const participant = await this.participant
-      .where({ conversationId, userId })
-      .first();
+    const participant = await this.participant.where({ conversationId, userId }).first();
     if (!participant) return null;
 
-    const conversation =
-      await this.findConversationWithParticipants(conversationId);
+    const conversation = await this.findConversationWithParticipants(conversationId);
     if (!conversation) return null;
 
     return { conversation, participant };
@@ -83,9 +80,7 @@ export class MessagingRepository {
   ) {
     let query = this.conversation
       .where((conversation) =>
-        conversation.participants.some((participant) =>
-          participant.userId.eq(userId),
-        ),
+        conversation.participants.some((participant) => participant.userId.eq(userId)),
       )
       .orderBy([(item) => item.updatedAt.desc(), (item) => item.id.desc()]);
 
@@ -105,9 +100,7 @@ export class MessagingRepository {
     return this.participant.where({ conversationId, userId }).first();
   }
 
-  async findLatestMessage(
-    conversationId: string,
-  ): Promise<MessageRecord | null> {
+  async findLatestMessage(conversationId: string): Promise<MessageRecord | null> {
     const messages = await this.message
       .where({ conversationId })
       .orderBy([(item) => item.createdAt.desc(), (item) => item.id.desc()])
@@ -175,11 +168,7 @@ export class MessagingRepository {
     });
   }
 
-  async markAsRead(
-    conversationId: string,
-    userId: string,
-    readAt: Temporal.Instant,
-  ) {
+  async markAsRead(conversationId: string, userId: string, readAt: Temporal.Instant) {
     await this.participant.where({ conversationId, userId }).update({
       lastReadAt: readAt,
     });
@@ -190,9 +179,7 @@ export class MessagingRepository {
     userId: string,
     lastReadAt: Temporal.Instant | null,
   ): Promise<number> {
-    let query = this.message
-      .where({ conversationId })
-      .where((item) => item.senderId.neq(userId));
+    let query = this.message.where({ conversationId }).where((item) => item.senderId.neq(userId));
 
     if (lastReadAt) {
       query = query.where((item) => item.createdAt.gt(lastReadAt));

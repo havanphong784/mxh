@@ -9,13 +9,10 @@ export function readPostLikes(
   auth: boolean,
   signal: AbortSignal,
 ) {
-  return api<PostLikesPage>(
-    pagePath(`/posts/${encodeURIComponent(postId)}/likes`, cursor),
-    {
-      auth,
-      signal,
-    },
-  );
+  return api<PostLikesPage>(pagePath(`/posts/${encodeURIComponent(postId)}/likes`, cursor), {
+    auth,
+    signal,
+  });
 }
 
 export function errorLabel(error: unknown, fallback: string) {
@@ -40,9 +37,7 @@ export function useQuery<T>(endpoint: string | undefined, auth: boolean) {
       })
       .catch((failure: unknown) => {
         if (!request.signal.aborted)
-          setError(
-            errorLabel(failure, "Không tải được nội dung. Vui lòng thử lại."),
-          );
+          setError(errorLabel(failure, "Không tải được nội dung. Vui lòng thử lại."));
       })
       .finally(() => {
         if (!request.signal.aborted) setLoading(false);
@@ -92,8 +87,7 @@ export function usePostPages(
         change.kind === "toggle" &&
         change.action === collection &&
         !change.active &&
-        (post.id === change.id ||
-          (isActive(post) && post.repostOfId === change.id))
+        (post.id === change.id || (isActive(post) && post.repostOfId === change.id))
       )
         return [];
       return [value];
@@ -123,8 +117,7 @@ export function usePostPages(
           response.items,
         );
         const incoming = first ? appendPage(inserted.current, rows) : rows;
-        next.current =
-          response.nextCursor === cursor ? null : response.nextCursor;
+        next.current = response.nextCursor === cursor ? null : response.nextCursor;
         started.current = true;
         const nextCursor = next.current;
         setPage((current) => ({
@@ -139,10 +132,7 @@ export function usePostPages(
           setPage((current) => ({
             ...current,
             status: first ? "error" : "more-error",
-            error: errorLabel(
-              failure,
-              "Không tải được bài viết. Vui lòng thử lại.",
-            ),
+            error: errorLabel(failure, "Không tải được bài viết. Vui lòng thử lại."),
           }));
         return false;
       } finally {
@@ -166,19 +156,14 @@ export function usePostPages(
     reload: () => load(true),
     apply(change: PostChange) {
       journal.current.push(change);
-      inserted.current = inserted.current.flatMap((post) =>
-        update(post, change),
-      );
+      inserted.current = inserted.current.flatMap((post) => update(post, change));
       setPage((current) => ({
         ...current,
         items: current.items.flatMap((post) => update(post, change)),
       }));
     },
     prepend(post: Post) {
-      inserted.current = [
-        post,
-        ...inserted.current.filter((item) => item.id !== post.id),
-      ];
+      inserted.current = [post, ...inserted.current.filter((item) => item.id !== post.id)];
       setPage((current) => ({
         ...current,
         items: [post, ...current.items.filter((item) => item.id !== post.id)],

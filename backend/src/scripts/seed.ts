@@ -9,8 +9,7 @@ const data = buildSeedData(new Date());
 const summary = Object.fromEntries(
   Object.entries(data).map(([key, values]) => [key, values.length]),
 );
-const instant = (date: Date) =>
-  Temporal.Instant.fromEpochMilliseconds(date.getTime());
+const instant = (date: Date) => Temporal.Instant.fromEpochMilliseconds(date.getTime());
 
 async function main() {
   if (args.has("--dry-run")) {
@@ -22,10 +21,7 @@ async function main() {
   }
   if (!process.env.DATABASE_URL) throw new Error("Thiếu DATABASE_URL.");
   const hostname = new URL(process.env.DATABASE_URL).hostname;
-  if (
-    !["localhost", "127.0.0.1", "::1"].includes(hostname) &&
-    !args.has("--allow-remote")
-  ) {
+  if (!["localhost", "127.0.0.1", "::1"].includes(hostname) && !args.has("--allow-remote")) {
     throw new Error(
       `Database không nằm trên máy cục bộ (${hostname}). Chỉ dùng --allow-remote cho database thử nghiệm.`,
     );

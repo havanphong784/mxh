@@ -1,11 +1,4 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, MouseEvent, ReactNode } from "react";
 import { io } from "socket.io-client";
 import { api, apiOrigin, sessionClient } from "./api";
@@ -15,15 +8,9 @@ import { createSocketRecovery } from "./realtime";
 import type { AuthResult, User } from "./session";
 import { Avatar, Icon, Logo } from "./ui";
 
-const Social = lazy(() =>
-  import("./social/index").then((m) => ({ default: m.Social })),
-);
-const People = lazy(() =>
-  import("./people/index").then((m) => ({ default: m.People })),
-);
-const Inbox = lazy(() =>
-  import("./inbox/index").then((m) => ({ default: m.Inbox })),
-);
+const Social = lazy(() => import("./social/index").then((m) => ({ default: m.Social })));
+const People = lazy(() => import("./people/index").then((m) => ({ default: m.People })));
+const Inbox = lazy(() => import("./inbox/index").then((m) => ({ default: m.Inbox })));
 const here = () => window.location.pathname + window.location.search;
 const topLinks = [
   ["/", "Bảng tin", "home"],
@@ -73,13 +60,7 @@ export function App() {
   const user = session.user;
   const route = resolveRoute(location);
   const navigate = useCallback((to: string, replace = false) => {
-    if (
-      !to.startsWith("/") ||
-      to.startsWith("//") ||
-      to.includes("\\") ||
-      here() === to
-    )
-      return;
+    if (!to.startsWith("/") || to.startsWith("//") || to.includes("\\") || here() === to) return;
     if (replace) history.replaceState(null, "", to);
     else history.pushState(null, "", to);
     setLocation(here());
@@ -93,22 +74,16 @@ export function App() {
   useEffect(() => {
     let active = true;
     const epoch = authEpoch.current;
-    const clear = sessionClient.onExpired(() =>
-      setSession({ phase: "ready", user: null }),
-    );
+    const clear = sessionClient.onExpired(() => setSession({ phase: "ready", user: null }));
     const controller = new AbortController();
     async function start() {
       try {
         const token = await sessionClient.refresh();
         if (!active || authEpoch.current !== epoch) return;
-        const account = token
-          ? await api<User>("/auth/me", { signal: controller.signal })
-          : null;
-        if (active && authEpoch.current === epoch)
-          setSession({ phase: "ready", user: account });
+        const account = token ? await api<User>("/auth/me", { signal: controller.signal }) : null;
+        if (active && authEpoch.current === epoch) setSession({ phase: "ready", user: account });
       } catch {
-        if (active && authEpoch.current === epoch)
-          setSession({ phase: "error", user: null });
+        if (active && authEpoch.current === epoch) setSession({ phase: "error", user: null });
       }
     }
     void start();
@@ -124,9 +99,7 @@ export function App() {
       auth: (callback) => callback({ token: sessionClient.getToken() }),
     });
     const relay = (event: string, data: unknown) =>
-      window.dispatchEvent(
-        new CustomEvent("mxh:realtime", { detail: { event, data } }),
-      );
+      window.dispatchEvent(new CustomEvent("mxh:realtime", { detail: { event, data } }));
     socket.onAny(relay);
     socket.on("connect", () => relay("connect", null));
     const recovery = createSocketRecovery(socket, sessionClient.refresh);
@@ -149,10 +122,7 @@ export function App() {
     if (route.private && !user)
       navigate(`/login?${new URLSearchParams({ next: route.path })}`, true);
     if (route.area === "auth" && user)
-      navigate(
-        safeReturn(new URLSearchParams(route.path.split("?")[1]).get("next")),
-        true,
-      );
+      navigate(safeReturn(new URLSearchParams(route.path.split("?")[1]).get("next")), true);
   }, [route.private, route.area, route.path, navigate, session.phase, user]);
   useEffect(() => {
     const pathname = route.path.split("?")[0];
@@ -210,31 +180,19 @@ export function App() {
         setUser(null);
         navigate("/login", true);
       })
-      .catch(() =>
-        setLogoutError("Chưa đăng xuất được. Hãy kiểm tra kết nối và thử lại."),
-      )
+      .catch(() => setLogoutError("Chưa đăng xuất được. Hãy kiểm tra kết nối và thử lại."))
       .finally(() => setEnding(false));
   }
 
   let page: ReactNode;
-  if (
-    session.phase === "loading" ||
-    (session.phase === "ready" && route.private && !user)
-  )
+  if (session.phase === "loading" || (session.phase === "ready" && route.private && !user))
     page = (
       <main id="noi-dung">
         <Loading text="Đang kiểm tra phiên đăng nhập…" />
       </main>
     );
   else if (route.area === "auth")
-    page = (
-      <Auth
-        key={route.path}
-        path={route.path}
-        onLogin={login}
-        navigate={navigate}
-      />
-    );
+    page = <Auth key={route.path} path={route.path} onLogin={login} navigate={navigate} />;
   else if (session.phase === "error" && route.private)
     page = (
       <main id="noi-dung" className="shell-failure">
@@ -344,9 +302,7 @@ function Shell({
       update("bell", "/notifications/unread-count");
     }
     const receive = (e: Event) => {
-      const detail = (
-        e as CustomEvent<{ event: string; data: { count?: number } | null }>
-      ).detail;
+      const detail = (e as CustomEvent<{ event: string; data: { count?: number } | null }>).detail;
       if (detail.event === "connect") void refresh();
       const key =
         detail.event === "conversation:unread-count"
@@ -369,17 +325,13 @@ function Shell({
   }, [user?.id, pathname]);
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();
-    if (term.trim())
-      navigate(`/search?${new URLSearchParams({ q: term.trim() })}`);
+    if (term.trim()) navigate(`/search?${new URLSearchParams({ q: term.trim() })}`);
   };
   const links = user ? topLinks : topLinks.slice(0, 2);
-  const profile = user
-    ? `/profile/${encodeURIComponent(user.username)}`
-    : "/login";
+  const profile = user ? `/profile/${encodeURIComponent(user.username)}` : "/login";
   const wide = pathname.startsWith("/messages");
   function navLink([url, label, icon]: string[]) {
-    const active =
-      pathname === url || (url !== "/" && pathname.startsWith(`${url}/`));
+    const active = pathname === url || (url !== "/" && pathname.startsWith(`${url}/`));
     const count = counts[icon as keyof typeof counts];
     return (
       <a
@@ -405,9 +357,7 @@ function Shell({
         <Logo />
         <nav aria-label="Điều hướng chính" className="rail-nav">
           {links.map(navLink)}
-          {user && (
-            <div className="rail-personal">{personalLinks.map(navLink)}</div>
-          )}
+          {user && <div className="rail-personal">{personalLinks.map(navLink)}</div>}
         </nav>
         {user ? (
           <>
@@ -446,11 +396,7 @@ function Shell({
           <div className="mobile-brand">
             <Logo />
           </div>
-          <form
-            onSubmit={submitSearch}
-            className="workspace-search"
-            role="search"
-          >
+          <form onSubmit={submitSearch} className="workspace-search" role="search">
             <button type="submit" aria-label="Tìm kiếm">
               <Icon name="search" size={18} />
             </button>
@@ -484,9 +430,7 @@ function Shell({
                   <Icon name="compass" size={23} />
                 </span>
                 <h2>Tìm người để theo dõi</h2>
-                <p>
-                  Bảng tin sẽ có bài mới khi những người bạn theo dõi đăng bài.
-                </p>
+                <p>Bảng tin sẽ có bài mới khi những người bạn theo dõi đăng bài.</p>
                 <a href="/people">
                   Tìm tài khoản <Icon name="arrow" size={16} />
                 </a>

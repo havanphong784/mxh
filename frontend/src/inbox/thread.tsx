@@ -1,17 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  markThreadRead,
-  readConversation,
-  readThread,
-  sendMessage,
-} from "./data";
+import { markThreadRead, readConversation, readThread, sendMessage } from "./data";
 import { mergeById, messageDraft } from "./model";
 import type { MessageDraft } from "./model";
 import { usePages, useResource, useWrite } from "./use-inbox";
@@ -29,14 +18,10 @@ export function Thread({
   onActivity: () => void;
 }) {
   const load = useCallback(
-    (cursor: string | null, signal: AbortSignal) =>
-      readThread(id, cursor, signal),
+    (cursor: string | null, signal: AbortSignal) => readThread(id, cursor, signal),
     [id],
   );
-  const loadConversation = useCallback(
-    (signal: AbortSignal) => readConversation(id, signal),
-    [id],
-  );
+  const loadConversation = useCallback((signal: AbortSignal) => readConversation(id, signal), [id]);
   const history = usePages(load, revision, true);
   const conversation = useResource(loadConversation, revision);
   const [draft, setDraft] = useState("");
@@ -48,9 +33,7 @@ export function Thread({
   const log = useRef<HTMLDivElement>(null);
   const offset = useRef<{ height: number; top: number } | null>(null);
   const [atEnd, setAtEnd] = useState(true);
-  const [visible, setVisible] = useState(
-    () => document.visibilityState !== "hidden",
-  );
+  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
   const [lastRead, setLastRead] = useState<string | null>(null);
   const [readFailed, setReadFailed] = useState(false);
   const messages = history.page?.items;
@@ -118,9 +101,7 @@ export function Thread({
     if (sending) return;
     const request = messageDraft(draft, pendingDraft.current, () => {
       const bytes = crypto.getRandomValues(new Uint8Array(16));
-      return Array.from(bytes, (value) =>
-        value.toString(16).padStart(2, "0"),
-      ).join("");
+      return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
     });
     if (!request) return;
     pendingDraft.current = request;
@@ -133,9 +114,7 @@ export function Thread({
         offset.current = null;
         setAtEnd(true);
         history.update((items) =>
-          items.some((item) => item.id === message.id)
-            ? items
-            : mergeById(items, [message]),
+          items.some((item) => item.id === message.id) ? items : mergeById(items, [message]),
         );
         history.reload();
         setDraft("");
@@ -159,16 +138,9 @@ export function Thread({
   }
 
   return (
-    <section
-      className="mx-inbox-panel mx-inbox-thread"
-      aria-label="Cuộc trò chuyện"
-    >
+    <section className="mx-inbox-panel mx-inbox-thread" aria-label="Cuộc trò chuyện">
       <header className="mx-inbox-panel-head mx-inbox-thread-head">
-        <a
-          className="button mx-inbox-back"
-          href="/messages"
-          aria-label="Về danh sách trò chuyện"
-        >
+        <a className="button mx-inbox-back" href="/messages" aria-label="Về danh sách trò chuyện">
           <Icon name="back" />
         </a>
         {peer && <Avatar person={peer} />}
@@ -178,20 +150,14 @@ export function Thread({
         </div>
       </header>
       {conversation.failed && (
-        <Status
-          text="Không thể tải thông tin cuộc trò chuyện."
-          retry={conversation.reload}
-        />
+        <Status text="Không thể tải thông tin cuộc trò chuyện." retry={conversation.reload} />
       )}
       <div
         ref={log}
         className="mx-inbox-log"
         onScroll={(event) => {
           const element = event.currentTarget;
-          setAtEnd(
-            element.scrollHeight - element.scrollTop - element.clientHeight <
-              48,
-          );
+          setAtEnd(element.scrollHeight - element.scrollTop - element.clientHeight < 48);
         }}
       >
         <Pager
@@ -203,20 +169,13 @@ export function Thread({
           rootMargin="320px 0px 0px 0px"
         />
         {!messages && !history.failure && <Status text="Đang tải tin nhắn…" />}
-        {messages?.length === 0 && (
-          <Status text="Chưa có tin nhắn. Hãy gửi lời chào!" />
-        )}
+        {messages?.length === 0 && <Status text="Chưa có tin nhắn. Hãy gửi lời chào!" />}
         {messages && messages.length > 0 && (
           <ol className="mx-inbox-bubbles" aria-label="Tin nhắn">
             {messages.map((message) => (
-              <li
-                key={message.id}
-                className={message.senderId === userId ? "is-mine" : ""}
-              >
+              <li key={message.id} className={message.senderId === userId ? "is-mine" : ""}>
                 <span className="mx-inbox-sr">
-                  {message.senderId === userId
-                    ? "Bạn: "
-                    : `${peer?.displayName || "Người nhận"}: `}
+                  {message.senderId === userId ? "Bạn: " : `${peer?.displayName || "Người nhận"}: `}
                 </span>
                 <p>
                   {message.deletedAt || message.body === null ? (
@@ -246,10 +205,7 @@ export function Thread({
         </div>
       )}
       {readFailed && (
-        <Status
-          text="Không thể đánh dấu đã đọc."
-          retry={() => setReadFailed(false)}
-        />
+        <Status text="Không thể đánh dấu đã đọc." retry={() => setReadFailed(false)} />
       )}
       {history.page && peer && (
         <form className="mx-inbox-form mx-inbox-reply" onSubmit={submit}>

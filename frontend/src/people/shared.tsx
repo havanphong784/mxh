@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Person } from "./contracts";
 
 export function errorText(error: unknown, fallback: string): string {
-  if (error instanceof TypeError)
-    return "Không kết nối được. Kiểm tra mạng rồi thử lại.";
+  if (error instanceof TypeError) return "Không kết nối được. Kiểm tra mạng rồi thử lại.";
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
@@ -21,8 +20,7 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>) {
         if (!controller.signal.aborted) setValue(result);
       })
       .catch((failure) => {
-        if (!controller.signal.aborted)
-          setError(errorText(failure, "Không tải được dữ liệu."));
+        if (!controller.signal.aborted) setError(errorText(failure, "Không tải được dữ liệu."));
       });
     return () => controller.abort();
   }, [attempt]);
@@ -63,20 +61,11 @@ export function LoadFailure({
 export function Avatar({ person, large }: { person: Person; large?: boolean }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const initial =
-    Array.from(
-      person.displayName.trim() || person.username,
-    )[0]?.toLocaleUpperCase("vi") ?? "";
+    Array.from(person.displayName.trim() || person.username)[0]?.toLocaleUpperCase("vi") ?? "";
   return (
-    <div
-      className={`people-avatar${large ? " people-avatar-large" : ""}`}
-      aria-hidden="true"
-    >
+    <div className={`people-avatar${large ? " people-avatar-large" : ""}`} aria-hidden="true">
       {person.avatarUrl && failedUrl !== person.avatarUrl ? (
-        <img
-          src={person.avatarUrl}
-          alt=""
-          onError={() => setFailedUrl(person.avatarUrl ?? null)}
-        />
+        <img src={person.avatarUrl} alt="" onError={() => setFailedUrl(person.avatarUrl ?? null)} />
       ) : (
         initial
       )}

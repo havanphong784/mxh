@@ -1,12 +1,5 @@
 import { Transform } from "class-transformer";
-import {
-  IsOptional,
-  IsString,
-  IsUrl,
-  MaxLength,
-  MinLength,
-  ValidateIf,
-} from "class-validator";
+import { IsOptional, IsString, IsUrl, MaxLength, MinLength, ValidateIf } from "class-validator";
 
 export class UpdateProfileDto {
   @IsOptional()

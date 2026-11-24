@@ -1,11 +1,4 @@
 {
-  "frontend/**/*.{ts,tsx,js,jsx}": [
-    "npm run lint --prefix frontend -- --fix",
-    "prettier --write"
-  ],
-  "backend/**/*.ts": [
-    "npm run lint --prefix backend -- --fix",
-    "prettier --write"
-  ],
-  "*.{json,md,yaml,yml}": ["prettier --write"]
+  "*.{js,jsx,ts,tsx,json,jsonc,css}": "biome format --write",
+  "*.{md,yaml,yml}": "biome format --write"
 }

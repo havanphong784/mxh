@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Query,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
@@ -39,9 +31,7 @@ export class MessagingController {
 
   @Get("unread-count")
   @Throttle({ default: { limit: 120, ttl: 60000 } })
-  async getUnreadCount(
-    @CurrentUser("sub") userId: string,
-  ): Promise<UnreadMessagesCountDto> {
+  async getUnreadCount(@CurrentUser("sub") userId: string): Promise<UnreadMessagesCountDto> {
     return this.messagingService.getUnreadCount(userId);
   }
 

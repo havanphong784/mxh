@@ -3,10 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Inject, forwardRef } from "@nestjs/common";
 import { UsersService } from "../users/users.service.js";
 import type { CurrentUserPayload } from "./decorators/current-user.decorator.js";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../common/exceptions/domain.exception.js";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
 import { ConfigService } from "@nestjs/config";
 import type { EnvironmentVariables } from "../config/env.validation.js";
 
@@ -41,14 +38,10 @@ export class AccessSessionService {
     }
 
     if (!this.isAccessTokenPayload(payload)) {
-      throw new UnauthorizedException(
-        "Token không chứa thông tin phiên hợp lệ",
-      );
+      throw new UnauthorizedException("Token không chứa thông tin phiên hợp lệ");
     }
 
-    const session = await this.usersService.getAccessSessionState(
-      payload.sessionId,
-    );
+    const session = await this.usersService.getAccessSessionState(payload.sessionId);
 
     if (!session || session.userId !== payload.sub) {
       throw new DomainException(
@@ -89,9 +82,7 @@ export class AccessSessionService {
     return payload;
   }
 
-  private isAccessTokenPayload(
-    payload: unknown,
-  ): payload is CurrentUserPayload {
+  private isAccessTokenPayload(payload: unknown): payload is CurrentUserPayload {
     if (typeof payload !== "object" || payload === null) return false;
 
     const candidate = payload as Record<string, unknown>;
@@ -104,15 +95,8 @@ export class AccessSessionService {
   }
 
   private isExpired(expiresAt: unknown): boolean {
-    if (
-      expiresAt &&
-      typeof expiresAt === "object" &&
-      "epochMilliseconds" in expiresAt
-    ) {
-      return (
-        Date.now() >
-        Number((expiresAt as { epochMilliseconds: number }).epochMilliseconds)
-      );
+    if (expiresAt && typeof expiresAt === "object" && "epochMilliseconds" in expiresAt) {
+      return Date.now() > Number((expiresAt as { epochMilliseconds: number }).epochMilliseconds);
     }
 
     if (expiresAt instanceof Date) {

@@ -6,26 +6,11 @@ import type { AuthResult } from "./session";
 import { Engraving, Icon, Logo } from "./ui";
 
 const info = {
-  "/login": [
-    "Đăng nhập",
-    "Tiếp tục theo dõi những người và câu chuyện bạn quan tâm.",
-  ],
-  "/register": [
-    "Tạo tài khoản",
-    "Chọn tên hiển thị và tên người dùng để bắt đầu.",
-  ],
-  "/verify-otp": [
-    "Xác minh email",
-    "Nhập mã 6 chữ số đã gửi vào hộp thư của bạn.",
-  ],
-  "/forgot-password": [
-    "Quên mật khẩu",
-    "Nhập email tài khoản để nhận mã đặt lại mật khẩu.",
-  ],
-  "/reset-password": [
-    "Đặt lại mật khẩu",
-    "Nhập mã trong email và chọn một mật khẩu mới.",
-  ],
+  "/login": ["Đăng nhập", "Tiếp tục theo dõi những người và câu chuyện bạn quan tâm."],
+  "/register": ["Tạo tài khoản", "Chọn tên hiển thị và tên người dùng để bắt đầu."],
+  "/verify-otp": ["Xác minh email", "Nhập mã 6 chữ số đã gửi vào hộp thư của bạn."],
+  "/forgot-password": ["Quên mật khẩu", "Nhập email tài khoản để nhận mã đặt lại mật khẩu."],
+  "/reset-password": ["Đặt lại mật khẩu", "Nhập mã trong email và chọn một mật khẩu mới."],
 } as const;
 
 export function Auth({
@@ -66,9 +51,7 @@ export function Auth({
       if (login || verify) {
         const result = await post<AuthResult>(route, {
           ...body,
-          ...(login
-            ? { password: value("password") }
-            : { code: value("code") }),
+          ...(login ? { password: value("password") } : { code: value("code") }),
         });
         onLogin(result);
         navigate(next, true);
@@ -92,9 +75,7 @@ export function Auth({
         navigate(carry("/reset-password"));
       }
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Không thể kết nối. Hãy thử lại.",
-      );
+      setError(e instanceof Error ? e.message : "Không thể kết nối. Hãy thử lại.");
     } finally {
       setBusy(false);
     }
@@ -107,9 +88,7 @@ export function Auth({
       await post("/resend-otp", { email: email.trim() });
       setMessage("Đã gửi lại mã. Hãy kiểm tra email.");
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Không gửi được mã. Hãy thử lại.",
-      );
+      setError(e instanceof Error ? e.message : "Không gửi được mã. Hãy thử lại.");
     } finally {
       setBusy(false);
     }
@@ -132,8 +111,7 @@ export function Auth({
               trò chuyện<span>.</span>
             </p>
             <p>
-              Đọc điều bạn quan tâm. Viết điều bạn muốn chia sẻ. Nối tiếp câu
-              chuyện trong tin nhắn.
+              Đọc điều bạn quan tâm. Viết điều bạn muốn chia sẻ. Nối tiếp câu chuyện trong tin nhắn.
             </p>
           </div>
           <Engraving />
@@ -213,11 +191,7 @@ export function Auth({
                   autoComplete={login ? "current-password" : "new-password"}
                   minLength={login ? 6 : 8}
                   maxLength={100}
-                  pattern={
-                    login
-                      ? undefined
-                      : "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,100}"
-                  }
+                  pattern={login ? undefined : "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,100}"}
                   required
                   aria-describedby={!login ? "password-hint" : undefined}
                 />
@@ -233,10 +207,7 @@ export function Auth({
                 Quên mật khẩu?
               </a>
             )}
-            <button
-              className="button button-primary gate-submit"
-              disabled={busy}
-            >
+            <button className="button button-primary gate-submit" disabled={busy}>
               {busy
                 ? "Đang xử lý…"
                 : login

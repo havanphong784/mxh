@@ -7,8 +7,7 @@ const paths = {
   heart:
     "M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6l1.2 1.2 7.6 7.6 8.8-8.8a5.4 5.4 0 0 0 0-7.6Z",
   bookmark: "M6 4h12v17l-6-4-6 4V4Z",
-  repost:
-    "m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3",
+  repost: "m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3",
   reply:
     "M21 11.5a8.4 8.4 0 0 1-9 8.5 9.3 9.3 0 0 1-3.4-.7L3 21l1.6-4.2A8.3 8.3 0 0 1 3 11.5a9 9 0 0 1 18 0Z",
   quote: "M10 5H4v8h5c0 3-1.2 4.5-4 5.5M21 5h-6v8h5c0 3-1.2 4.5-4 5.5",
@@ -44,17 +43,11 @@ export function Icon({ name }: { name: keyof typeof paths }) {
 
 export function Avatar({ user }: { user: Author }) {
   const [failed, setFailed] = useState(false);
-  const initial =
-    Array.from(user.displayName.trim() || user.username)[0] ?? "?";
+  const initial = Array.from(user.displayName.trim() || user.username)[0] ?? "?";
   return (
     <span className="social-avatar" aria-hidden="true">
       {user.avatarUrl && !failed ? (
-        <img
-          src={user.avatarUrl}
-          alt=""
-          loading="lazy"
-          onError={() => setFailed(true)}
-        />
+        <img src={user.avatarUrl} alt="" loading="lazy" onError={() => setFailed(true)} />
       ) : (
         initial.toLocaleUpperCase("vi")
       )}
@@ -130,13 +123,7 @@ export function MediaView({ media }: { media: Media[] }) {
           const label = `${item.type === "IMAGE" ? "Ảnh" : item.type === "AUDIO" ? "Âm thanh" : "Video"} đính kèm ${index + 1}`;
           if (item.type === "AUDIO")
             return (
-              <audio
-                key={item.id}
-                controls
-                preload="none"
-                aria-label={label}
-                src={item.url}
-              />
+              <audio key={item.id} controls preload="none" aria-label={label} src={item.url} />
             );
           if (item.type === "VIDEO")
             return (

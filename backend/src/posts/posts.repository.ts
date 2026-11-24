@@ -33,11 +33,7 @@ export class PostsRepository {
   }
 
   async findByIdWithAuthorAndMedia(postId: string) {
-    return this.post
-      .where({ id: postId })
-      .include("author")
-      .include("media")
-      .first();
+    return this.post.where({ id: postId }).include("author").include("media").first();
   }
 
   async findByIdForResponse(postId: string) {
@@ -60,9 +56,7 @@ export class PostsRepository {
     await this.prisma.client.transaction(async (tx) => {
       await tx.orm.public.Post.where({ id: postId }).update(payload);
       if (visibility !== undefined) {
-        await tx.orm.public.Post.where((post) => post.rootId.eq(postId)).update(
-          { visibility },
-        );
+        await tx.orm.public.Post.where((post) => post.rootId.eq(postId)).update({ visibility });
       }
     });
   }
@@ -241,10 +235,7 @@ export class PostsRepository {
     const table: any = kind === "bookmark" ? this.bookmark : this.like;
     let query = table
       .where((mark: any) => mark.userId.eq(userId))
-      .orderBy([
-        (mark: any) => mark.createdAt.desc(),
-        (mark: any) => mark.postId.desc(),
-      ]);
+      .orderBy([(mark: any) => mark.createdAt.desc(), (mark: any) => mark.postId.desc()]);
     if (cursor) query = query.cursor(cursor);
     return query.limit(limit).all();
   }
@@ -261,11 +252,7 @@ export class PostsRepository {
       .all();
   }
 
-  async findSecondaryMarks(
-    kind: "bookmark" | "like",
-    userId: string,
-    postIds: string[],
-  ) {
+  async findSecondaryMarks(kind: "bookmark" | "like", userId: string, postIds: string[]) {
     const [likes, bookmarks, reposts] = await Promise.all([
       kind === "like"
         ? []
@@ -297,9 +284,7 @@ export class PostsRepository {
       .where((post) => post.authorId.in(authorIds))
       .where((post) => post.isDeleted.eq(false))
       .where((post) => post.author.some((user) => user.isActive.eq(true)))
-      .where((post) =>
-        post.author.some((user) => user.isEmailVerified.eq(true)),
-      )
+      .where((post) => post.author.some((user) => user.isEmailVerified.eq(true)))
       .orderBy([(post) => post.createdAt.desc(), (post) => post.id.desc()]);
     if (cursor) query = query.cursor(cursor);
     return query
@@ -324,18 +309,12 @@ export class PostsRepository {
       .where((post) => post.parentId.isNull())
       .where((post) => post.isDeleted.eq(false))
       .where((post) => post.author.some((user) => user.isActive.eq(true)))
-      .where((post) =>
-        post.author.some((user) => user.isEmailVerified.eq(true)),
-      )
+      .where((post) => post.author.some((user) => user.isEmailVerified.eq(true)))
       .orderBy([(post) => post.createdAt.desc(), (post) => post.id.desc()]);
     if (searchTerm)
-      query = query.where((post) =>
-        post.content.ilike(toContainsPattern(searchTerm)),
-      );
+      query = query.where((post) => post.content.ilike(toContainsPattern(searchTerm)));
     if (mediaOnly)
-      query = query.where((post) =>
-        post.media.some((media) => media.type.in(["IMAGE", "VIDEO"])),
-      );
+      query = query.where((post) => post.media.some((media) => media.type.in(["IMAGE", "VIDEO"])));
     if (cursor) query = query.cursor(cursor);
     return query
       .limit(limit + 1)
@@ -463,18 +442,10 @@ export class PostsRepository {
           isDeleted: true,
           content: null,
         });
-        await tx.orm.public.PostMedia.where((media) =>
-          media.postId.eq(postId),
-        ).delete();
-        await tx.orm.public.PostLike.where((like) =>
-          like.postId.eq(postId),
-        ).delete();
-        await tx.orm.public.PostBookmark.where((bookmark) =>
-          bookmark.postId.eq(postId),
-        ).delete();
-        await tx.orm.public.Post.where((repost) =>
-          repost.repostOfId.eq(postId),
-        ).delete();
+        await tx.orm.public.PostMedia.where((media) => media.postId.eq(postId)).delete();
+        await tx.orm.public.PostLike.where((like) => like.postId.eq(postId)).delete();
+        await tx.orm.public.PostBookmark.where((bookmark) => bookmark.postId.eq(postId)).delete();
+        await tx.orm.public.Post.where((repost) => repost.repostOfId.eq(postId)).delete();
       } else {
         await tx.orm.public.Post.where({ id: postId }).delete();
       }

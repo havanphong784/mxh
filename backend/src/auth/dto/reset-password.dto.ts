@@ -9,9 +9,7 @@ import {
 import { Transform } from "class-transformer";
 
 export class ResetPasswordDto {
-  @Transform(({ value }) =>
-    typeof value === "string" ? value.trim().toLowerCase() : value,
-  )
+  @Transform(({ value }) => (typeof value === "string" ? value.trim().toLowerCase() : value))
   @IsNotEmpty({ message: "Email không được để trống" })
   @IsEmail({}, { message: "Email không đúng định dạng" })
   @MaxLength(255, { message: "Email không được vượt quá 255 ký tự" })
@@ -34,8 +32,7 @@ export class ResetPasswordDto {
       minSymbols: 0,
     },
     {
-      message:
-        "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số",
+      message: "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và chữ số",
     },
   )
   newPassword!: string;

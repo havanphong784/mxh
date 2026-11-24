@@ -3,8 +3,7 @@ import { createHash } from "node:crypto";
 type Visibility = "PUBLIC" | "FOLLOWERS" | "PRIVATE";
 type NotificationType = "LIKE" | "REPLY" | "REPOST" | "QUOTE" | "FOLLOW";
 type MediaType = "IMAGE" | "VIDEO";
-const id = (kind: string, n: number) =>
-  `seed_v1_${kind}_${String(n).padStart(3, "0")}`;
+const id = (kind: string, n: number) => `seed_v1_${kind}_${String(n).padStart(3, "0")}`;
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
 const people: Array<[string, string, string | null]> = [
@@ -13,48 +12,20 @@ const people: Array<[string, string, string | null]> = [
     "Minh Thư",
     "Thiết kế sản phẩm ở Hà Nội. Thích giao diện dễ dùng và cà phê buổi sáng.",
   ],
-  [
-    "quanghuy",
-    "Quang Huy",
-    "Lập trình viên tại Đà Nẵng. Viết về web và những lỗi đã sửa.",
-  ],
-  [
-    "lananh",
-    "Lan Anh",
-    "Giáo viên tiếng Anh. Chia sẻ cách học đều đặn mỗi ngày.",
-  ],
+  ["quanghuy", "Quang Huy", "Lập trình viên tại Đà Nẵng. Viết về web và những lỗi đã sửa."],
+  ["lananh", "Lan Anh", "Giáo viên tiếng Anh. Chia sẻ cách học đều đặn mỗi ngày."],
   ["ducnam", "Đức Nam", "Nhiếp ảnh cuối tuần, kỹ sư dữ liệu ngày thường."],
   ["haimy", "Hải My", "Đọc sách, trồng cây và thử công thức nấu ăn mới."],
   ["thanhdat", "Thành Đạt", "Chạy bộ chậm mà chắc. Đang tập cho cự ly 21 km."],
   ["ngocmai", "Ngọc Mai", "Du lịch tự túc và những trải nghiệm địa phương."],
-  [
-    "tuanviet",
-    "Tuấn Việt",
-    "Kỹ sư phần mềm, quan tâm mã nguồn mở và an toàn dữ liệu.",
-  ],
+  ["tuanviet", "Tuấn Việt", "Kỹ sư phần mềm, quan tâm mã nguồn mở và an toàn dữ liệu."],
   ["bichngoc", "Bích Ngọc", "Bác sĩ thú y. Chuyện nhỏ về chăm sóc thú cưng."],
   ["phuonglinh", "Phương Linh", "Minh họa sách thiếu nhi, thích màu xanh lá."],
-  [
-    "khanhhoa",
-    "Khánh Hòa",
-    "Làm bánh tại nhà ở Sài Gòn. Ghi lại cả mẻ ngon lẫn mẻ hỏng.",
-  ],
-  [
-    "hoanglong",
-    "Hoàng Long",
-    "Quan tâm giao thông đô thị, xe đạp và không gian công cộng.",
-  ],
-  [
-    "trangnhung",
-    "Trang Nhung",
-    "Nghiên cứu trải nghiệm người dùng. Hỏi nhiều hơn đoán.",
-  ],
+  ["khanhhoa", "Khánh Hòa", "Làm bánh tại nhà ở Sài Gòn. Ghi lại cả mẻ ngon lẫn mẻ hỏng."],
+  ["hoanglong", "Hoàng Long", "Quan tâm giao thông đô thị, xe đạp và không gian công cộng."],
+  ["trangnhung", "Trang Nhung", "Nghiên cứu trải nghiệm người dùng. Hỏi nhiều hơn đoán."],
   ["baoan", "Bảo An", "Nhạc indie, phim cũ và những quán cà phê yên tĩnh."],
-  [
-    "kimchi",
-    "Kim Chi",
-    "Sinh viên ngành môi trường, học cách sống ít rác hơn.",
-  ],
+  ["kimchi", "Kim Chi", "Sinh viên ngành môi trường, học cách sống ít rác hơn."],
   ["nhatminh", "Nhật Minh", "Làm sản phẩm số cho doanh nghiệp nhỏ."],
   ["mocmai", "Mộc Mai", null],
   ["quocbao", "Quốc Bảo", "Tài khoản đang chờ xác minh email."],
@@ -181,8 +152,7 @@ export function buildSeedData(now: Date) {
   };
   stories.forEach((story, i) => {
     const author = Math.floor(i / 4) % 16;
-    const visibility: Visibility =
-      i % 17 === 0 ? "FOLLOWERS" : i % 19 === 0 ? "PRIVATE" : "PUBLIC";
+    const visibility: Visibility = i % 17 === 0 ? "FOLLOWERS" : i % 19 === 0 ? "PRIVATE" : "PUBLIC";
     addPost(author, story, 80 - i * 0.7, {
       visibility,
       editedAt: i % 23 === 1 ? ago(70 - i * 0.5) : null,
@@ -194,15 +164,10 @@ export function buildSeedData(now: Date) {
     );
   });
   const first = posts[1];
-  const reply = addPost(
-    1,
-    "Mình hay ghé quán xôi ở đường Trích Sài, khoảng 6 giờ 30 đã mở.",
-    1,
-    {
-      parentId: first.id,
-      rootId: first.id,
-    },
-  );
+  const reply = addPost(1, "Mình hay ghé quán xôi ở đường Trích Sài, khoảng 6 giờ 30 đã mở.", 1, {
+    parentId: first.id,
+    rootId: first.id,
+  });
   addPost(0, "Cảm ơn bạn, sáng mai mình thử ghé trước khi đi làm.", 0.9, {
     parentId: reply.id,
     rootId: first.id,
@@ -250,16 +215,11 @@ export function buildSeedData(now: Date) {
     );
     addPost((i + 9) % 16, null, 6 - i * 0.4, { repostOfId: original.id });
   }
-  addPost(
-    15,
-    "Mình cũng hay đi bộ đoạn đó lúc sáng sớm. Cảm ơn đã gợi ý quán ăn!",
-    0.5,
-    {
-      parentId: posts[0].id,
-      rootId: posts[0].id,
-      visibility: "FOLLOWERS",
-    },
-  );
+  addPost(15, "Mình cũng hay đi bộ đoạn đó lúc sáng sớm. Cảm ơn đã gợi ý quán ăn!", 0.5, {
+    parentId: posts[0].id,
+    rootId: posts[0].id,
+    visibility: "FOLLOWERS",
+  });
   const media: Array<{
     id: string;
     postId: string;
@@ -272,12 +232,7 @@ export function buildSeedData(now: Date) {
     order: number;
     createdAt: Date;
   }> = [];
-  const addMedia = (
-    postIndex: number,
-    url: string,
-    type: MediaType,
-    order = 0,
-  ) => {
+  const addMedia = (postIndex: number, url: string, type: MediaType, order = 0) => {
     const post = posts[postIndex];
     media.push({
       id: id("media", media.length),
@@ -292,37 +247,17 @@ export function buildSeedData(now: Date) {
       createdAt: post.createdAt,
     });
   };
-  addMedia(
-    32,
-    "https://images.unsplash.com/photo-1500534623283-312aade485b7?w=1200&q=80",
-    "IMAGE",
-  );
+  addMedia(32, "https://images.unsplash.com/photo-1500534623283-312aade485b7?w=1200&q=80", "IMAGE");
   addMedia(
     32,
     "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1200&q=80",
     "IMAGE",
     1,
   );
-  addMedia(
-    36,
-    "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200&q=80",
-    "IMAGE",
-  );
-  addMedia(
-    62,
-    "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1200&q=80",
-    "IMAGE",
-  );
-  addMedia(
-    70,
-    "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    "VIDEO",
-  );
-  addMedia(
-    90,
-    "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1200&q=80",
-    "IMAGE",
-  );
+  addMedia(36, "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200&q=80", "IMAGE");
+  addMedia(62, "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1200&q=80", "IMAGE");
+  addMedia(70, "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", "VIDEO");
+  addMedia(90, "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1200&q=80", "IMAGE");
   posts[90].content = null;
 
   const follows: Array<{
@@ -339,8 +274,7 @@ export function buildSeedData(now: Date) {
       });
     }
   const likes: Array<{ userId: string; postId: string; createdAt: Date }> = [];
-  const bookmarks: Array<{ userId: string; postId: string; createdAt: Date }> =
-    [];
+  const bookmarks: Array<{ userId: string; postId: string; createdAt: Date }> = [];
   for (let i = 0; i < 100; i++) {
     const post = posts[i];
     if (post.visibility !== "PUBLIC") continue;
@@ -350,9 +284,7 @@ export function buildSeedData(now: Date) {
         likes.push({
           userId: users[viewer].id,
           postId: post.id,
-          createdAt: new Date(
-            post.createdAt.getTime() + (1 + ((i + offset) % 13)) * 3_600_000,
-          ),
+          createdAt: new Date(post.createdAt.getTime() + (1 + ((i + offset) % 13)) * 3_600_000),
         });
     }
     if (i % 2 === 0)
@@ -365,15 +297,9 @@ export function buildSeedData(now: Date) {
   for (const post of posts) {
     post.likeCount = likes.filter((x) => x.postId === post.id).length;
     post.bookmarkCount = bookmarks.filter((x) => x.postId === post.id).length;
-    post.replyCount = posts.filter(
-      (x) => x.parentId === post.id && !x.isDeleted,
-    ).length;
-    post.repostCount = posts.filter(
-      (x) => x.repostOfId === post.id && !x.isDeleted,
-    ).length;
-    post.quoteCount = posts.filter(
-      (x) => x.quotedPostId === post.id && !x.isDeleted,
-    ).length;
+    post.replyCount = posts.filter((x) => x.parentId === post.id && !x.isDeleted).length;
+    post.repostCount = posts.filter((x) => x.repostOfId === post.id && !x.isDeleted).length;
+    post.quoteCount = posts.filter((x) => x.quotedPostId === post.id && !x.isDeleted).length;
   }
   const notifications: Array<{
     id: string;
@@ -406,36 +332,18 @@ export function buildSeedData(now: Date) {
   likes
     .slice(0, 45)
     .forEach((x) =>
-      notify(
-        postById.get(x.postId)!.authorId,
-        x.userId,
-        "LIKE",
-        x.postId,
-        x.createdAt,
-      ),
+      notify(postById.get(x.postId)!.authorId, x.userId, "LIKE", x.postId, x.createdAt),
     );
   posts
     .filter((x) => x.parentId)
     .slice(0, 15)
     .forEach((x) =>
-      notify(
-        postById.get(x.parentId!)!.authorId,
-        x.authorId,
-        "REPLY",
-        x.id,
-        x.createdAt,
-      ),
+      notify(postById.get(x.parentId!)!.authorId, x.authorId, "REPLY", x.id, x.createdAt),
     );
   posts
     .filter((x) => x.quotedPostId)
     .forEach((x) =>
-      notify(
-        postById.get(x.quotedPostId!)!.authorId,
-        x.authorId,
-        "QUOTE",
-        x.id,
-        x.createdAt,
-      ),
+      notify(postById.get(x.quotedPostId!)!.authorId, x.authorId, "QUOTE", x.id, x.createdAt),
     );
   posts
     .filter((x) => x.repostOfId)
@@ -450,9 +358,7 @@ export function buildSeedData(now: Date) {
     );
   follows
     .slice(0, 25)
-    .forEach((x) =>
-      notify(x.followingId, x.followerId, "FOLLOW", null, x.createdAt),
-    );
+    .forEach((x) => notify(x.followingId, x.followerId, "FOLLOW", null, x.createdAt));
   const sessions = [
     {
       id: id("session", 0),

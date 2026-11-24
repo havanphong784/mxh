@@ -27,13 +27,7 @@ const connectionLabels = {
 };
 const number = new Intl.NumberFormat("vi-VN");
 
-function ProfileView({
-  username,
-  user,
-}: {
-  username: string;
-  user: User | null;
-}) {
+function ProfileView({ username, user }: { username: string; user: User | null }) {
   const {
     value: profile,
     setValue,
@@ -45,10 +39,7 @@ function ProfileView({
   const [notice, setNotice] = useState("");
   const [timelineRevision, setTimelineRevision] = useState(0);
   const followLock = useRef(false);
-  if (error)
-    return (
-      <LoadFailure title="Không tải được hồ sơ" error={error} retry={reload} />
-    );
+  if (error) return <LoadFailure title="Không tải được hồ sơ" error={error} retry={reload} />;
   if (!profile)
     return (
       <p className="people-state" role="status">
@@ -57,11 +48,7 @@ function ProfileView({
     );
   const self = profile.id === user?.id;
 
-  async function toggleFollow(
-    id: string,
-    follow: boolean,
-    wasFollowing: boolean,
-  ) {
+  async function toggleFollow(id: string, follow: boolean, wasFollowing: boolean) {
     if (followLock.current) return;
     followLock.current = true;
     setBusy(true);
@@ -69,17 +56,11 @@ function ProfileView({
     setFollowError("");
     try {
       const following = await client.setFollowing(id, follow);
-      setValue((current) =>
-        current?.id === id ? afterFollow(current, following) : current,
-      );
-      setTimelineRevision((current) =>
-        bumpTimelineForFollow(current, wasFollowing, following),
-      );
+      setValue((current) => (current?.id === id ? afterFollow(current, following) : current));
+      setTimelineRevision((current) => bumpTimelineForFollow(current, wasFollowing, following));
       setNotice(following ? "Đã theo dõi." : "Đã bỏ theo dõi.");
     } catch (failure) {
-      setFollowError(
-        errorText(failure, "Không cập nhật được lượt theo dõi. Thử lại."),
-      );
+      setFollowError(errorText(failure, "Không cập nhật được lượt theo dõi. Thử lại."));
     } finally {
       followLock.current = false;
       setBusy(false);
@@ -88,10 +69,7 @@ function ProfileView({
 
   return (
     <>
-      <section
-        className="people-panel people-profile"
-        aria-labelledby="people-profile-name"
-      >
+      <section className="people-panel people-profile" aria-labelledby="people-profile-name">
         <div className="people-cover" aria-hidden="true">
           {profile.bannerUrl && <img src={profile.bannerUrl} alt="" />}
         </div>
@@ -109,24 +87,14 @@ function ProfileView({
                     Nhắn tin
                   </a>
                   <button
-                    className={
-                      profile.isFollowing ? "button" : "button button-primary"
-                    }
+                    className={profile.isFollowing ? "button" : "button button-primary"}
                     type="button"
                     disabled={busy}
                     onClick={() =>
-                      void toggleFollow(
-                        profile.id,
-                        !profile.isFollowing,
-                        profile.isFollowing,
-                      )
+                      void toggleFollow(profile.id, !profile.isFollowing, profile.isFollowing)
                     }
                   >
-                    {busy
-                      ? "Đang cập nhật…"
-                      : profile.isFollowing
-                        ? "Bỏ theo dõi"
-                        : "Theo dõi"}
+                    {busy ? "Đang cập nhật…" : profile.isFollowing ? "Bỏ theo dõi" : "Theo dõi"}
                   </button>
                 </>
               ) : (
@@ -144,12 +112,10 @@ function ProfileView({
           {profile.bio && <p className="people-bio">{profile.bio}</p>}
           <nav className="people-counts" aria-label="Kết nối">
             <a href={profileHref(profile.username, "followers")}>
-              <strong>{number.format(profile.followersCount)}</strong> người
-              theo dõi
+              <strong>{number.format(profile.followersCount)}</strong> người theo dõi
             </a>
             <a href={profileHref(profile.username, "following")}>
-              <strong>{number.format(profile.followingCount)}</strong> đang theo
-              dõi
+              <strong>{number.format(profile.followingCount)}</strong> đang theo dõi
             </a>
           </nav>
           {followError && (
@@ -162,11 +128,7 @@ function ProfileView({
           </span>
         </div>
       </section>
-      <UserTimeline
-        username={profile.username}
-        user={user}
-        revision={timelineRevision}
-      />
+      <UserTimeline username={profile.username} user={user} revision={timelineRevision} />
     </>
   );
 }
@@ -213,12 +175,7 @@ function PagedPeople({
   load: (cursor: string | null, signal: AbortSignal) => Promise<PeoplePage>;
   empty: string;
 }) {
-  const {
-    value: page,
-    setValue,
-    error,
-    reload,
-  } = useResource((signal) => load(null, signal));
+  const { value: page, setValue, error, reload } = useResource((signal) => load(null, signal));
   const [moreError, setMoreError] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
   const inFlight = useRef<AbortController | null>(null);
@@ -227,11 +184,7 @@ function PagedPeople({
   useEffect(() => () => inFlight.current?.abort(), []);
   useEffect(() => {
     // Keep focus in the list when its last “load more” button disappears.
-    if (
-      restoreEndFocus.current &&
-      !page?.nextCursor &&
-      document.activeElement === document.body
-    )
+    if (restoreEndFocus.current && !page?.nextCursor && document.activeElement === document.body)
       endMarker.current?.focus();
   }, [page?.nextCursor]);
 
@@ -239,8 +192,7 @@ function PagedPeople({
     if (inFlight.current) return;
     const controller = new AbortController();
     inFlight.current = controller;
-    restoreEndFocus.current =
-      document.activeElement instanceof HTMLButtonElement;
+    restoreEndFocus.current = document.activeElement instanceof HTMLButtonElement;
     setLoadingMore(true);
     setMoreError("");
     try {
@@ -263,22 +215,14 @@ function PagedPeople({
     }
   }
 
-  if (error)
-    return (
-      <LoadFailure
-        title="Không tải được danh sách"
-        error={error}
-        retry={reload}
-      />
-    );
+  if (error) return <LoadFailure title="Không tải được danh sách" error={error} retry={reload} />;
   if (!page)
     return (
       <p className="people-state" role="status">
         Đang tải danh sách…
       </p>
     );
-  if (page.items.length === 0 && !page.nextCursor)
-    return <p className="people-state">{empty}</p>;
+  if (page.items.length === 0 && !page.nextCursor) return <p className="people-state">{empty}</p>;
   return (
     <>
       <PersonRows people={page.items} />
@@ -303,12 +247,7 @@ function PagedPeople({
           </button>
         </div>
       ) : (
-        <p
-          className="people-sr-only"
-          role="status"
-          ref={endMarker}
-          tabIndex={-1}
-        >
+        <p className="people-sr-only" role="status" ref={endMarker} tabIndex={-1}>
           Đã hiển thị {number.format(page.items.length)} người.
         </p>
       )}
@@ -316,13 +255,7 @@ function PagedPeople({
   );
 }
 
-function Connections({
-  username,
-  kind,
-}: {
-  username: string;
-  kind: Connection;
-}) {
+function Connections({ username, kind }: { username: string; kind: Connection }) {
   return (
     <section className="people-panel" aria-labelledby="people-list-title">
       <header className="people-section-head">
@@ -343,25 +276,16 @@ function Connections({
         ))}
       </nav>
       <PagedPeople
-        load={(cursor, signal) =>
-          client.connections(username, kind, cursor, signal)
-        }
-        empty={
-          kind === "followers" ? "Chưa có người theo dõi." : "Chưa theo dõi ai."
-        }
+        load={(cursor, signal) => client.connections(username, kind, cursor, signal)}
+        empty={kind === "followers" ? "Chưa có người theo dõi." : "Chưa theo dõi ai."}
       />
     </section>
   );
 }
 
 function Suggestions({ signedIn }: { signedIn: boolean }) {
-  const { value, error, reload } = useResource((signal) =>
-    client.suggestions(signedIn, signal),
-  );
-  if (error)
-    return (
-      <LoadFailure title="Không tải được gợi ý" error={error} retry={reload} />
-    );
+  const { value, error, reload } = useResource((signal) => client.suggestions(signedIn, signal));
+  if (error) return <LoadFailure title="Không tải được gợi ý" error={error} retry={reload} />;
   if (!value)
     return (
       <p className="people-state" role="status">
@@ -409,16 +333,9 @@ function Directory({ query, user }: { query: string; user: User | null }) {
     <section className="people-panel" aria-labelledby="people-directory-title">
       <header className="people-section-head">
         <h1 id="people-directory-title">Tìm người dùng</h1>
-        <form
-          className="people-search"
-          role="search"
-          action="/people"
-          onSubmit={search}
-        >
+        <form className="people-search" role="search" action="/people" onSubmit={search}>
           <div className="people-search-input">
-            <label htmlFor="people-query">
-              Tên hiển thị hoặc tên người dùng
-            </label>
+            <label htmlFor="people-query">Tên hiển thị hoặc tên người dùng</label>
             <input
               id="people-query"
               type="search"
@@ -441,11 +358,7 @@ function Directory({ query, user }: { query: string; user: User | null }) {
           </a>
         </form>
         {formError && (
-          <p
-            id="people-query-error"
-            className="people-feedback people-error"
-            role="alert"
-          >
+          <p id="people-query-error" className="people-feedback people-error" role="alert">
             {formError}
           </p>
         )}
@@ -455,9 +368,7 @@ function Directory({ query, user }: { query: string; user: User | null }) {
           </a>
         )}
       </header>
-      <h2 className="people-list-title">
-        {query ? `Kết quả cho “${query}”` : "Gợi ý theo dõi"}
-      </h2>
+      <h2 className="people-list-title">{query ? `Kết quả cho “${query}”` : "Gợi ý theo dõi"}</h2>
       {results}
     </section>
   );
@@ -496,11 +407,7 @@ export function People({
     );
   else if (route.kind === "directory")
     page = (
-      <Directory
-        key={JSON.stringify([route.query, viewer])}
-        query={route.query}
-        user={user}
-      />
+      <Directory key={JSON.stringify([route.query, viewer])} query={route.query} user={user} />
     );
   else if (route.kind === "profile")
     page = (

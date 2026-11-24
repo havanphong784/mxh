@@ -6,9 +6,7 @@ import { Avatar, Icon, Pager, Status } from "./ui";
 
 export function Compose({ to, userId }: { to: string | null; userId: string }) {
   const [input, setInput] = useState("");
-  const [search, setSearch] = useState<{ query: string; run: number } | null>(
-    null,
-  );
+  const [search, setSearch] = useState<{ query: string; run: number } | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState<string | null>(null);
@@ -29,9 +27,7 @@ export function Compose({ to, userId }: { to: string | null; userId: string }) {
         setStarting(null);
       },
       () => {
-        setError(
-          "Không thể mở cuộc trò chuyện với người này. Hãy thử lại hoặc chọn người khác.",
-        );
+        setError("Không thể mở cuộc trò chuyện với người này. Hãy thử lại hoặc chọn người khác.");
         setStarting(null);
       },
     );
@@ -46,16 +42,9 @@ export function Compose({ to, userId }: { to: string | null; userId: string }) {
   }
 
   return (
-    <section
-      className="mx-inbox-panel"
-      aria-labelledby="mx-inbox-compose-title"
-    >
+    <section className="mx-inbox-panel" aria-labelledby="mx-inbox-compose-title">
       <header className="mx-inbox-panel-head">
-        <a
-          className="button mx-inbox-back"
-          href="/messages"
-          aria-label="Về danh sách trò chuyện"
-        >
+        <a className="button mx-inbox-back" href="/messages" aria-label="Về danh sách trò chuyện">
           <Icon name="back" />
         </a>
         <h2 id="mx-inbox-compose-title">Tin nhắn mới</h2>
@@ -67,17 +56,14 @@ export function Compose({ to, userId }: { to: string | null; userId: string }) {
               <p>Bạn không thể nhắn tin cho chính mình.</p>
             ) : (
               <>
-                <p>
-                  Mở cuộc trò chuyện với người bạn đã chọn từ trang cá nhân.
-                </p>
+                <p>Mở cuộc trò chuyện với người bạn đã chọn từ trang cá nhân.</p>
                 <button
                   className="button button-primary"
                   type="button"
                   disabled={!!starting || !!open}
                   onClick={() => start(to)}
                 >
-                  <Icon name="message" />{" "}
-                  {starting === to ? "Đang mở…" : "Mở cuộc trò chuyện"}
+                  <Icon name="message" /> {starting === to ? "Đang mở…" : "Mở cuộc trò chuyện"}
                 </button>
               </>
             )}
@@ -93,11 +79,7 @@ export function Compose({ to, userId }: { to: string | null; userId: string }) {
             maxLength={100}
             onChange={(event) => setInput(event.target.value)}
           />
-          <button
-            type="submit"
-            className="button"
-            disabled={input.trim().length < 2 || !!starting}
-          >
+          <button type="submit" className="button" disabled={input.trim().length < 2 || !!starting}>
             <Icon name="search" /> Tìm
           </button>
         </form>
@@ -142,8 +124,7 @@ function SearchResults({
   opened: boolean;
 }) {
   const load = useCallback(
-    (cursor: string | null, signal: AbortSignal) =>
-      searchPeople(query, cursor, signal),
+    (cursor: string | null, signal: AbortSignal) => searchPeople(query, cursor, signal),
     [query],
   );
   const results = usePages(load);
@@ -151,9 +132,7 @@ function SearchResults({
   return (
     <>
       {!people && !results.failure && <Status text="Đang tìm người dùng…" />}
-      {people?.length === 0 && (
-        <Status text="Không tìm thấy người nhận phù hợp." />
-      )}
+      {people?.length === 0 && <Status text="Không tìm thấy người nhận phù hợp." />}
       {people && people.length > 0 && (
         <ul className="mx-inbox-list" aria-label="Kết quả tìm người nhận">
           {people.map((person) => (
@@ -169,11 +148,7 @@ function SearchResults({
                   <strong>{person.displayName || person.username}</strong>
                   <span>@{person.username}</span>
                 </span>
-                {starting === person.id ? (
-                  <span>Đang mở…</span>
-                ) : (
-                  <Icon name="message" />
-                )}
+                {starting === person.id ? <span>Đang mở…</span> : <Icon name="message" />}
               </button>
             </li>
           ))}

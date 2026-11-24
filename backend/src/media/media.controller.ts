@@ -25,10 +25,6 @@ export class MediaController {
     @CurrentUser("sub") userId: string,
     @Query() query: UploadSignatureQueryDto,
   ): UploadSignatureResponseDto {
-    return this.mediaService.generateUploadSignature(
-      query.folder,
-      userId,
-      query.mediaType,
-    );
+    return this.mediaService.generateUploadSignature(query.folder, userId, query.mediaType);
   }
 }

@@ -23,14 +23,8 @@ import { ResetPasswordDto } from "./dto/reset-password.dto.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { AUTH_EVENTS } from "../events/event-types.js";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../common/exceptions/domain.exception.js";
-import type {
-  SessionRevokedEvent,
-  UserSessionsRevokedEvent,
-} from "../events/event-types.js";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
+import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
 import type {
   AuthResultDto,
   AuthUserDto,
@@ -82,8 +76,7 @@ export class AuthService {
       );
     }
 
-    const existingUsername =
-      await this.usersAuthService.usernameExists(username);
+    const existingUsername = await this.usersAuthService.usernameExists(username);
     if (existingUsername) {
       throw new DomainException(
         ERROR_CODES.AUTH_USERNAME_CONFLICT,
@@ -117,25 +110,16 @@ export class AuthService {
     }
 
     return {
-      message:
-        "Đăng ký tài khoản thành công! Vui lòng kiểm tra email để nhận mã xác thực.",
+      message: "Đăng ký tài khoản thành công! Vui lòng kiểm tra email để nhận mã xác thực.",
       email: user.email,
     };
   }
 
-  async verifyOtp(
-    dto: VerifyOtpDto,
-    meta: RequestMeta,
-  ): Promise<AuthResultDto> {
+  async verifyOtp(dto: VerifyOtpDto, meta: RequestMeta): Promise<AuthResultDto> {
     const email = dto.email;
-    const otpRecord = await this.usersAuthService.findLatestOtp(
-      email,
-      "REGISTER_VERIFY",
-    );
+    const otpRecord = await this.usersAuthService.findLatestOtp(email, "REGISTER_VERIFY");
     if (!otpRecord) {
-      throw new NotFoundException(
-        "Không tìm thấy yêu cầu xác thực hoặc mã đã hết hạn",
-      );
+      throw new NotFoundException("Không tìm thấy yêu cầu xác thực hoặc mã đã hết hạn");
     }
 
     if (otpRecord.attempts >= 5) {
@@ -146,17 +130,12 @@ export class AuthService {
 
     const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
     if (Date.now() > expiresAtMs) {
-      throw new BadRequestException(
-        "Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.",
-      );
+      throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.");
     }
 
     const inputHash = this.hashSha256(dto.code);
     if (inputHash !== otpRecord.codeHash) {
-      await this.usersAuthService.incrementOtpAttempts(
-        otpRecord.id,
-        otpRecord.attempts + 1,
-      );
+      await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
       throw new BadRequestException("Mã OTP không chính xác");
     }
 
@@ -207,10 +186,7 @@ export class AuthService {
       );
     }
 
-    const lastOtp = await this.usersAuthService.findLatestOtp(
-      email,
-      "REGISTER_VERIFY",
-    );
+    const lastOtp = await this.usersAuthService.findLatestOtp(email, "REGISTER_VERIFY");
 
     if (lastOtp) {
       const createdAtMs = this.getTimestampMs(lastOtp.createdAt);
@@ -284,10 +260,7 @@ export class AuthService {
       );
     }
 
-    const isPasswordValid = await this.usersAuthService.verifyPassword(
-      email,
-      dto.password,
-    );
+    const isPasswordValid = await this.usersAuthService.verifyPassword(email, dto.password);
     if (!isPasswordValid) {
       throw new DomainException(
         ERROR_CODES.AUTH_INVALID_CREDENTIALS,
@@ -318,10 +291,7 @@ export class AuthService {
     };
   }
 
-  async refreshTokens(
-    refreshToken: string,
-    meta: RequestMeta,
-  ): Promise<RefreshResultDto> {
+  async refreshTokens(refreshToken: string, meta: RequestMeta): Promise<RefreshResultDto> {
     let payload: any;
     try {
       payload = await this.jwtService.verifyAsync(refreshToken, {
@@ -330,19 +300,14 @@ export class AuthService {
           process.env.JWT_REFRESH_SECRET,
       });
     } catch {
-      throw new UnauthorizedException(
-        "Refresh token không hợp lệ hoặc đã hết hạn.",
-      );
+      throw new UnauthorizedException("Refresh token không hợp lệ hoặc đã hết hạn.");
     }
 
     const tokenHash = this.hashSha256(refreshToken);
-    const session =
-      await this.usersAuthService.findSessionByTokenHash(tokenHash);
+    const session = await this.usersAuthService.findSessionByTokenHash(tokenHash);
 
     if (!session) {
-      throw new UnauthorizedException(
-        "Phiên đăng nhập không tồn tại hoặc đã bị đăng xuất.",
-      );
+      throw new UnauthorizedException("Phiên đăng nhập không tồn tại hoặc đã bị đăng xuất.");
     }
 
     if (session.isRevoked) {
@@ -378,21 +343,12 @@ export class AuthService {
     const user = await this.usersAuthService.findUserById(session.userId);
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException(
-        "Tài khoản không tồn tại hoặc đã bị khóa.",
-      );
+      throw new UnauthorizedException("Tài khoản không tồn tại hoặc đã bị khóa.");
     }
 
     const newRefreshToken = await this.generateRefreshToken(user.id);
-    const newSessionData = this.createSessionData(
-      user.id,
-      newRefreshToken,
-      meta,
-    );
-    const newSession = await this.usersAuthService.rotateRefreshSession(
-      session.id,
-      newSessionData,
-    );
+    const newSessionData = this.createSessionData(user.id, newRefreshToken, meta);
+    const newSession = await this.usersAuthService.rotateRefreshSession(session.id, newSessionData);
     if (!newSession) {
       throw new UnauthorizedException(
         "Phiên đăng nhập vừa được làm mới, vui lòng thử lại với token mới.",
@@ -418,8 +374,7 @@ export class AuthService {
 
     const tokenHash = this.hashSha256(refreshToken);
 
-    const sessionIds =
-      await this.usersAuthService.revokeSessionByTokenHash(tokenHash);
+    const sessionIds = await this.usersAuthService.revokeSessionByTokenHash(tokenHash);
 
     for (const sessionId of sessionIds) {
       this.eventEmitter.emit(AUTH_EVENTS.SESSION_REVOKED, {
@@ -438,15 +393,11 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       return {
-        message:
-          "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.",
+        message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.",
       };
     }
 
-    const lastOtp = await this.usersAuthService.findLatestOtp(
-      email,
-      "FORGOT_PASSWORD",
-    );
+    const lastOtp = await this.usersAuthService.findLatestOtp(email, "FORGOT_PASSWORD");
 
     if (lastOtp) {
       const createdAtMs = this.getTimestampMs(lastOtp.createdAt);
@@ -465,9 +416,7 @@ export class AuthService {
 
     const otpCode = this.generateOtpCode();
     const codeHash = this.hashSha256(otpCode);
-    const expiresAt = Temporal.Instant.fromEpochMilliseconds(
-      Date.now() + 5 * 60 * 1000,
-    );
+    const expiresAt = Temporal.Instant.fromEpochMilliseconds(Date.now() + 5 * 60 * 1000);
 
     const createdOtp = await this.usersAuthService.createOtp({
       email: user.email,
@@ -478,30 +427,21 @@ export class AuthService {
       userId: user.id,
     });
 
-    const sent = await this.mailService.sendResetPasswordEmail(
-      user.email,
-      otpCode,
-    );
+    const sent = await this.mailService.sendResetPasswordEmail(user.email, otpCode);
     if (!sent) {
       await this.usersAuthService.deleteOtp(createdOtp.id);
     }
 
     return {
-      message:
-        "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.",
+      message: "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được mã OTP đặt lại mật khẩu.",
     };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<MessageResponseDto> {
     const email = dto.email;
-    const otpRecord = await this.usersAuthService.findLatestOtp(
-      email,
-      "FORGOT_PASSWORD",
-    );
+    const otpRecord = await this.usersAuthService.findLatestOtp(email, "FORGOT_PASSWORD");
     if (!otpRecord) {
-      throw new NotFoundException(
-        "Không tìm thấy yêu cầu đặt lại mật khẩu hoặc mã đã hết hạn.",
-      );
+      throw new NotFoundException("Không tìm thấy yêu cầu đặt lại mật khẩu hoặc mã đã hết hạn.");
     }
 
     if (otpRecord.attempts >= 5) {
@@ -512,17 +452,12 @@ export class AuthService {
 
     const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
     if (Date.now() > expiresAtMs) {
-      throw new BadRequestException(
-        "Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.",
-      );
+      throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.");
     }
 
     const inputHash = this.hashSha256(dto.code);
     if (inputHash !== otpRecord.codeHash) {
-      await this.usersAuthService.incrementOtpAttempts(
-        otpRecord.id,
-        otpRecord.attempts + 1,
-      );
+      await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
       throw new BadRequestException("Mã OTP không chính xác.");
     }
 
@@ -541,8 +476,7 @@ export class AuthService {
     }
 
     return {
-      message:
-        "Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.",
+      message: "Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.",
     };
   }
 
@@ -607,29 +541,17 @@ export class AuthService {
     });
   }
 
-  private async createSession(
-    userId: string,
-    refreshToken: string,
-    meta: RequestMeta,
-  ) {
-    return this.usersAuthService.createSession(
-      this.createSessionData(userId, refreshToken, meta),
-    );
+  private async createSession(userId: string, refreshToken: string, meta: RequestMeta) {
+    return this.usersAuthService.createSession(this.createSessionData(userId, refreshToken, meta));
   }
 
-  private createSessionData(
-    userId: string,
-    refreshToken: string,
-    meta: RequestMeta,
-  ) {
+  private createSessionData(userId: string, refreshToken: string, meta: RequestMeta) {
     return {
       userId,
       tokenHash: this.hashSha256(refreshToken),
       userAgent: meta.userAgent ?? null,
       ipAddress: meta.ipAddress ?? null,
-      expiresAt: Temporal.Instant.fromEpochMilliseconds(
-        Date.now() + 7 * 24 * 60 * 60 * 1000,
-      ),
+      expiresAt: Temporal.Instant.fromEpochMilliseconds(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isRevoked: false,
     };
   }

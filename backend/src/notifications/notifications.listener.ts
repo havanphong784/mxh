@@ -28,9 +28,7 @@ export class NotificationsListener {
     if (!event.isRootPost) return;
 
     try {
-      const followerIds = await this.usersService.getFollowerIds(
-        event.authorId,
-      );
+      const followerIds = await this.usersService.getFollowerIds(event.authorId);
 
       if (!followerIds || followerIds.length === 0) return;
 
@@ -180,13 +178,9 @@ export class NotificationsListener {
     }
   }
 
-  private async sendRealtimeNotification(
-    notificationId: string,
-    recipientId: string,
-  ) {
+  private async sendRealtimeNotification(notificationId: string, recipientId: string) {
     try {
-      const notif =
-        await this.notificationsRepository.findByIdWithDetails(notificationId);
+      const notif = await this.notificationsRepository.findByIdWithDetails(notificationId);
 
       if (!notif) return;
 
@@ -204,24 +198,18 @@ export class NotificationsListener {
         post: notif.post
           ? {
               id: notif.post.id,
-              content: notif.post.content
-                ? notif.post.content.slice(0, 100)
-                : null,
+              content: notif.post.content ? notif.post.content.slice(0, 100) : null,
             }
           : null,
       });
 
-      const unreadCount =
-        await this.notificationsRepository.countUnread(recipientId);
+      const unreadCount = await this.notificationsRepository.countUnread(recipientId);
 
       this.eventsGateway.pushToUser(recipientId, "notification:unread-count", {
         count: unreadCount,
       });
     } catch (err) {
-      this.logger.error(
-        `Lỗi khi bắn realtime notification ${notificationId}:`,
-        err,
-      );
+      this.logger.error(`Lỗi khi bắn realtime notification ${notificationId}:`, err);
     }
   }
 }

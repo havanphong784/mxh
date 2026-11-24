@@ -35,8 +35,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   try {
     payload = text ? JSON.parse(text) : undefined;
   } catch {
-    if (response.ok)
-      throw new ApiError(502, "Máy chủ trả về dữ liệu không hợp lệ.");
+    if (response.ok) throw new ApiError(502, "Máy chủ trả về dữ liệu không hợp lệ.");
   }
   if (!response.ok) {
     const envelope = payload as
@@ -49,9 +48,7 @@ async function readResponse<T>(response: Response): Promise<T> {
       | undefined;
     const raw = envelope?.message;
     const errors = Array.isArray(envelope?.errors)
-      ? envelope.errors.filter(
-          (item): item is string => typeof item === "string",
-        )
+      ? envelope.errors.filter((item): item is string => typeof item === "string")
       : Array.isArray(raw)
         ? raw.filter((item): item is string => typeof item === "string")
         : undefined;
@@ -103,8 +100,7 @@ export function createClient(origin: string, transport: typeof fetch = fetch) {
         }
         const result = await readResponse<{ accessToken?: string }>(response);
         if (session !== generation) return token;
-        if (!result?.accessToken)
-          throw new ApiError(502, "Không nhận được phiên đăng nhập.");
+        if (!result?.accessToken) throw new ApiError(502, "Không nhận được phiên đăng nhập.");
         token = result.accessToken;
         return token;
       })
@@ -115,19 +111,10 @@ export function createClient(origin: string, transport: typeof fetch = fetch) {
     return pending;
   }
 
-  async function request<T>(
-    path: string,
-    options: RequestOptions = {},
-  ): Promise<T> {
+  async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     if (!path.startsWith("/") || path.startsWith("//"))
       throw new TypeError("Expected an API-relative path");
-    const {
-      body,
-      method = "GET",
-      signal,
-      idempotencyKey,
-      auth = true,
-    } = options;
+    const { body, method = "GET", signal, idempotencyKey, auth = true } = options;
     const initialToken = auth ? token : null;
     const session = generation;
     const send = (access: string | null) => {
@@ -144,12 +131,7 @@ export function createClient(origin: string, transport: typeof fetch = fetch) {
       });
     };
     let response = await send(initialToken);
-    if (
-      auth &&
-      initialToken &&
-      response.status === 401 &&
-      session === generation
-    ) {
+    if (auth && initialToken && response.status === 401 && session === generation) {
       const access = token !== initialToken ? token : await refresh();
       if (!access) return readResponse<T>(response);
       if (session === generation) response = await send(access);
@@ -176,9 +158,6 @@ export function createClient(origin: string, transport: typeof fetch = fetch) {
   };
 }
 
-export const apiOrigin = (import.meta.env?.VITE_API_ORIGIN ?? "").replace(
-  /\/$/,
-  "",
-);
+export const apiOrigin = (import.meta.env?.VITE_API_ORIGIN ?? "").replace(/\/$/, "");
 export const sessionClient = createClient(apiOrigin);
 export const api = sessionClient.request;

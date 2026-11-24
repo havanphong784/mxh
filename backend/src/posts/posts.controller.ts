@@ -23,10 +23,7 @@ import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
 import { SearchQueryDto } from "../common/dto/search-query.dto.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
 import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
-import type {
-  PostLikesResponseDto,
-  PostResponseDto,
-} from "./dto/post-response.dto.js";
+import type { PostLikesResponseDto, PostResponseDto } from "./dto/post-response.dto.js";
 
 @Controller("posts")
 export class PostsController {
@@ -118,10 +115,7 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deletePost(
-    @Param("id") postId: string,
-    @CurrentUser("sub") userId: string,
-  ): Promise<void> {
+  async deletePost(@Param("id") postId: string, @CurrentUser("sub") userId: string): Promise<void> {
     await this.postsService.deletePost(postId, userId);
   }
 
@@ -161,10 +155,7 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 25, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unrepost(
-    @Param("id") postId: string,
-    @CurrentUser("sub") userId: string,
-  ): Promise<void> {
+  async unrepost(@Param("id") postId: string, @CurrentUser("sub") userId: string): Promise<void> {
     await this.postsService.unrepost(postId, userId);
   }
 
@@ -183,10 +174,7 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unlikePost(
-    @Param("id") postId: string,
-    @CurrentUser("sub") userId: string,
-  ): Promise<void> {
+  async unlikePost(@Param("id") postId: string, @CurrentUser("sub") userId: string): Promise<void> {
     await this.postsService.unlikePost(postId, userId);
   }
 

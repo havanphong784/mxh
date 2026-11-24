@@ -2,8 +2,7 @@ import { useState } from "react";
 import type { User } from "../session";
 import { InfiniteScrollSentinel } from "../infinite-scroll";
 
-type IconName =
-  "message" | "bell" | "write" | "back" | "search" | "check" | "send";
+type IconName = "message" | "bell" | "write" | "back" | "search" | "check" | "send";
 const strokes: Record<IconName, string> = {
   message: "M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z",
   bell: "M18 8a6 6 0 0 0-12 0c0 7-2 7-2 9h16c0-2-2-2-2-9m-8 12a2 2 0 0 0 4 0",
@@ -36,9 +35,9 @@ export function Avatar({ person }: { person: User | null }) {
 }
 function AvatarImage({ person }: { person: User | null }) {
   const [broken, setBroken] = useState(false);
-  const initial = [
-    ...(person?.displayName.trim() || person?.username || "?"),
-  ][0].toLocaleUpperCase("vi");
+  const initial = [...(person?.displayName.trim() || person?.username || "?")][0].toLocaleUpperCase(
+    "vi",
+  );
   return (
     <span className="mx-inbox-avatar" aria-hidden="true">
       {person?.avatarUrl && !broken ? (
@@ -66,11 +65,7 @@ export function Time({ value }: { value: string }) {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return null;
   return (
-    <time
-      dateTime={value}
-      title={fullDate.format(date)}
-      aria-label={fullDate.format(date)}
-    >
+    <time dateTime={value} title={fullDate.format(date)} aria-label={fullDate.format(date)}>
       {date.toDateString() === new Date().toDateString()
         ? clock.format(date)
         : shortDate.format(date)}
@@ -111,11 +106,8 @@ export function Pager({
   rootMargin?: string;
 }) {
   if (failure === "refresh")
-    return (
-      <Status text="Không thể cập nhật. Vui lòng thử lại." retry={reload} />
-    );
-  if (failure === "more")
-    return <Status text="Không thể tải thêm." retry={more} />;
+    return <Status text="Không thể cập nhật. Vui lòng thử lại." retry={reload} />;
+  if (failure === "more") return <Status text="Không thể tải thêm." retry={more} />;
   if (!cursor) return null;
   return (
     <div className="mx-inbox-pager">

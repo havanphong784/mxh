@@ -27,18 +27,14 @@ test("profile links enter compose and encoded thread identifiers round-trip", ()
 });
 
 test("cursor and Vietnamese search terms are encoded as opaque query values", () => {
-  const url = new URL(
-    pagePath("/users/search", "a+/=", "Đỗ & An"),
-    "https://example.test",
-  );
+  const url = new URL(pagePath("/users/search", "a+/=", "Đỗ & An"), "https://example.test");
   assert.equal(url.searchParams.get("q"), "Đỗ & An");
   assert.equal(url.searchParams.get("cursor"), "a+/=");
 });
 
 test("refresh replays the loaded depth from the new head and keeps its new tail cursor", async () => {
   const read = async (cursor: string | null) => {
-    if (cursor === null)
-      return { items: [{ id: "new" }, { id: "a" }], cursor: "fresh" };
+    if (cursor === null) return { items: [{ id: "new" }, { id: "a" }], cursor: "fresh" };
     assert.equal(cursor, "fresh");
     return { items: [{ id: "a" }, { id: "b" }], cursor: "next" };
   };
@@ -53,10 +49,7 @@ test("history is prepended without duplicating an overlapping message", () => {
   const old = { id: "m2", body: "old snapshot" };
   const newer = { id: "m2", body: "live snapshot" };
   assert.deepEqual(
-    mergeById(
-      [{ id: "m1", body: "first" }, old],
-      [newer, { id: "m3", body: "last" }],
-    ),
+    mergeById([{ id: "m1", body: "first" }, old], [newer, { id: "m3", body: "last" }]),
     [{ id: "m1", body: "first" }, newer, { id: "m3", body: "last" }],
   );
 });
@@ -80,41 +73,29 @@ test("reconnect refreshes both inboxes and only matching new messages refresh th
     thread: true,
     notifications: true,
   });
-  assert.deepEqual(
-    realtimeImpact("conversation:new-message", { conversationId: "c2" }, "c1"),
-    {
-      counts: true,
-      messages: true,
-      thread: false,
-      notifications: false,
-    },
-  );
-  assert.deepEqual(
-    realtimeImpact("conversation:new-message", { conversationId: "c1" }, "c1"),
-    {
-      counts: true,
-      messages: true,
-      thread: true,
-      notifications: false,
-    },
-  );
-  assert.deepEqual(
-    realtimeImpact("conversation:read", { conversationId: "c1" }, "c1"),
-    {
-      counts: true,
-      messages: true,
-      thread: false,
-      notifications: false,
-    },
-  );
-  assert.deepEqual(
-    realtimeImpact("notification:unread-count", { count: 3 }, "c1"),
-    {
-      counts: true,
-      messages: false,
-      thread: false,
-      notifications: true,
-    },
-  );
+  assert.deepEqual(realtimeImpact("conversation:new-message", { conversationId: "c2" }, "c1"), {
+    counts: true,
+    messages: true,
+    thread: false,
+    notifications: false,
+  });
+  assert.deepEqual(realtimeImpact("conversation:new-message", { conversationId: "c1" }, "c1"), {
+    counts: true,
+    messages: true,
+    thread: true,
+    notifications: false,
+  });
+  assert.deepEqual(realtimeImpact("conversation:read", { conversationId: "c1" }, "c1"), {
+    counts: true,
+    messages: true,
+    thread: false,
+    notifications: false,
+  });
+  assert.deepEqual(realtimeImpact("notification:unread-count", { count: 3 }, "c1"), {
+    counts: true,
+    messages: false,
+    thread: false,
+    notifications: true,
+  });
   assert.equal(realtimeImpact("unrelated", null, "c1"), null);
 });

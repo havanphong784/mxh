@@ -16,8 +16,7 @@ export function InfiniteScrollSentinel({
 
   useEffect(() => {
     const element = sentinel.current;
-    if (!enabled || !element || typeof IntersectionObserver === "undefined")
-      return;
+    if (!enabled || !element || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) onVisible();

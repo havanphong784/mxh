@@ -12,11 +12,7 @@ assert.ok(data.likes.length >= 100);
 assert.ok(data.bookmarks.length >= 30);
 assert.ok(data.notifications.length >= 30);
 assert.ok(data.sessions.some((item) => item.isRevoked));
-assert.ok(
-  data.sessions.some(
-    (item) => item.expiresAt < new Date("2026-10-26T00:00:00.000Z"),
-  ),
-);
+assert.ok(data.sessions.some((item) => item.expiresAt < new Date("2026-10-26T00:00:00.000Z")));
 assert.ok(data.otpCodes.some((item) => item.type === "REGISTER_VERIFY"));
 assert.ok(data.otpCodes.some((item) => item.type === "FORGOT_PASSWORD"));
 
@@ -32,18 +28,11 @@ const visibilities = new Set(data.posts.map((post) => post.visibility));
 assert.deepEqual(visibilities, new Set(["PUBLIC", "FOLLOWERS", "PRIVATE"]));
 assert.ok(
   data.posts.some(
-    (post) =>
-      post.isDeleted && data.posts.some((reply) => reply.parentId === post.id),
+    (post) => post.isDeleted && data.posts.some((reply) => reply.parentId === post.id),
   ),
 );
-assert.ok(
-  data.posts.some(
-    (post) => post.parentId && post.rootId && post.parentId !== post.rootId,
-  ),
-);
-assert.ok(
-  data.posts.some((post) => post.parentId && post.visibility === "FOLLOWERS"),
-);
+assert.ok(data.posts.some((post) => post.parentId && post.rootId && post.parentId !== post.rootId));
+assert.ok(data.posts.some((post) => post.parentId && post.visibility === "FOLLOWERS"));
 assert.ok(data.posts.some((post) => post.repostOfId));
 assert.ok(data.posts.some((post) => post.quotedPostId));
 assert.ok(data.posts.some((post) => post.editedAt));
@@ -53,65 +42,33 @@ assert.ok(data.media.some((item) => item.order > 0));
 
 for (const post of data.posts) {
   assert.ok(userIds.has(post.authorId));
-  for (const id of [
-    post.parentId,
-    post.rootId,
-    post.repostOfId,
-    post.quotedPostId,
-  ]) {
-    if (id)
-      assert.ok(postIds.has(id), `${post.id} tham chiếu bài không tồn tại`);
+  for (const id of [post.parentId, post.rootId, post.repostOfId, post.quotedPostId]) {
+    if (id) assert.ok(postIds.has(id), `${post.id} tham chiếu bài không tồn tại`);
   }
-  assert.equal(
-    post.likeCount,
-    data.likes.filter((item) => item.postId === post.id).length,
-  );
-  assert.equal(
-    post.bookmarkCount,
-    data.bookmarks.filter((item) => item.postId === post.id).length,
-  );
+  assert.equal(post.likeCount, data.likes.filter((item) => item.postId === post.id).length);
+  assert.equal(post.bookmarkCount, data.bookmarks.filter((item) => item.postId === post.id).length);
   assert.equal(
     post.replyCount,
-    data.posts.filter((item) => item.parentId === post.id && !item.isDeleted)
-      .length,
+    data.posts.filter((item) => item.parentId === post.id && !item.isDeleted).length,
   );
   assert.equal(
     post.repostCount,
-    data.posts.filter((item) => item.repostOfId === post.id && !item.isDeleted)
-      .length,
+    data.posts.filter((item) => item.repostOfId === post.id && !item.isDeleted).length,
   );
   assert.equal(
     post.quoteCount,
-    data.posts.filter(
-      (item) => item.quotedPostId === post.id && !item.isDeleted,
-    ).length,
+    data.posts.filter((item) => item.quotedPostId === post.id && !item.isDeleted).length,
   );
   if (post.parentId) {
     const parent = data.posts.find((item) => item.id === post.parentId)!;
-    assert.ok(
-      post.createdAt >= parent.createdAt,
-      "Trả lời không được có trước bài gốc",
-    );
-    assert.equal(
-      post.visibility,
-      parent.visibility,
-      "Trả lời phải kế thừa quyền xem",
-    );
+    assert.ok(post.createdAt >= parent.createdAt, "Trả lời không được có trước bài gốc");
+    assert.equal(post.visibility, parent.visibility, "Trả lời phải kế thừa quyền xem");
     if (parent.visibility === "PRIVATE")
-      assert.equal(
-        post.authorId,
-        parent.authorId,
-        "Chỉ tác giả được trả lời bài riêng tư",
-      );
-    if (
-      parent.visibility === "FOLLOWERS" &&
-      post.authorId !== parent.authorId
-    ) {
+      assert.equal(post.authorId, parent.authorId, "Chỉ tác giả được trả lời bài riêng tư");
+    if (parent.visibility === "FOLLOWERS" && post.authorId !== parent.authorId) {
       assert.ok(
         data.follows.some(
-          (follow) =>
-            follow.followerId === post.authorId &&
-            follow.followingId === parent.authorId,
+          (follow) => follow.followerId === post.authorId && follow.followingId === parent.authorId,
         ),
         "Người trả lời phải theo dõi tác giả của thread",
       );
@@ -126,8 +83,7 @@ for (const follow of data.follows) {
 for (const item of [...data.likes, ...data.bookmarks]) {
   assert.ok(userIds.has(item.userId) && postIds.has(item.postId));
   assert.ok(
-    item.createdAt >=
-      data.posts.find((post) => post.id === item.postId)!.createdAt,
+    item.createdAt >= data.posts.find((post) => post.id === item.postId)!.createdAt,
     "Tương tác không được có trước bài viết",
   );
 }
@@ -137,10 +93,7 @@ for (const item of data.notifications) {
   if (item.postId) {
     const post = data.posts.find((candidate) => candidate.id === item.postId)!;
     assert.ok(postIds.has(item.postId));
-    assert.ok(
-      item.createdAt >= post.createdAt,
-      "Thông báo không được có trước bài liên quan",
-    );
+    assert.ok(item.createdAt >= post.createdAt, "Thông báo không được có trước bài liên quan");
   }
 }
 assert.deepEqual(

@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "../session";
 import { Compose } from "./compose";
-import {
-  readConversations,
-  startDirect,
-  threadHref,
-  unreadCount,
-} from "./data";
+import { readConversations, startDirect, threadHref, unreadCount } from "./data";
 import { inboxRoute } from "./model";
 import { Notifications } from "./notifications";
 import { Thread } from "./thread";
@@ -30,10 +25,8 @@ export function Inbox({ path, user }: { path: string; user: User | null }) {
   return <SignedInInbox key={user.id} path={path} userId={user.id} />;
 }
 
-const loadMessageCount = (signal: AbortSignal) =>
-  unreadCount("conversations", signal);
-const loadNoticeCount = (signal: AbortSignal) =>
-  unreadCount("notifications", signal);
+const loadMessageCount = (signal: AbortSignal) => unreadCount("conversations", signal);
+const loadNoticeCount = (signal: AbortSignal) => unreadCount("notifications", signal);
 
 function SignedInInbox({ path, userId }: { path: string; userId: string }) {
   const route = inboxRoute(path);
@@ -72,18 +65,14 @@ function SignedInInbox({ path, userId }: { path: string; userId: string }) {
       </header>
       <nav className="mx-inbox-nav" aria-label="Hộp thư">
         <a href="/messages" aria-current={!isNotices ? "page" : undefined}>
-          <Icon name="message" /> Tin nhắn{" "}
-          <Count count={messages.value?.count} />
+          <Icon name="message" /> Tin nhắn <Count count={messages.value?.count} />
         </a>
         <a href="/notifications" aria-current={isNotices ? "page" : undefined}>
           <Icon name="bell" /> Thông báo <Count count={notices.value?.count} />
         </a>
       </nav>
       {(messages.failed || notices.failed) && (
-        <Status
-          text="Không thể cập nhật số chưa đọc."
-          retry={() => invalidate({ counts: true })}
-        />
+        <Status text="Không thể cập nhật số chưa đọc." retry={() => invalidate({ counts: true })} />
       )}
       {isNotices ? (
         <Notifications
@@ -93,11 +82,7 @@ function SignedInInbox({ path, userId }: { path: string; userId: string }) {
         />
       ) : (
         <div className={`mx-inbox-grid${showingDetail ? " has-detail" : ""}`}>
-          <ConversationList
-            userId={userId}
-            active={threadId}
-            revision={revisions.messages}
-          />
+          <ConversationList userId={userId} active={threadId} revision={revisions.messages} />
           {route.kind === "thread" && (
             <Thread
               key={route.id}
@@ -148,54 +133,43 @@ function ConversationList({
   const conversations = usePages(readConversations, revision);
   const items = conversations.page?.items;
   return (
-    <section
-      className="mx-inbox-panel mx-inbox-list-panel"
-      aria-labelledby="mx-inbox-list-title"
-    >
+    <section className="mx-inbox-panel mx-inbox-list-panel" aria-labelledby="mx-inbox-list-title">
       <header className="mx-inbox-panel-head">
         <h2 id="mx-inbox-list-title">Trò chuyện</h2>
         <a href="/messages?new=1" className="button button-primary">
           <Icon name="write" /> Soạn tin
         </a>
       </header>
-      {!items && !conversations.failure && (
-        <Status text="Đang tải cuộc trò chuyện…" />
-      )}
-      {items?.length === 0 && (
-        <Status text="Chưa có cuộc trò chuyện. Chọn Soạn tin để bắt đầu." />
-      )}
+      {!items && !conversations.failure && <Status text="Đang tải cuộc trò chuyện…" />}
+      {items?.length === 0 && <Status text="Chưa có cuộc trò chuyện. Chọn Soạn tin để bắt đầu." />}
       {items && items.length > 0 && (
         <ul className="mx-inbox-list" aria-label="Các cuộc trò chuyện">
-          {items.map(
-            ({ id, participant, lastMessage, unreadCount, updatedAt }) => {
-              const preview = !lastMessage
-                ? "Chưa có tin nhắn"
-                : lastMessage.deletedAt || lastMessage.body === null
-                  ? "Tin nhắn đã xóa"
-                  : `${lastMessage.senderId === userId ? "Bạn: " : ""}${lastMessage.body}`;
-              return (
-                <li key={id}>
-                  <a
-                    href={threadHref(id)}
-                    aria-current={active === id ? "page" : undefined}
-                    className={`mx-inbox-row${unreadCount ? " is-unread" : ""}`}
-                  >
-                    <Avatar person={participant} />
-                    <span className="mx-inbox-person">
-                      <strong>
-                        {participant.displayName || participant.username}
-                      </strong>
-                      <span>{preview}</span>
-                    </span>
-                    <span className="mx-inbox-meta">
-                      <Time value={lastMessage?.createdAt ?? updatedAt} />
-                      <Count count={unreadCount} />
-                    </span>
-                  </a>
-                </li>
-              );
-            },
-          )}
+          {items.map(({ id, participant, lastMessage, unreadCount, updatedAt }) => {
+            const preview = !lastMessage
+              ? "Chưa có tin nhắn"
+              : lastMessage.deletedAt || lastMessage.body === null
+                ? "Tin nhắn đã xóa"
+                : `${lastMessage.senderId === userId ? "Bạn: " : ""}${lastMessage.body}`;
+            return (
+              <li key={id}>
+                <a
+                  href={threadHref(id)}
+                  aria-current={active === id ? "page" : undefined}
+                  className={`mx-inbox-row${unreadCount ? " is-unread" : ""}`}
+                >
+                  <Avatar person={participant} />
+                  <span className="mx-inbox-person">
+                    <strong>{participant.displayName || participant.username}</strong>
+                    <span>{preview}</span>
+                  </span>
+                  <span className="mx-inbox-meta">
+                    <Time value={lastMessage?.createdAt ?? updatedAt} />
+                    <Count count={unreadCount} />
+                  </span>
+                </a>
+              </li>
+            );
+          })}
         </ul>
       )}
       <Pager {...conversations} cursor={conversations.page?.cursor} />
@@ -232,11 +206,7 @@ function DirectStart({ target, userId }: { target: string; userId: string }) {
   return (
     <section className="mx-inbox-panel" aria-labelledby="mx-inbox-direct-title">
       <header className="mx-inbox-panel-head">
-        <a
-          className="button mx-inbox-back"
-          href="/messages"
-          aria-label="Về danh sách trò chuyện"
-        >
+        <a className="button mx-inbox-back" href="/messages" aria-label="Về danh sách trò chuyện">
           <Icon name="back" />
         </a>
         <h2 id="mx-inbox-direct-title">Tin nhắn mới</h2>
@@ -252,20 +222,11 @@ function DirectStart({ target, userId }: { target: string; userId: string }) {
           }}
         />
       ) : (
-        <Status
-          text={
-            href ? "Cuộc trò chuyện đã sẵn sàng." : "Đang mở cuộc trò chuyện…"
-          }
-        />
+        <Status text={href ? "Cuộc trò chuyện đã sẵn sàng." : "Đang mở cuộc trò chuyện…"} />
       )}
       <div className="mx-inbox-direct-actions">
         {href && (
-          <a
-            ref={link}
-            data-replace="true"
-            className="button button-primary"
-            href={href}
-          >
+          <a ref={link} data-replace="true" className="button button-primary" href={href}>
             Đi đến cuộc trò chuyện
           </a>
         )}

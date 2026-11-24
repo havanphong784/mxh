@@ -51,18 +51,11 @@ test("public discovery and authenticated home resolve to different feeds", () =>
 
 test("search trims Vietnamese terms, preserves the media filter and rejects short terms", () => {
   assert.equal(
-    resolveSocial("/search?q=%20c%C3%A0+ph%C3%AA%20&mediaOnly=true", false)
-      .endpoint,
+    resolveSocial("/search?q=%20c%C3%A0+ph%C3%AA%20&mediaOnly=true", false).endpoint,
     "/posts/search?q=c%C3%A0+ph%C3%AA&mediaOnly=true",
   );
-  assert.equal(
-    resolveSocial("/search?q=a&mediaOnly=1", true).endpoint,
-    undefined,
-  );
-  assert.equal(
-    resolveSocial("/search?q=" + "a".repeat(101), true).endpoint,
-    undefined,
-  );
+  assert.equal(resolveSocial("/search?q=a&mediaOnly=1", true).endpoint, undefined);
+  assert.equal(resolveSocial("/search?q=" + "a".repeat(101), true).endpoint, undefined);
 });
 
 test("encoded post links and opaque cursors round-trip without losing filters", () => {
@@ -76,13 +69,9 @@ test("encoded post links and opaque cursors round-trip without losing filters", 
 
 test("overlapping pages append new posts once without rolling back visible data", () => {
   assert.deepEqual(
-    appendPage(
-      [post("a", { content: "Đã sửa" })],
-      [post("a"), post("b"), post("b")],
-    ).map((item) => [
-      item.id,
-      item.isDeleted || item.isUnavailable ? null : item.content,
-    ]),
+    appendPage([post("a", { content: "Đã sửa" })], [post("a"), post("b"), post("b")]).map(
+      (item) => [item.id, item.isDeleted || item.isUnavailable ? null : item.content],
+    ),
     [
       ["a", "Đã sửa"],
       ["b", "Chào bạn"],
@@ -165,10 +154,7 @@ test("upload targets Cloudinary with the signed fields and maps the response to 
     timestamp: 42,
     signature: "request-signature",
   });
-  assert.equal(
-    attempt.url,
-    "https://api.cloudinary.com/v1_1/demo/video/upload",
-  );
+  assert.equal(attempt.url, "https://api.cloudinary.com/v1_1/demo/video/upload");
   assert.deepEqual(
     [...attempt.body.keys()],
     ["file", "api_key", "timestamp", "signature", "folder"],
@@ -192,20 +178,12 @@ test("upload targets Cloudinary with the signed fields and maps the response to 
     duration: 2.5,
     order: 1,
   });
-  assert.throws(() =>
-    mediaPayload({ public_id: "clip", version: 123 }, "audio", 0),
-  );
+  assert.throws(() => mediaPayload({ public_id: "clip", version: 123 }, "audio", 0));
 });
 
 test("attachment validation enforces supported types and image size", () => {
-  assert.equal(
-    classifyMedia({ name: "photo.png", type: "image/png", size: 100 }),
-    "image",
-  );
-  assert.equal(
-    classifyMedia({ name: "CLIP.MOV", type: "", size: 100 }),
-    "video",
-  );
+  assert.equal(classifyMedia({ name: "photo.png", type: "image/png", size: 100 }), "image");
+  assert.equal(classifyMedia({ name: "CLIP.MOV", type: "", size: 100 }), "video");
   assert.throws(() =>
     classifyMedia({
       name: "huge.png",
@@ -213,41 +191,26 @@ test("attachment validation enforces supported types and image size", () => {
       size: 10 * 1024 * 1024 + 1,
     }),
   );
-  assert.throws(() =>
-    classifyMedia({ name: "fake.png", type: "text/html", size: 7 }),
-  );
+  assert.throws(() => classifyMedia({ name: "fake.png", type: "text/html", size: 7 }));
 });
 
 test("composer produces separate reply and quote bodies and permits valid media-only posts", () => {
-  const media = mediaPayload(
-    { public_id: "m", version: "3", signature: "s" },
-    "image",
-    0,
-  );
+  const media = mediaPayload({ public_id: "m", version: "3", signature: "s" }, "image", 0);
   assert.deepEqual(composePayload("  ", "PRIVATE", [media], {}), {
     visibility: "PRIVATE",
     media: [media],
   });
-  assert.deepEqual(
-    composePayload(" Xin chào ", "FOLLOWERS", [], { parentId: "p" }),
-    {
-      content: "Xin chào",
-      visibility: "FOLLOWERS",
-      parentId: "p",
-    },
-  );
-  assert.deepEqual(
-    composePayload("Góc nhìn mới", "PUBLIC", [], { quotedPostId: "q" }),
-    {
-      content: "Góc nhìn mới",
-      visibility: "PUBLIC",
-      quotedPostId: "q",
-    },
-  );
-  assert.throws(
-    () => composePayload("", "PUBLIC", [], { quotedPostId: "q" }),
-    /nội dung|tệp/,
-  );
+  assert.deepEqual(composePayload(" Xin chào ", "FOLLOWERS", [], { parentId: "p" }), {
+    content: "Xin chào",
+    visibility: "FOLLOWERS",
+    parentId: "p",
+  });
+  assert.deepEqual(composePayload("Góc nhìn mới", "PUBLIC", [], { quotedPostId: "q" }), {
+    content: "Góc nhìn mới",
+    visibility: "PUBLIC",
+    quotedPostId: "q",
+  });
+  assert.throws(() => composePayload("", "PUBLIC", [], { quotedPostId: "q" }), /nội dung|tệp/);
   assert.throws(() => composePayload(" ", "PUBLIC", [], { parentId: "p" }));
 });
 
@@ -256,18 +219,14 @@ test("create retries reuse an idempotency key only for the same post body", () =
   const first = createRequest(body, null, () => "first");
   assert.equal(createRequest({ ...body }, first, () => "unused").key, "first");
   assert.equal(
-    createRequest({ ...body, visibility: "PRIVATE" }, first, () => "second")
-      .key,
+    createRequest({ ...body, visibility: "PRIVATE" }, first, () => "second").key,
     "second",
   );
 });
 
 test("the embedded profile timeline keeps the encoded username in both endpoint variants", () => {
   assert.equal(timelinePath("hoa+lan"), "/users/hoa%2Blan/posts");
-  assert.equal(
-    pagePath(timelinePath("hoa+lan", true), null),
-    "/users/hoa%2Blan/replies?limit=20",
-  );
+  assert.equal(pagePath(timelinePath("hoa+lan", true), null), "/users/hoa%2Blan/replies?limit=20");
 });
 
 test("visibility changes hide non-public sources from loaded reposts and quotes", () => {
@@ -293,12 +252,9 @@ test("visibility changes hide non-public sources from loaded reposts and quotes"
 
 test("reply edit payloads omit visibility because backend rejects it", async () => {
   const { editPayload } = await import("../src/social/model.ts");
-  assert.deepEqual(
-    editPayload({ parentId: "parent" }, "Sửa reply", "PRIVATE"),
-    {
-      content: "Sửa reply",
-    },
-  );
+  assert.deepEqual(editPayload({ parentId: "parent" }, "Sửa reply", "PRIVATE"), {
+    content: "Sửa reply",
+  });
   assert.deepEqual(editPayload({ parentId: null }, "Sửa bài", "PRIVATE"), {
     content: "Sửa bài",
     visibility: "PRIVATE",

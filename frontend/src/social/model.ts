@@ -108,15 +108,7 @@ export function composePath(placement: Placement) {
 }
 
 export type SocialRoute = {
-  view:
-    | "home"
-    | "explore"
-    | "search"
-    | "bookmarks"
-    | "likes"
-    | "detail"
-    | "compose"
-    | "missing";
+  view: "home" | "explore" | "search" | "bookmarks" | "likes" | "detail" | "compose" | "missing";
   endpoint?: string;
   requiresUser?: boolean;
   postId?: string;
@@ -165,11 +157,7 @@ export function resolveSocial(path: string, signedIn: boolean): SocialRoute {
       return {
         view: "compose",
         requiresUser: true,
-        placement: parentId
-          ? { parentId }
-          : quotedPostId
-            ? { quotedPostId }
-            : {},
+        placement: parentId ? { parentId } : quotedPostId ? { quotedPostId } : {},
       };
     }
     default: {
@@ -195,10 +183,7 @@ export function pagePath(endpoint: string, cursor: string | null) {
 
 export function appendPage(old: Post[], incoming: Post[]): Post[] {
   const seen = new Set(old.map(({ id }) => id));
-  return [
-    ...old,
-    ...incoming.filter(({ id }) => !seen.has(id) && Boolean(seen.add(id))),
-  ];
+  return [...old, ...incoming.filter(({ id }) => !seen.has(id) && Boolean(seen.add(id)))];
 }
 
 export function isActive(post?: Post | null): post is ActivePost {
@@ -206,11 +191,7 @@ export function isActive(post?: Post | null): post is ActivePost {
 }
 export function repostTarget(post: Post): ActivePost | undefined {
   if (!isActive(post)) return undefined;
-  return post.repostOfId
-    ? isActive(post.repostOf)
-      ? post.repostOf
-      : undefined
-    : post;
+  return post.repostOfId ? (isActive(post.repostOf) ? post.repostOf : undefined) : post;
 }
 
 export const TOGGLES = {
@@ -233,11 +214,7 @@ export type PostChange = { id: string } & (
   | { kind: "delete" }
   | { kind: "reply" }
 );
-export function mergePostChange(
-  post: Post,
-  change: PostChange,
-  tombstone = false,
-): Post | null {
+export function mergePostChange(post: Post, change: PostChange, tombstone = false): Post | null {
   if (!isActive(post)) return post;
   if (post.id === change.id) {
     if (change.kind === "delete") {
@@ -272,20 +249,16 @@ export function mergePostChange(
           change.count ??
           Math.max(
             0,
-            post.counters[counter] +
-              Number(change.active) -
-              Number(post.interactions[flag]),
+            post.counters[counter] + Number(change.active) - Number(post.interactions[flag]),
           ),
       },
     };
   }
   if (post.repostOfId === change.id) {
-    if (change.kind === "delete")
-      return tombstone ? { ...post, repostOf: null } : null;
+    if (change.kind === "delete") return tombstone ? { ...post, repostOf: null } : null;
     if (change.kind === "edit" && change.post.visibility !== "PUBLIC")
       return { ...post, repostOf: null };
-    if (post.repostOf)
-      return { ...post, repostOf: mergePostChange(post.repostOf, change) };
+    if (post.repostOf) return { ...post, repostOf: mergePostChange(post.repostOf, change) };
   }
   if (post.quotedPostId === change.id) {
     if (
@@ -334,17 +307,14 @@ const extensionKinds: Record<string, MediaKind> = {
   ogg: "audio",
   aac: "audio",
 };
-export function classifyMedia(
-  file: Pick<File, "name" | "type" | "size">,
-): MediaKind {
+export function classifyMedia(file: Pick<File, "name" | "type" | "size">): MediaKind {
   const kind =
     file.type && file.type !== "application/octet-stream"
       ? mimeKinds[file.type]
       : extensionKinds[file.name.split(".").at(-1)?.toLowerCase() ?? ""];
   if (!kind) throw new Error(`Định dạng của “${file.name}” chưa được hỗ trợ.`);
   const max = kind === "image" ? 10 : 100;
-  if (file.size > max * 1024 * 1024)
-    throw new Error(`“${file.name}” vượt quá ${max} MB.`);
+  if (file.size > max * 1024 * 1024) throw new Error(`“${file.name}” vượt quá ${max} MB.`);
   if (!file.size) throw new Error(`“${file.name}” không có dữ liệu.`);
   return kind;
 }
@@ -390,11 +360,7 @@ export type MediaPayload = {
   duration?: number;
   order: number;
 };
-export function mediaPayload(
-  result: unknown,
-  kind: MediaKind,
-  order: number,
-): MediaPayload {
+export function mediaPayload(result: unknown, kind: MediaKind, order: number): MediaPayload {
   const data = result as Record<string, unknown> | null;
   if (
     !data ||
@@ -407,9 +373,7 @@ export function mediaPayload(
       (typeof data.version === "number" && Number.isFinite(data.version))
     )
   ) {
-    throw new Error(
-      "Dịch vụ tệp không trả về thông tin xác thực. Hãy tải lại tệp.",
-    );
+    throw new Error("Dịch vụ tệp không trả về thông tin xác thực. Hãy tải lại tệp.");
   }
   const dimensions: Pick<MediaPayload, "width" | "height" | "duration"> = {};
   for (const key of ["width", "height", "duration"] as const) {
@@ -452,10 +416,8 @@ export function composePayload(
   const content = text.trim();
   if (Array.from(content).length > MAX_CONTENT)
     throw new Error(`Nội dung vượt quá ${MAX_CONTENT} ký tự.`);
-  if (media.length > MAX_MEDIA)
-    throw new Error(`Chỉ được đính kèm tối đa ${MAX_MEDIA} tệp.`);
-  if (!content && !media.length)
-    throw new Error("Hãy viết nội dung hoặc đính kèm tệp.");
+  if (media.length > MAX_MEDIA) throw new Error(`Chỉ được đính kèm tối đa ${MAX_MEDIA} tệp.`);
+  if (!content && !media.length) throw new Error("Hãy viết nội dung hoặc đính kèm tệp.");
   if (placement.parentId && placement.quotedPostId)
     throw new Error("Không thể vừa trả lời vừa trích dẫn trong một bài.");
   return {
@@ -473,7 +435,5 @@ export function createRequest(
   makeKey: () => string = () => crypto.randomUUID(),
 ): CreateRequest {
   const encoded = JSON.stringify(body);
-  return previous?.body === encoded
-    ? previous
-    : { body: encoded, key: makeKey() };
+  return previous?.body === encoded ? previous : { body: encoded, key: makeKey() };
 }

@@ -23,11 +23,7 @@ export function usePages<T extends { id: string }>(
     setBusy("refresh");
     setFailure(null);
     const pagesToReload = depth.current;
-    void readWindow(
-      (cursor) => load(cursor, controller.signal),
-      pagesToReload,
-      prepend,
-    )
+    void readWindow((cursor) => load(cursor, controller.signal), pagesToReload, prepend)
       .then((result) => {
         if (!controller.signal.aborted) setPage(result);
       })
@@ -86,16 +82,11 @@ export function usePages<T extends { id: string }>(
     more,
     reload: () => setRetry((value) => value + 1),
     update: (change: (items: T[]) => T[]) =>
-      setPage(
-        (current) => current && { ...current, items: change(current.items) },
-      ),
+      setPage((current) => current && { ...current, items: change(current.items) }),
   };
 }
 
-export function useResource<T>(
-  load: (signal: AbortSignal) => Promise<T>,
-  revision = 0,
-) {
+export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, revision = 0) {
   const [value, setValue] = useState<T | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -135,14 +126,9 @@ export function useInboxRevisions(threadId?: string) {
     let timer: number | undefined;
     let pending: Invalidation = {};
     function receive(raw: Event) {
-      const detail = (raw as CustomEvent<{ event: string; data: unknown }>)
-        .detail;
+      const detail = (raw as CustomEvent<{ event: string; data: unknown }>).detail;
       if (!detail) return;
-      const impact = realtimeImpact(
-        detail.event,
-        detail.data,
-        currentThread.current,
-      );
+      const impact = realtimeImpact(detail.event, detail.data, currentThread.current);
       if (!impact) return;
       for (const key of Object.keys(impact) as (keyof Revisions)[]) {
         if (impact[key]) pending[key] = true;

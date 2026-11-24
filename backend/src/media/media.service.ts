@@ -1,15 +1,7 @@
-import {
-  BadRequestException,
-  HttpStatus,
-  Injectable,
-  Logger,
-} from "@nestjs/common";
+import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { v2 as cloudinary } from "cloudinary";
 import crypto from "node:crypto";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../common/exceptions/domain.exception.js";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
 import { ConfigService } from "@nestjs/config";
 import type { EnvironmentVariables } from "../config/env.validation.js";
 
@@ -38,9 +30,7 @@ export interface VerifyMediaItemInput {
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
 
-  constructor(
-    private readonly configService?: ConfigService<EnvironmentVariables, true>,
-  ) {
+  constructor(private readonly configService?: ConfigService<EnvironmentVariables, true>) {
     cloudinary.config({
       cloud_name:
         this.configService?.get("CLOUDINARY_CLOUD_NAME", { infer: true }) ??
@@ -54,10 +44,7 @@ export class MediaService {
     });
   }
 
-  verifyMediaItems(
-    userId: string,
-    mediaItems: VerifyMediaItemInput[],
-  ): VerifiedMediaItem[] {
+  verifyMediaItems(userId: string, mediaItems: VerifyMediaItemInput[]): VerifiedMediaItem[] {
     const apiSecret =
       this.configService?.get("CLOUDINARY_API_SECRET", { infer: true }) ??
       process.env.CLOUDINARY_API_SECRET;
@@ -65,9 +52,7 @@ export class MediaService {
       this.configService?.get("CLOUDINARY_CLOUD_NAME", { infer: true }) ??
       process.env.CLOUDINARY_CLOUD_NAME;
     if (!apiSecret || !cloudName) {
-      throw new Error(
-        "Chưa cấu hình CLOUDINARY_API_SECRET hoặc CLOUDINARY_CLOUD_NAME",
-      );
+      throw new Error("Chưa cấu hình CLOUDINARY_API_SECRET hoặc CLOUDINARY_CLOUD_NAME");
     }
     const expectedPrefix = `mxh/${userId}/posts/`;
     const seenPublicIds = new Set<string>();
@@ -84,10 +69,7 @@ export class MediaService {
         );
       }
       const signaturePayload = `public_id=${item.publicId}&version=${item.version}${apiSecret}`;
-      const expectedSignature = crypto
-        .createHash("sha1")
-        .update(signaturePayload)
-        .digest("hex");
+      const expectedSignature = crypto.createHash("sha1").update(signaturePayload).digest("hex");
       if (item.signature !== expectedSignature) {
         throw new DomainException(
           ERROR_CODES.MEDIA_INVALID_SIGNATURE,
@@ -137,8 +119,7 @@ export class MediaService {
     const extension = versionedPath?.startsWith(`${publicId}.`)
       ? versionedPath.slice(publicId!.length + 1)
       : "";
-    const matchesAsset =
-      versionedPath === publicId || /^[a-z0-9]+$/i.test(extension);
+    const matchesAsset = versionedPath === publicId || /^[a-z0-9]+$/i.test(extension);
 
     if (
       !cloudName ||
@@ -217,9 +198,7 @@ export class MediaService {
       const prefix = `mxh/${userId}/`;
       await cloudinary.api.delete_resources_by_prefix(prefix);
       await cloudinary.api.delete_folder(`mxh/${userId}`);
-      this.logger.log(
-        `Đã xóa toàn bộ tài nguyên trên Cloudinary của user: ${userId}`,
-      );
+      this.logger.log(`Đã xóa toàn bộ tài nguyên trên Cloudinary của user: ${userId}`);
     } catch (error) {
       this.logger.error(`Lỗi khi xóa folder của user ${userId}:`, error);
     }

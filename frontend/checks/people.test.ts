@@ -16,8 +16,7 @@ function transport(...responses: unknown[]) {
 }
 
 test("matches directory deep links and only known profile subpaths", async () => {
-  const { parsePeoplePath, profileHref, peopleHref, messageHref } =
-    await people();
+  const { parsePeoplePath, profileHref, peopleHref, messageHref } = await people();
   assert.deepEqual(parsePeoplePath("/people?q=%20Lan+Anh%20"), {
     kind: "directory",
     query: "Lan Anh",
@@ -34,20 +33,14 @@ test("matches directory deep links and only known profile subpaths", async () =>
   assert.equal(parsePeoplePath("/profile/%E0%A4%A"), null);
   assert.equal(parsePeoplePath("/profile/lan/replies"), null);
   assert.equal(parsePeoplePath("/profile/lan%2Fanh"), null);
-  assert.equal(
-    profileHref("lan-anh", "followers"),
-    "/profile/lan-anh/followers",
-  );
+  assert.equal(profileHref("lan-anh", "followers"), "/profile/lan-anh/followers");
   assert.equal(peopleHref("Lan & An"), "/people?q=Lan+%26+An");
   assert.equal(messageHref("user?2"), "/messages?to=user%3F2");
 });
 
 test("loads guest and signed-in profiles with the right viewer context", async () => {
   const { createPeopleClient } = await people();
-  const { api, calls } = transport(
-    { isFollowing: false },
-    { isFollowing: true },
-  );
+  const { api, calls } = transport({ isFollowing: false }, { isFollowing: true });
   const client = createPeopleClient(api);
   const signal = new AbortController().signal;
   assert.equal((await client.profile("lan", false, signal)).isFollowing, false);
@@ -70,17 +63,11 @@ test("uses a user ID for authenticated follow and unfollow", async () => {
     followersCount: 4,
     followingCount: 2,
   };
-  const followed = afterFollow(
-    profile,
-    await client.setFollowing(profile.id, true),
-  );
+  const followed = afterFollow(profile, await client.setFollowing(profile.id, true));
   assert.equal(followed.isFollowing, true);
   assert.equal(followed.followersCount, 5);
   assert.equal(afterFollow(followed, true).followersCount, 5);
-  assert.deepEqual(
-    afterFollow(followed, await client.setFollowing(profile.id, false)),
-    profile,
-  );
+  assert.deepEqual(afterFollow(followed, await client.setFollowing(profile.id, false)), profile);
   assert.deepEqual(calls, [
     { path: "/users/user%2F7/follow", options: { method: "POST", auth: true } },
     {
@@ -173,20 +160,10 @@ test("loads private settings and patches changed profile fields with URL and pub
   const client = createPeopleClient(api);
   const loaded = await client.settings();
   assert.deepEqual(
-    profilePatch(
-      loaded,
-      { displayName: " Lan ", bio: " Cũ " },
-      undefined,
-      undefined,
-    ),
+    profilePatch(loaded, { displayName: " Lan ", bio: " Cũ " }, undefined, undefined),
     {},
   );
-  const fields = profilePatch(
-    loaded,
-    { displayName: " Lan Anh ", bio: " " },
-    null,
-    banner,
-  );
+  const fields = profilePatch(loaded, { displayName: " Lan Anh ", bio: " " }, null, banner);
   const updated = await client.saveProfile(fields);
   assert.deepEqual(calls, [
     { path: "/users/me", options: { auth: true, signal: undefined } },
@@ -206,19 +183,16 @@ test("loads private settings and patches changed profile fields with URL and pub
       },
     },
   ]);
-  assert.deepEqual(
-    updatedViewer({ id: "1", username: "lan", displayName: "Lan" }, updated),
-    {
-      id: "1",
-      email: "lan@example.test",
-      isEmailVerified: true,
-      username: "lan",
-      displayName: "Lan Anh",
-      bio: null,
-      avatarUrl: null,
-      bannerUrl: banner.url,
-    },
-  );
+  assert.deepEqual(updatedViewer({ id: "1", username: "lan", displayName: "Lan" }, updated), {
+    id: "1",
+    email: "lan@example.test",
+    isEmailVerified: true,
+    username: "lan",
+    displayName: "Lan Anh",
+    bio: null,
+    avatarUrl: null,
+    bannerUrl: banner.url,
+  });
 });
 
 test("uploads only the signed Cloudinary multipart fields without app credentials", async () => {
@@ -233,8 +207,7 @@ test("uploads only the signed Cloudinary multipart fields without app credential
   };
   const { api, calls } = transport(signature);
   const file = new File(["pixels"], "avatar.png", { type: "image/png" });
-  const secureUrl =
-    "https://res.cloudinary.com/demo/image/upload/v7/mxh/1/avatars/cat.png";
+  const secureUrl = "https://res.cloudinary.com/demo/image/upload/v7/mxh/1/avatars/cat.png";
   const upload: typeof fetch = async (url, init) => {
     assert.equal(url, "https://api.cloudinary.com/v1_1/demo/image/upload");
     assert.equal(init?.credentials, "omit");
@@ -255,13 +228,10 @@ test("uploads only the signed Cloudinary multipart fields without app credential
       public_id: "mxh/1/avatars/cat",
     });
   };
-  assert.deepEqual(
-    await createPeopleClient(api, upload).uploadImage("avatars", file),
-    {
-      url: secureUrl,
-      publicId: "mxh/1/avatars/cat",
-    },
-  );
+  assert.deepEqual(await createPeopleClient(api, upload).uploadImage("avatars", file), {
+    url: secureUrl,
+    publicId: "mxh/1/avatars/cat",
+  });
   assert.deepEqual(calls, [
     {
       path: "/media/upload-signature?folder=avatars&mediaType=image",
@@ -287,10 +257,7 @@ test("does not return an image reference when a signed banner upload fails", asy
       new File(["pixels"], "banner.png", { type: "image/png" }),
     ),
   );
-  assert.equal(
-    calls[0].path,
-    "/media/upload-signature?folder=banners&mediaType=image",
-  );
+  assert.equal(calls[0].path, "/media/upload-signature?folder=banners&mediaType=image");
 });
 
 test("keeps passwords byte-for-byte and honors the other-device checkbox", async () => {
@@ -372,12 +339,7 @@ test("an unchanged registration-length name does not block a bio edit", async ()
     bio: null,
   } as Parameters<typeof profilePatch>[0];
   assert.deepEqual(
-    profilePatch(
-      original,
-      { displayName, bio: "Hồ sơ mới" },
-      undefined,
-      undefined,
-    ),
+    profilePatch(original, { displayName, bio: "Hồ sơ mới" }, undefined, undefined),
     { bio: "Hồ sơ mới" },
   );
 });

@@ -70,13 +70,8 @@ export class UsersRepository {
     return this.user.where({ id: userId }).delete();
   }
 
-  async findLatestOtp(
-    email: string,
-    type: "REGISTER_VERIFY" | "FORGOT_PASSWORD",
-  ) {
-    return this.prisma.client.orm.public.OtpVerification.where((otp) =>
-      otp.email.eq(email),
-    )
+  async findLatestOtp(email: string, type: "REGISTER_VERIFY" | "FORGOT_PASSWORD") {
+    return this.prisma.client.orm.public.OtpVerification.where((otp) => otp.email.eq(email))
       .where((otp) => otp.type.eq(type))
       .orderBy((otp) => otp.createdAt.desc())
       .first();
@@ -138,9 +133,7 @@ export class UsersRepository {
       });
       await tx.orm.public.OtpVerification.where({ id: otpId }).delete();
       if (userId) {
-        await tx.orm.public.Session.where((session) =>
-          session.userId.eq(userId),
-        ).update({
+        await tx.orm.public.Session.where((session) => session.userId.eq(userId)).update({
           isRevoked: true,
         });
       }
@@ -148,15 +141,11 @@ export class UsersRepository {
   }
 
   async findSessionByTokenHash(tokenHash: string) {
-    return this.session
-      .where((session) => session.tokenHash.eq(tokenHash))
-      .first();
+    return this.session.where((session) => session.tokenHash.eq(tokenHash)).first();
   }
 
   async revokeSessionsForUser(userId: string) {
-    return this.session
-      .where((session) => session.userId.eq(userId))
-      .update({ isRevoked: true });
+    return this.session.where((session) => session.userId.eq(userId)).update({ isRevoked: true });
   }
 
   async rotateRefreshSession(
@@ -185,9 +174,7 @@ export class UsersRepository {
   }
 
   async revokeSessionByTokenHash(tokenHash: string): Promise<string[]> {
-    const sessions = await this.session
-      .where((session) => session.tokenHash.eq(tokenHash))
-      .all();
+    const sessions = await this.session.where((session) => session.tokenHash.eq(tokenHash)).all();
     await this.session
       .where((session) => session.tokenHash.eq(tokenHash))
       .update({ isRevoked: true });
@@ -201,11 +188,7 @@ export class UsersRepository {
       .first();
   }
 
-  async searchActiveUsers(
-    term: string,
-    cursor: string | undefined,
-    limit: number,
-  ) {
+  async searchActiveUsers(term: string, cursor: string | undefined, limit: number) {
     const pattern = toContainsPattern(term);
     const matchingUsers = (field: "username" | "displayName") => {
       let query = this.user
@@ -262,9 +245,7 @@ export class UsersRepository {
       });
       if (!logoutOtherDevices) return;
 
-      const sessions = await tx.orm.public.Session.where((s) =>
-        s.userId.eq(userId),
-      ).all();
+      const sessions = await tx.orm.public.Session.where((s) => s.userId.eq(userId)).all();
       for (const session of sessions) {
         if (session.id !== currentSessionId) {
           await tx.orm.public.Session.where({ id: session.id }).update({
@@ -283,9 +264,7 @@ export class UsersRepository {
   }
 
   async findByUsername(username: string) {
-    return this.user
-      .where((u) => u.username.eq(username.toLowerCase()))
-      .first();
+    return this.user.where((u) => u.username.eq(username.toLowerCase())).first();
   }
 
   async findFollow(followerId: string, followingId: string) {
@@ -305,9 +284,7 @@ export class UsersRepository {
   }
 
   async findFollowerIds(followingId: string): Promise<string[]> {
-    const follows = await this.follow
-      .where((f) => f.followingId.eq(followingId))
-      .all();
+    const follows = await this.follow.where((f) => f.followingId.eq(followingId)).all();
     return follows.map((follow) => follow.followerId);
   }
 

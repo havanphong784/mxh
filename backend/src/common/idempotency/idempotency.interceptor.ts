@@ -9,10 +9,7 @@ import { Observable, of } from "rxjs";
 import { tap } from "rxjs/operators";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { IdempotencyService } from "./idempotency.service.js";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../exceptions/domain.exception.js";
+import { DomainException, ERROR_CODES } from "../exceptions/domain.exception.js";
 
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
@@ -29,12 +26,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     // 1. Chỉ áp dụng cho các HTTP methods mang tính thay đổi trạng thái (Mutations)
     const method = request.method?.toUpperCase();
-    if (
-      method !== "POST" &&
-      method !== "PUT" &&
-      method !== "PATCH" &&
-      method !== "DELETE"
-    ) {
+    if (method !== "POST" && method !== "PUT" && method !== "PATCH" && method !== "DELETE") {
       return next.handle();
     }
 
@@ -54,9 +46,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     // Scope key theo user ID (nếu đã xác thực) hoặc theo IP
-    const user = (
-      request as unknown as { user?: { sub?: string; id?: string } }
-    ).user;
+    const user = (request as unknown as { user?: { sub?: string; id?: string } }).user;
     const scope = user?.sub || user?.id || request.ip || "anonymous";
     const scopedKey = `${scope}:${sanitizedKey}`;
 
@@ -89,8 +79,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
       tap({
         next: (body) => {
           const statusCode =
-            reply.statusCode ||
-            (method === "POST" ? HttpStatus.CREATED : HttpStatus.OK);
+            reply.statusCode || (method === "POST" ? HttpStatus.CREATED : HttpStatus.OK);
           this.idempotencyService.setCompleted(scopedKey, statusCode, body);
         },
         error: () => {

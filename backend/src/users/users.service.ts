@@ -13,14 +13,8 @@ import { FollowPaginationDto } from "./dto/follow-pagination.dto.js";
 import * as argon2 from "argon2";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { AUTH_EVENTS, USER_EVENTS } from "../events/event-types.js";
-import type {
-  UserFollowedEvent,
-  UserSessionsRevokedEvent,
-} from "../events/event-types.js";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../common/exceptions/domain.exception.js";
+import type { UserFollowedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { UsersRepository } from "./users.repository.js";
 import type { FollowPaginatedResponseDto } from "./dto/user-response.dto.js";
@@ -35,18 +29,10 @@ export class UsersService {
 
   async searchUsers(term: string, cursor?: string, requestedLimit = 20) {
     const limit = Math.min(50, Math.max(1, Number(requestedLimit) || 20));
-    const { byUsername, byDisplayName } = await this.repo.searchActiveUsers(
-      term,
-      cursor,
-      limit,
-    );
+    const { byUsername, byDisplayName } = await this.repo.searchActiveUsers(term, cursor, limit);
     const users = [
-      ...new Map(
-        [...byUsername, ...byDisplayName].map((user) => [user.id, user]),
-      ).values(),
-    ].sort((a, b) =>
-      a.username < b.username ? -1 : a.username > b.username ? 1 : 0,
-    );
+      ...new Map([...byUsername, ...byDisplayName].map((user) => [user.id, user])).values(),
+    ].sort((a, b) => (a.username < b.username ? -1 : a.username > b.username ? 1 : 0));
     const page = users.slice(0, limit);
     return {
       items: page.map((user) => ({
@@ -61,9 +47,7 @@ export class UsersService {
   }
 
   async suggestUsers(viewerId?: string) {
-    const suggested: Awaited<
-      ReturnType<UsersRepository["findSuggestionCandidates"]>
-    > = [];
+    const suggested: Awaited<ReturnType<UsersRepository["findSuggestionCandidates"]>> = [];
     let offset = 0;
     while (suggested.length < 6) {
       const candidates = await this.repo.findSuggestionCandidates(offset);
@@ -75,9 +59,7 @@ export class UsersService {
           : [];
       const followedIds = new Set(follows.map((follow) => follow.followingId));
       suggested.push(
-        ...candidates.filter(
-          (user) => user.id !== viewerId && !followedIds.has(user.id),
-        ),
+        ...candidates.filter((user) => user.id !== viewerId && !followedIds.has(user.id)),
       );
       offset += candidates.length;
       if (candidates.length < 24) break;
@@ -97,9 +79,7 @@ export class UsersService {
     const user = await this.repo.findById(userId);
 
     if (!user || !user.isActive) {
-      throw new NotFoundException(
-        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
-      );
+      throw new NotFoundException("Người dùng không tồn tại hoặc tài khoản đã bị khóa");
     }
 
     const [followersCount, followingCount] = await Promise.all([
@@ -128,9 +108,7 @@ export class UsersService {
     const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
-      throw new NotFoundException(
-        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
-      );
+      throw new NotFoundException("Người dùng không tồn tại hoặc tài khoản đã bị khóa");
     }
 
     const [followersCount, followingCount, followRecord] = await Promise.all([
@@ -181,20 +159,14 @@ export class UsersService {
     }
 
     const expectedAvatarPrefix = `mxh/${userId}/avatars/`;
-    if (
-      dto.avatarPublicId &&
-      !dto.avatarPublicId.startsWith(expectedAvatarPrefix)
-    ) {
+    if (dto.avatarPublicId && !dto.avatarPublicId.startsWith(expectedAvatarPrefix)) {
       throw new BadRequestException(
         "avatarPublicId không hợp lệ hoặc không thuộc quyền sở hữu của bạn",
       );
     }
 
     const expectedBannerPrefix = `mxh/${userId}/banners/`;
-    if (
-      dto.bannerPublicId &&
-      !dto.bannerPublicId.startsWith(expectedBannerPrefix)
-    ) {
+    if (dto.bannerPublicId && !dto.bannerPublicId.startsWith(expectedBannerPrefix)) {
       throw new BadRequestException(
         "bannerPublicId không hợp lệ hoặc không thuộc quyền sở hữu của bạn",
       );
@@ -219,15 +191,12 @@ export class UsersService {
         : null;
 
     const updatePayload: Record<string, any> = {};
-    if (dto.displayName !== undefined)
-      updatePayload.displayName = dto.displayName;
+    if (dto.displayName !== undefined) updatePayload.displayName = dto.displayName;
     if (dto.bio !== undefined) updatePayload.bio = dto.bio;
     if (dto.avatarUrl !== undefined) updatePayload.avatarUrl = dto.avatarUrl;
-    if (dto.avatarPublicId !== undefined)
-      updatePayload.avatarPublicId = dto.avatarPublicId;
+    if (dto.avatarPublicId !== undefined) updatePayload.avatarPublicId = dto.avatarPublicId;
     if (dto.bannerUrl !== undefined) updatePayload.bannerUrl = dto.bannerUrl;
-    if (dto.bannerPublicId !== undefined)
-      updatePayload.bannerPublicId = dto.bannerPublicId;
+    if (dto.bannerPublicId !== undefined) updatePayload.bannerPublicId = dto.bannerPublicId;
 
     if (Object.keys(updatePayload).length > 0) {
       await this.repo.updateUser(userId, updatePayload);
@@ -266,11 +235,7 @@ export class UsersService {
     };
   }
 
-  async changePassword(
-    userId: string,
-    dto: ChangePasswordDto,
-    currentSessionId?: string,
-  ) {
+  async changePassword(userId: string, dto: ChangePasswordDto, currentSessionId?: string) {
     const user = await this.repo.findById(userId);
 
     if (!user || !user.isActive) {
@@ -283,9 +248,7 @@ export class UsersService {
     }
 
     if (dto.oldPassword === dto.newPassword) {
-      throw new BadRequestException(
-        "Mật khẩu mới không được trùng với mật khẩu hiện tại",
-      );
+      throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu hiện tại");
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword);
@@ -313,27 +276,20 @@ export class UsersService {
     const currentUser = await this.repo.findById(currentUserId);
 
     if (!currentUser || !currentUser.isActive) {
-      throw new ForbiddenException(
-        "Tài khoản của bạn đã bị khóa hoặc không tồn tại",
-      );
+      throw new ForbiddenException("Tài khoản của bạn đã bị khóa hoặc không tồn tại");
     }
 
     const targetUser = await this.repo.findById(targetUserId);
 
     if (!targetUser || !targetUser.isActive || !targetUser.isEmailVerified) {
-      throw new NotFoundException(
-        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
-      );
+      throw new NotFoundException("Người dùng không tồn tại hoặc tài khoản đã bị khóa");
     }
 
     if (currentUserId === targetUser.id) {
       throw new BadRequestException("Bạn không thể tự theo dõi chính mình");
     }
 
-    const existingFollow = await this.repo.findFollow(
-      currentUserId,
-      targetUser.id,
-    );
+    const existingFollow = await this.repo.findFollow(currentUserId, targetUser.id);
 
     if (existingFollow) {
       throw new BadRequestException("Bạn đã theo dõi người dùng này rồi");
@@ -366,9 +322,7 @@ export class UsersService {
     const currentUser = await this.repo.findById(currentUserId);
 
     if (!currentUser || !currentUser.isActive) {
-      throw new ForbiddenException(
-        "Tài khoản của bạn đã bị khóa hoặc không tồn tại",
-      );
+      throw new ForbiddenException("Tài khoản của bạn đã bị khóa hoặc không tồn tại");
     }
 
     const targetUser = await this.repo.findById(targetUserId);
@@ -381,10 +335,7 @@ export class UsersService {
       throw new BadRequestException("Thao tác không hợp lệ");
     }
 
-    const existingFollow = await this.repo.findFollow(
-      currentUserId,
-      targetUser.id,
-    );
+    const existingFollow = await this.repo.findFollow(currentUserId, targetUser.id);
 
     if (!existingFollow) {
       throw new BadRequestException("Bạn chưa theo dõi người dùng này");
@@ -404,9 +355,7 @@ export class UsersService {
     const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
-      throw new NotFoundException(
-        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
-      );
+      throw new NotFoundException("Người dùng không tồn tại hoặc tài khoản đã bị khóa");
     }
 
     const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
@@ -488,9 +437,7 @@ export class UsersService {
     const user = await this.repo.findByUsername(username);
 
     if (!user || !user.isActive || !user.isEmailVerified) {
-      throw new NotFoundException(
-        "Người dùng không tồn tại hoặc tài khoản đã bị khóa",
-      );
+      throw new NotFoundException("Người dùng không tồn tại hoặc tài khoản đã bị khóa");
     }
 
     const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
@@ -574,14 +521,10 @@ export class UsersService {
     ).toString("base64url");
   }
 
-  private decodeFollowCursor(
-    cursor?: string,
-  ): { createdAt: Temporal.Instant; id: string } | null {
+  private decodeFollowCursor(cursor?: string): { createdAt: Temporal.Instant; id: string } | null {
     if (!cursor) return null;
     try {
-      const decoded = JSON.parse(
-        Buffer.from(cursor, "base64url").toString("utf8"),
-      );
+      const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
       if (
         typeof decoded?.createdAt !== "string" ||
         typeof decoded?.id !== "string" ||
@@ -628,9 +571,7 @@ export class UsersService {
   async getAuthProfile(userId: string) {
     const user = await this.repo.findById(userId);
     if (!user || !user.isActive) {
-      throw new UnauthorizedException(
-        "Tài khoản không tồn tại hoặc đã bị khóa.",
-      );
+      throw new UnauthorizedException("Tài khoản không tồn tại hoặc đã bị khóa.");
     }
     return {
       id: user.id,

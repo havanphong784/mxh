@@ -1,18 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { User } from "../session";
-import {
-  passwordProblem,
-  profileHref,
-  profilePatch,
-  updatedViewer,
-} from "./contracts";
-import type {
-  createPeopleClient,
-  ImageFolder,
-  ImageReference,
-  PrivateProfile,
-} from "./contracts";
+import { passwordProblem, profileHref, profilePatch, updatedViewer } from "./contracts";
+import type { createPeopleClient, ImageFolder, ImageReference, PrivateProfile } from "./contracts";
 import { Avatar, LoadFailure, errorText, useResource } from "./shared";
 
 type Client = ReturnType<typeof createPeopleClient>;
@@ -59,11 +49,7 @@ function ImageField({
     return () => URL.revokeObjectURL(url);
   }, [file]);
   const src =
-    value === undefined
-      ? original
-      : file
-        ? preview
-        : (value as ImageReference | null)?.url;
+    value === undefined ? original : file ? preview : (value as ImageReference | null)?.url;
 
   const reset = (next: ImageEdit) => {
     setProblem("");
@@ -92,9 +78,7 @@ function ImageField({
           else reset(selected);
         }}
       />
-      {file && (
-        <span className="people-handle people-file-name">{file.name}</span>
-      )}
+      {file && <span className="people-handle people-file-name">{file.name}</span>}
       {problem && (
         <p className="people-feedback people-error" role="alert">
           {problem}
@@ -111,11 +95,7 @@ function ImageField({
           </button>
         )}
         {value !== undefined && (
-          <button
-            className="people-text-button"
-            type="button"
-            onClick={() => reset(undefined)}
-          >
+          <button className="people-text-button" type="button" onClick={() => reset(undefined)}>
             Hoàn tác thay đổi
           </button>
         )}
@@ -157,11 +137,7 @@ function ProfileForm({
       const text = { displayName, bio };
       // Validate text before creating any remote assets.
       const textPatch = profilePatch(original, text, undefined, undefined);
-      if (
-        !Object.keys(textPatch).length &&
-        avatar === undefined &&
-        banner === undefined
-      ) {
+      if (!Object.keys(textPatch).length && avatar === undefined && banner === undefined) {
         setFeedback({ status: "Chưa có thay đổi để lưu." });
         return;
       }
@@ -172,10 +148,7 @@ function ProfileForm({
       ) {
         if (!(edit instanceof File)) return edit;
         setFeedback({
-          status:
-            folder === "avatars"
-              ? "Đang tải ảnh đại diện…"
-              : "Đang tải ảnh bìa…",
+          status: folder === "avatars" ? "Đang tải ảnh đại diện…" : "Đang tải ảnh bìa…",
         });
         const image = await client.uploadImage(folder, edit, controller.signal);
         controller.signal.throwIfAborted();
@@ -274,13 +247,7 @@ function ProfileForm({
   );
 }
 
-function PasswordForm({
-  client,
-  blocked,
-}: {
-  client: Client;
-  blocked: boolean;
-}) {
+function PasswordForm({ client, blocked }: { client: Client; blocked: boolean }) {
   const [oldPassword, setOld] = useState("");
   const [newPassword, setNew] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -387,12 +354,7 @@ export function Settings({
   user: User;
   onUser: (user: User | null) => void;
 }) {
-  const {
-    value: profile,
-    error,
-    setValue,
-    reload,
-  } = useResource(client.settings);
+  const { value: profile, error, setValue, reload } = useResource(client.settings);
   const [saving, setSaving] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>({});
@@ -424,20 +386,11 @@ export function Settings({
           Xem hồ sơ của bạn
         </a>
       </header>
-      <section
-        className="people-setting-section"
-        aria-labelledby="people-edit-title"
-      >
+      <section className="people-setting-section" aria-labelledby="people-edit-title">
         <h2 id="people-edit-title">Hồ sơ công khai</h2>
-        <p className="people-handle">
-          Tên, tiểu sử và ảnh hiển thị trên hồ sơ của bạn.
-        </p>
+        <p className="people-handle">Tên, tiểu sử và ảnh hiển thị trên hồ sơ của bạn.</p>
         {error ? (
-          <LoadFailure
-            title="Không tải được hồ sơ"
-            error={error}
-            retry={reload}
-          />
+          <LoadFailure title="Không tải được hồ sơ" error={error} retry={reload} />
         ) : profile ? (
           <ProfileForm
             client={client}
@@ -455,10 +408,7 @@ export function Settings({
           </p>
         )}
       </section>
-      <section
-        className="people-setting-section"
-        aria-labelledby="people-account-title"
-      >
+      <section className="people-setting-section" aria-labelledby="people-account-title">
         <h2 id="people-account-title">Tài khoản</h2>
         <dl className="people-account">
           <div>
@@ -474,28 +424,18 @@ export function Settings({
           {account.isEmailVerified !== undefined && (
             <div>
               <dt>Xác minh email</dt>
-              <dd>
-                {account.isEmailVerified ? "Đã xác minh" : "Chưa xác minh"}
-              </dd>
+              <dd>{account.isEmailVerified ? "Đã xác minh" : "Chưa xác minh"}</dd>
             </div>
           )}
         </dl>
       </section>
-      <section
-        className="people-setting-section"
-        aria-labelledby="people-password-title"
-      >
+      <section className="people-setting-section" aria-labelledby="people-password-title">
         <h2 id="people-password-title">Đổi mật khẩu</h2>
         <PasswordForm client={client} blocked={logoutBusy} />
       </section>
-      <section
-        className="people-setting-section"
-        aria-labelledby="people-session-title"
-      >
+      <section className="people-setting-section" aria-labelledby="people-session-title">
         <h2 id="people-session-title">Phiên đăng nhập</h2>
-        <p className="people-handle">
-          Kết thúc phiên đăng nhập trên thiết bị này.
-        </p>
+        <p className="people-handle">Kết thúc phiên đăng nhập trên thiết bị này.</p>
         <button
           className="button"
           type="button"

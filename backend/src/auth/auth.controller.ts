@@ -125,9 +125,7 @@ export class AuthController {
   ): Promise<RefreshResponseDto> {
     const refreshToken = this.readRefreshTokenCookie(req);
     if (!refreshToken) {
-      throw new UnauthorizedException(
-        "Không tìm thấy refresh token trong cookie",
-      );
+      throw new UnauthorizedException("Không tìm thấy refresh token trong cookie");
     }
 
     const meta = {
@@ -147,18 +145,14 @@ export class AuthController {
   @Post("forgot-password")
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async forgotPassword(
-    @Body() dto: ForgotPasswordDto,
-  ): Promise<MessageResponseDto> {
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<MessageResponseDto> {
     return this.authService.forgotPassword(dto);
   }
 
   @Post("reset-password")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async resetPassword(
-    @Body() dto: ResetPasswordDto,
-  ): Promise<MessageResponseDto> {
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<MessageResponseDto> {
     return this.authService.resetPassword(dto);
   }
 
@@ -194,8 +188,8 @@ export class AuthController {
 
   private isProduction(): boolean {
     return (
-      (this.configService?.get("NODE_ENV", { infer: true }) ??
-        process.env.NODE_ENV) === "production"
+      (this.configService?.get("NODE_ENV", { infer: true }) ?? process.env.NODE_ENV) ===
+      "production"
     );
   }
 }

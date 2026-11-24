@@ -55,10 +55,7 @@ export class UsersAuthService {
     await this.repo.deleteUserById(userId);
   }
 
-  async findLatestOtp(
-    email: string,
-    type: "REGISTER_VERIFY" | "FORGOT_PASSWORD",
-  ) {
+  async findLatestOtp(email: string, type: "REGISTER_VERIFY" | "FORGOT_PASSWORD") {
     const otp = await this.repo.findLatestOtp(email, type);
     if (!otp) return null;
     return {
@@ -103,11 +100,7 @@ export class UsersAuthService {
       isRevoked: boolean;
     },
   ) {
-    const session = await this.repo.activateAndCreateSession(
-      email,
-      otpId,
-      sessionData,
-    );
+    const session = await this.repo.activateAndCreateSession(email, otpId, sessionData);
     return { id: session.id };
   }
 
@@ -117,12 +110,7 @@ export class UsersAuthService {
     userId: string | null,
     passwordHash: string,
   ) {
-    return this.repo.resetPasswordAndRevokeSessions(
-      email,
-      otpId,
-      userId,
-      passwordHash,
-    );
+    return this.repo.resetPasswordAndRevokeSessions(email, otpId, userId, passwordHash);
   }
 
   async findSessionByTokenHash(tokenHash: string) {
@@ -152,10 +140,7 @@ export class UsersAuthService {
       isRevoked: boolean;
     },
   ) {
-    const session = await this.repo.rotateRefreshSession(
-      sessionId,
-      sessionData,
-    );
+    const session = await this.repo.rotateRefreshSession(sessionId, sessionData);
     return session ? { id: session.id } : null;
   }
 

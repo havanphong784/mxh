@@ -16,10 +16,7 @@ type Request = <T>(
   },
 ) => Promise<T>;
 
-export type Person = Pick<
-  User,
-  "id" | "username" | "displayName" | "avatarUrl" | "bio"
->;
+export type Person = Pick<User, "id" | "username" | "displayName" | "avatarUrl" | "bio">;
 export type Profile = Person &
   Pick<User, "bannerUrl"> & {
     followersCount: number;
@@ -51,20 +48,13 @@ export function parsePeoplePath(path: string): PeopleRoute | null {
       query: new URLSearchParams(search).get("q")?.trim() ?? "",
     };
   if (cleanPath === "/settings") return { kind: "settings" };
-  const match = /^\/profile\/([^/]+)(?:\/(followers|following))?$/.exec(
-    cleanPath,
-  );
+  const match = /^\/profile\/([^/]+)(?:\/(followers|following))?$/.exec(cleanPath);
   if (!match) return null;
   try {
     const username = decodeURIComponent(match[1]);
-    if (username === "." || username === ".." || /[/\\]/.test(username))
-      return null;
+    if (username === "." || username === ".." || /[/\\]/.test(username)) return null;
     const kind =
-      match[2] === "followers"
-        ? "followers"
-        : match[2] === "following"
-          ? "following"
-          : "profile";
+      match[2] === "followers" ? "followers" : match[2] === "following" ? "following" : "profile";
     return { kind, username };
   } catch {
     return null;
@@ -76,9 +66,7 @@ export function profileHref(username: string, connection?: Connection): string {
 }
 
 export function peopleHref(query: string): string {
-  return query.trim()
-    ? `/people?${new URLSearchParams({ q: query.trim() })}`
-    : "/people";
+  return query.trim() ? `/people?${new URLSearchParams({ q: query.trim() })}` : "/people";
 }
 
 export function messageHref(userId: string): string {
@@ -87,9 +75,7 @@ export function messageHref(userId: string): string {
 
 export function searchProblem(query: string): string | null {
   const length = Array.from(query.trim()).length;
-  return length < 2 || length > 100
-    ? "Nhập từ 2 đến 100 ký tự để tìm người dùng."
-    : null;
+  return length < 2 || length > 100 ? "Nhập từ 2 đến 100 ký tự để tìm người dùng." : null;
 }
 
 export function passwordProblem(
@@ -107,8 +93,7 @@ export function passwordProblem(
   ) {
     return "Dùng từ 8 đến 100 ký tự, có chữ hoa, chữ thường và chữ số.";
   }
-  if (newPassword === oldPassword)
-    return "Mật khẩu mới phải khác mật khẩu hiện tại.";
+  if (newPassword === oldPassword) return "Mật khẩu mới phải khác mật khẩu hiện tại.";
   if (newPassword !== confirm) return "Hai mật khẩu mới không khớp.";
   return null;
 }
@@ -118,10 +103,7 @@ export function afterFollow(profile: Profile, isFollowing: boolean): Profile {
   return {
     ...profile,
     isFollowing,
-    followersCount: Math.max(
-      0,
-      profile.followersCount + (isFollowing ? 1 : -1),
-    ),
+    followersCount: Math.max(0, profile.followersCount + (isFollowing ? 1 : -1)),
   };
 }
 
@@ -134,11 +116,7 @@ export function bumpTimelineForFollow(
 }
 
 export function uniquePeople(existing: Person[], incoming: Person[]): Person[] {
-  return [
-    ...new Map(
-      [...existing, ...incoming].map((person) => [person.id, person]),
-    ).values(),
-  ];
+  return [...new Map([...existing, ...incoming].map((person) => [person.id, person])).values()];
 }
 
 export function profilePatch(
@@ -202,12 +180,7 @@ export function createPeopleClient(api: Request, upload: typeof fetch = fetch) {
       });
       return follow;
     },
-    connections(
-      username: string,
-      kind: Connection,
-      cursor: string | null,
-      signal?: AbortSignal,
-    ) {
+    connections(username: string, kind: Connection, cursor: string | null, signal?: AbortSignal) {
       return api<PeoplePage>(
         `/users/${encodeURIComponent(username)}/${kind}?${pageQuery(cursor)}`,
         { auth: false, signal },
@@ -216,13 +189,10 @@ export function createPeopleClient(api: Request, upload: typeof fetch = fetch) {
     async search(query: string, cursor: string | null, signal?: AbortSignal) {
       const problem = searchProblem(query);
       if (problem) throw new Error(problem);
-      return api<PeoplePage>(
-        `/users/search?${pageQuery(cursor, query.trim())}`,
-        {
-          auth: false,
-          signal,
-        },
-      );
+      return api<PeoplePage>(`/users/search?${pageQuery(cursor, query.trim())}`, {
+        auth: false,
+        signal,
+      });
     },
     suggestions(auth: boolean, signal?: AbortSignal) {
       return api<{ items: Person[] }>("/users/suggestions", { auth, signal });
@@ -296,11 +266,7 @@ export function createPeopleClient(api: Request, upload: typeof fetch = fetch) {
       }
       return { url: result.secure_url, publicId: result.public_id };
     },
-    changePassword(
-      oldPassword: string,
-      newPassword: string,
-      logoutOtherDevices: boolean,
-    ) {
+    changePassword(oldPassword: string, newPassword: string, logoutOtherDevices: boolean) {
       return api<{ message: string }>("/users/change-password", {
         auth: true,
         method: "POST",

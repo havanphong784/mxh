@@ -8,9 +8,7 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
   private transporter: nodemailer.Transporter;
 
-  constructor(
-    private readonly configService: ConfigService<EnvironmentVariables, true>,
-  ) {
+  constructor(private readonly configService: ConfigService<EnvironmentVariables, true>) {
     const nodeEnv = this.configService.get("NODE_ENV", { infer: true });
     const smtpUser = this.configService.get("SMTP_USER", { infer: true });
     const smtpPass = this.configService.get("SMTP_PASS", { infer: true });
@@ -22,18 +20,14 @@ export class MailService {
         !smtpPass?.trim() ||
         smtpPass.includes("your-gmail-app-password"))
     ) {
-      throw new Error(
-        "SMTP_USER và SMTP_PASS phải được cấu hình trong production",
-      );
+      throw new Error("SMTP_USER và SMTP_PASS phải được cấu hình trong production");
     }
     const port = this.configService.get("SMTP_PORT", { infer: true }) ?? 465;
     const smtpSecure = this.configService.get("SMTP_SECURE", { infer: true });
     const secure = smtpSecure === undefined ? port === 465 : smtpSecure;
 
     this.transporter = nodemailer.createTransport({
-      host:
-        this.configService.get("SMTP_HOST", { infer: true }) ||
-        "smtp.gmail.com",
+      host: this.configService.get("SMTP_HOST", { infer: true }) || "smtp.gmail.com",
       port,
       secure,
       auth: {
@@ -44,9 +38,7 @@ export class MailService {
   }
 
   async sendOtpEmail(toEmail: string, otpCode: string): Promise<boolean> {
-    const from =
-      this.configService.get("EMAIL_FROM", { infer: true }) ||
-      "no-reply@mxh.local";
+    const from = this.configService.get("EMAIL_FROM", { infer: true }) || "no-reply@mxh.local";
     const smtpUser = this.configService.get("SMTP_USER", { infer: true });
     const subject = "Mã xác thực tài khoản Mạng Xã Hội";
     const html = `
@@ -82,22 +74,15 @@ export class MailService {
       return true;
     } catch (error) {
       this.logger.error(`❌ Gửi email OTP tới ${toEmail} thất bại:`, error);
-      if (
-        this.configService.get("NODE_ENV", { infer: true }) !== "production"
-      ) {
+      if (this.configService.get("NODE_ENV", { infer: true }) !== "production") {
         this.logger.warn(`👉 MÃ OTP BACKUP: ${otpCode}`);
       }
       return false;
     }
   }
 
-  async sendResetPasswordEmail(
-    toEmail: string,
-    otpCode: string,
-  ): Promise<boolean> {
-    const from =
-      this.configService.get("EMAIL_FROM", { infer: true }) ||
-      "no-reply@mxh.local";
+  async sendResetPasswordEmail(toEmail: string, otpCode: string): Promise<boolean> {
+    const from = this.configService.get("EMAIL_FROM", { infer: true }) || "no-reply@mxh.local";
     const smtpUser = this.configService.get("SMTP_USER", { infer: true });
     const subject = "Yêu cầu đặt lại mật khẩu - Mạng Xã Hội";
     const html = `
@@ -130,18 +115,11 @@ export class MailService {
         subject,
         html,
       });
-      this.logger.log(
-        `✅ Đã gửi email Reset Password thành công tới: ${toEmail}`,
-      );
+      this.logger.log(`✅ Đã gửi email Reset Password thành công tới: ${toEmail}`);
       return true;
     } catch (error) {
-      this.logger.error(
-        `❌ Gửi email Reset Password tới ${toEmail} thất bại:`,
-        error,
-      );
-      if (
-        this.configService.get("NODE_ENV", { infer: true }) !== "production"
-      ) {
+      this.logger.error(`❌ Gửi email Reset Password tới ${toEmail} thất bại:`, error);
+      if (this.configService.get("NODE_ENV", { infer: true }) !== "production") {
         this.logger.warn(`👉 MÃ OTP BACKUP: ${otpCode}`);
       }
       return false;

@@ -47,17 +47,11 @@ export class NotificationsRepository {
   }
 
   async findByIdWithDetails(notificationId: string) {
-    return this.notification
-      .where({ id: notificationId })
-      .include("actor")
-      .include("post")
-      .first();
+    return this.notification.where({ id: notificationId }).include("actor").include("post").first();
   }
 
   async markAsRead(notificationId: string): Promise<void> {
-    await this.notification
-      .where({ id: notificationId })
-      .update({ isRead: true });
+    await this.notification.where({ id: notificationId }).update({ isRead: true });
   }
 
   async markAllAsRead(userId: string): Promise<number> {
@@ -69,21 +63,14 @@ export class NotificationsRepository {
       .affectedCount()
       .build();
 
-    const { affectedRows } = await this.prisma.client.transaction(
-      async (tx: any) => {
-        return await tx.execute(rawPlan);
-      },
-    );
+    const { affectedRows } = await this.prisma.client.transaction(async (tx: any) => {
+      return await tx.execute(rawPlan);
+    });
 
     return affectedRows;
   }
 
-  async findExisting(
-    recipientId: string,
-    actorId: string,
-    type: string,
-    postId?: string,
-  ) {
+  async findExisting(recipientId: string, actorId: string, type: string, postId?: string) {
     let q = this.notification
       .where((n: any) => n.recipientId.eq(recipientId))
       .where((n: any) => n.actorId.eq(actorId))

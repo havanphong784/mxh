@@ -20,17 +20,12 @@ function createService(
   },
 ) {
   // Each test supplies only the methods it exercises; their signatures stay checked.
-  return new MessagingService(
-    repository as MessagingRepository,
-    gateway as EventsGateway,
-  );
+  return new MessagingService(repository as MessagingRepository, gateway as EventsGateway);
 }
 
 const now = Temporal.Instant.from("2026-11-06T00:00:00Z");
 
-function user(
-  id: string,
-): ConversationWithParticipants["participants"][number]["user"] {
+function user(id: string): ConversationWithParticipants["participants"][number]["user"] {
   return {
     id,
     username: id,
@@ -126,11 +121,7 @@ test("conversation pages are limited in the repository and include a next cursor
   let receivedLimit = 0;
   let receivedCursor: unknown;
   const repository = {
-    listConversations: async (
-      _userId: string,
-      limit: number,
-      cursor?: unknown,
-    ) => {
+    listConversations: async (_userId: string, limit: number, cursor?: unknown) => {
       receivedLimit = limit;
       receivedCursor = cursor;
       return { items: [conversation], hasMore: true };
@@ -160,9 +151,7 @@ test("conversation detail is only available to a participant", async () => {
   const conversation = conversationFixture();
   const repository = {
     findConversationForUser: async (_conversationId: string, userId: string) =>
-      userId === "user-a"
-        ? { conversation, participant: conversation.participants[0] }
-        : null,
+      userId === "user-a" ? { conversation, participant: conversation.participants[0] } : null,
     findLatestMessage: async () => null,
     countUnreadForConversation: async () => 0,
   };

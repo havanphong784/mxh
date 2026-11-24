@@ -83,16 +83,12 @@ export function Composer({
   const serial = useRef(0);
   const textArea = useRef<HTMLTextAreaElement>(null);
   const targetId = placement.parentId ?? placement.quotedPostId;
-  const context = useQuery<Post>(
-    !inline && targetId ? postPath(targetId) : undefined,
-    true,
-  );
+  const context = useQuery<Post>(!inline && targetId ? postPath(targetId) : undefined, true);
   const contextBlocked =
     !inline &&
     Boolean(targetId) &&
     (!isActive(context.data) ||
-      (Boolean(placement.quotedPostId) &&
-        context.data.visibility !== "PUBLIC"));
+      (Boolean(placement.quotedPostId) && context.data.visibility !== "PUBLIC"));
   const title = placement.parentId
     ? "Đăng trả lời"
     : placement.quotedPostId
@@ -154,9 +150,7 @@ export function Composer({
             signal,
           });
           if (!response.ok)
-            throw new Error(
-              `Không tải được “${item.file.name}”. Vui lòng thử lại.`,
-            );
+            throw new Error(`Không tải được “${item.file.name}”. Vui lòng thử lại.`);
           uploaded = mediaPayload(await response.json(), item.kind, order);
           uploads.current.set(item.id, uploaded);
         }
@@ -183,12 +177,7 @@ export function Composer({
       onCreated?.(post);
     } catch (error) {
       if (!signal.aborted)
-        setNotice(
-          errorLabel(
-            error,
-            "Không đăng được bài. Bản nháp vẫn được giữ, hãy thử lại.",
-          ),
-        );
+        setNotice(errorLabel(error, "Không đăng được bài. Bản nháp vẫn được giữ, hãy thử lại."));
     } finally {
       if (request.current === controller) request.current = null;
       if (!signal.aborted) setProgress("");
@@ -204,11 +193,7 @@ export function Composer({
             <a className="button button-primary" href={postPath(published.id)}>
               Xem bài vừa đăng <Icon name="arrow" />
             </a>
-            <button
-              className="button"
-              type="button"
-              onClick={() => setPublished(undefined)}
-            >
+            <button className="button" type="button" onClick={() => setPublished(undefined)}>
               Viết tiếp
             </button>
           </>
@@ -219,11 +204,7 @@ export function Composer({
     );
   }
   return (
-    <form
-      className="social-composer"
-      data-inline={inline}
-      onSubmit={(event) => void submit(event)}
-    >
+    <form className="social-composer" data-inline={inline} onSubmit={(event) => void submit(event)}>
       {!inline &&
         targetId &&
         (context.loading ? (
@@ -243,13 +224,10 @@ export function Composer({
         ) : isActive(context.data) ? (
           <div className="social-reference">
             <a href={postPath(context.data.id)}>
-              {placement.parentId ? "Trả lời" : "Trích dẫn"} @
-              {context.data.author.username}
+              {placement.parentId ? "Trả lời" : "Trích dẫn"} @{context.data.author.username}
             </a>
             <p>{context.data.content || "Bài viết có tệp đính kèm"}</p>
-            {contextBlocked && (
-              <p role="alert">Chỉ có thể trích dẫn bài viết công khai.</p>
-            )}
+            {contextBlocked && <p role="alert">Chỉ có thể trích dẫn bài viết công khai.</p>}
           </div>
         ) : (
           <Message title="Bài gốc không còn khả dụng" />
@@ -275,9 +253,7 @@ export function Composer({
               disabled={Boolean(progress)}
               remove={() => {
                 uploads.current.delete(item.id);
-                setAttachments((current) =>
-                  current.filter(({ id }) => id !== item.id),
-                );
+                setAttachments((current) => current.filter(({ id }) => id !== item.id));
                 setNotice("");
               }}
             />

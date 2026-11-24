@@ -48,26 +48,21 @@ export class MessagingService {
     ]);
 
     if (!actor || !target) {
-      throw new NotFoundException(
-        "Người dùng không tồn tại hoặc không còn hoạt động",
-      );
+      throw new NotFoundException("Người dùng không tồn tại hoặc không còn hoạt động");
     }
 
     const directKey = [userId, dto.targetUserId].sort().join(":");
-    let conversation =
-      await this.messagingRepository.findDirectConversation(directKey);
+    let conversation = await this.messagingRepository.findDirectConversation(directKey);
 
     if (!conversation) {
       try {
-        conversation = await this.messagingRepository.createDirectConversation(
-          directKey,
-          [userId, dto.targetUserId],
-        );
+        conversation = await this.messagingRepository.createDirectConversation(directKey, [
+          userId,
+          dto.targetUserId,
+        ]);
       } catch {
-        conversation =
-          await this.messagingRepository.findDirectConversation(directKey);
-        if (!conversation)
-          throw new ConflictException("Không thể tạo cuộc trò chuyện");
+        conversation = await this.messagingRepository.findDirectConversation(directKey);
+        if (!conversation) throw new ConflictException("Không thể tạo cuộc trò chuyện");
       }
     }
 
@@ -75,17 +70,10 @@ export class MessagingService {
       throw new ConflictException("Không thể tạo cuộc trò chuyện");
     }
 
-    const result = await this.messagingRepository.findConversationForUser(
-      conversation.id,
-      userId,
-    );
+    const result = await this.messagingRepository.findConversationForUser(conversation.id, userId);
     if (!result) throw new NotFoundException("Cuộc trò chuyện không tồn tại");
 
-    return this.toConversationResponse(
-      result.conversation,
-      result.participant,
-      userId,
-    );
+    return this.toConversationResponse(result.conversation, result.participant, userId);
   }
 
   async getConversations(
@@ -101,17 +89,13 @@ export class MessagingService {
     );
     const data = await Promise.all(
       items.map((conversation) => {
-        const participant = conversation.participants.find(
-          (item) => item.userId === userId,
-        );
+        const participant = conversation.participants.find((item) => item.userId === userId);
         return this.toConversationResponse(conversation, participant, userId);
       }),
     );
     const last = items[items.length - 1];
     const nextCursor =
-      hasMore && last
-        ? this.encodeConversationCursor(last.updatedAt, last.id)
-        : null;
+      hasMore && last ? this.encodeConversationCursor(last.updatedAt, last.id) : null;
 
     return {
       data,
@@ -120,23 +104,11 @@ export class MessagingService {
     };
   }
 
-  async getConversation(
-    userId: string,
-    conversationId: string,
-  ): Promise<ConversationResponseDto> {
-    const result = await this.messagingRepository.findConversationForUser(
-      conversationId,
-      userId,
-    );
+  async getConversation(userId: string, conversationId: string): Promise<ConversationResponseDto> {
+    const result = await this.messagingRepository.findConversationForUser(conversationId, userId);
     if (!result)
-      throw new NotFoundException(
-        "Cuộc trò chuyện không tồn tại hoặc bạn không có quyền xem",
-      );
-    return this.toConversationResponse(
-      result.conversation,
-      result.participant,
-      userId,
-    );
+      throw new NotFoundException("Cuộc trò chuyện không tồn tại hoặc bạn không có quyền xem");
+    return this.toConversationResponse(result.conversation, result.participant, userId);
   }
 
   async getMessages(
@@ -144,23 +116,14 @@ export class MessagingService {
     conversationId: string,
     query: ConversationPaginationDto,
   ): Promise<MessagePageDto> {
-    const participant = await this.messagingRepository.findParticipant(
-      conversationId,
-      userId,
-    );
+    const participant = await this.messagingRepository.findParticipant(conversationId, userId);
     if (!participant) {
-      throw new ForbiddenException(
-        "Bạn không có quyền xem cuộc trò chuyện này",
-      );
+      throw new ForbiddenException("Bạn không có quyền xem cuộc trò chuyện này");
     }
 
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 30));
     const cursor = this.decodeMessageCursor(query.cursor);
-    const result = await this.messagingRepository.listMessages(
-      conversationId,
-      limit,
-      cursor,
-    );
+    const result = await this.messagingRepository.listMessages(conversationId, limit, cursor);
     const data = result.items.map((message) => this.toMessageResponse(message));
     const nextCursor =
       result.hasMore && data.length
@@ -175,14 +138,9 @@ export class MessagingService {
     conversationId: string,
     dto: SendMessageDto,
   ): Promise<MessageResponseDto> {
-    const participant = await this.messagingRepository.findParticipant(
-      conversationId,
-      userId,
-    );
+    const participant = await this.messagingRepository.findParticipant(conversationId, userId);
     if (!participant) {
-      throw new ForbiddenException(
-        "Bạn không có quyền gửi tin nhắn vào cuộc trò chuyện này",
-      );
+      throw new ForbiddenException("Bạn không có quyền gửi tin nhắn vào cuộc trò chuyện này");
     }
 
     const body = dto.body.trim();
@@ -194,9 +152,7 @@ export class MessagingService {
     );
     if (existing) {
       if (existing.conversationId !== conversationId) {
-        throw new ConflictException(
-          "clientMessageId đã được sử dụng cho tin nhắn khác",
-        );
+        throw new ConflictException("clientMessageId đã được sử dụng cho tin nhắn khác");
       }
       return this.toMessageResponse(existing);
     }
@@ -235,29 +191,16 @@ export class MessagingService {
     };
 
     this.eventsGateway.pushToUser(userId, MESSAGE_EVENTS.NEW_MESSAGE, event);
-    this.eventsGateway.pushToUser(
-      recipient.userId,
-      MESSAGE_EVENTS.NEW_MESSAGE,
-      event,
-    );
+    this.eventsGateway.pushToUser(recipient.userId, MESSAGE_EVENTS.NEW_MESSAGE, event);
 
-    const recipientUnreadCount =
-      await this.messagingRepository.countUnreadForConversation(
-        conversationId,
-        recipient.userId,
-        recipient.lastReadAt ?? null,
-      );
-    this.eventsGateway.pushToUser(
+    const recipientUnreadCount = await this.messagingRepository.countUnreadForConversation(
+      conversationId,
       recipient.userId,
-      MESSAGE_EVENTS.UNREAD_COUNT,
-      {
-        count: await this.getUnreadCountValue(
-          recipient.userId,
-          recipientUnreadCount,
-          conversationId,
-        ),
-      },
+      recipient.lastReadAt ?? null,
     );
+    this.eventsGateway.pushToUser(recipient.userId, MESSAGE_EVENTS.UNREAD_COUNT, {
+      count: await this.getUnreadCountValue(recipient.userId, recipientUnreadCount, conversationId),
+    });
 
     return response;
   }
@@ -266,14 +209,9 @@ export class MessagingService {
     userId: string,
     conversationId: string,
   ): Promise<MarkConversationReadDto> {
-    const participant = await this.messagingRepository.findParticipant(
-      conversationId,
-      userId,
-    );
+    const participant = await this.messagingRepository.findParticipant(conversationId, userId);
     if (!participant) {
-      throw new ForbiddenException(
-        "Bạn không có quyền cập nhật cuộc trò chuyện này",
-      );
+      throw new ForbiddenException("Bạn không có quyền cập nhật cuộc trò chuyện này");
     }
 
     const readAt = Temporal.Now.instant();
@@ -301,8 +239,7 @@ export class MessagingService {
     knownConversationCount?: number,
     knownConversationId?: string,
   ): Promise<number> {
-    const participants =
-      await this.messagingRepository.findUnreadParticipants(userId);
+    const participants = await this.messagingRepository.findUnreadParticipants(userId);
     let total = 0;
 
     for (const participant of participants) {
@@ -328,14 +265,9 @@ export class MessagingService {
     participant: ConversationParticipantRecord | undefined,
     userId: string,
   ): Promise<ConversationResponseDto> {
-    const participantRecord = this.getOtherParticipantRecord(
-      conversation,
-      userId,
-    );
+    const participantRecord = this.getOtherParticipantRecord(conversation, userId);
     if (!participantRecord?.user || !participant) {
-      throw new NotFoundException(
-        "Người tham gia cuộc trò chuyện không tồn tại",
-      );
+      throw new NotFoundException("Người tham gia cuộc trò chuyện không tồn tại");
     }
 
     const [lastMessage, unreadCount] = await Promise.all([
@@ -357,20 +289,14 @@ export class MessagingService {
     };
   }
 
-  private getOtherParticipantRecord(
-    conversation: ConversationWithParticipants,
-    userId: string,
-  ) {
+  private getOtherParticipantRecord(conversation: ConversationWithParticipants, userId: string) {
     return conversation.participants.find((item) => item.userId !== userId);
   }
 
   private async getOtherParticipant(conversationId: string, userId: string) {
     const conversation =
-      await this.messagingRepository.findConversationWithParticipants(
-        conversationId,
-      );
-    if (!conversation)
-      throw new NotFoundException("Cuộc trò chuyện không tồn tại");
+      await this.messagingRepository.findConversationWithParticipants(conversationId);
+    if (!conversation) throw new NotFoundException("Cuộc trò chuyện không tồn tại");
     const participant = this.getOtherParticipantRecord(conversation, userId);
     if (!participant) throw new NotFoundException("Người nhận không tồn tại");
     return participant;
@@ -443,14 +369,10 @@ export class MessagingService {
   }
 
   private encodeConversationCursor(updatedAt: Temporal.Instant, id: string) {
-    return Buffer.from(
-      JSON.stringify({ updatedAt: String(updatedAt), id }),
-    ).toString("base64");
+    return Buffer.from(JSON.stringify({ updatedAt: String(updatedAt), id })).toString("base64");
   }
 
   private encodeMessageCursor(createdAt: Temporal.Instant, id: string) {
-    return Buffer.from(
-      JSON.stringify({ createdAt: String(createdAt), id }),
-    ).toString("base64");
+    return Buffer.from(JSON.stringify({ createdAt: String(createdAt), id })).toString("base64");
   }
 }

@@ -13,8 +13,7 @@ export class OptionalJwtAuthGuard implements CanActivate {
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
       try {
-        (request as any).user =
-          await this.accessSessionService.verifyAccessToken(token);
+        (request as any).user = await this.accessSessionService.verifyAccessToken(token);
       } catch {
         // Token không hợp lệ thì coi như khách vãng lai, không chặn request
       }

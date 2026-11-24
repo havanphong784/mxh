@@ -20,13 +20,9 @@ import type {
 // This opt-in check creates and cleans up its own fixtures in a migrated local test DB.
 const databaseUrl = process.env.MESSAGING_TEST_DATABASE_URL;
 if (!databaseUrl || process.env.NODE_ENV === "production") {
-  throw new Error(
-    "Đặt MESSAGING_TEST_DATABASE_URL trỏ tới database thử nghiệm đã chạy migration.",
-  );
+  throw new Error("Đặt MESSAGING_TEST_DATABASE_URL trỏ tới database thử nghiệm đã chạy migration.");
 }
-if (
-  !["localhost", "127.0.0.1", "[::1]"].includes(new URL(databaseUrl).hostname)
-) {
+if (!["localhost", "127.0.0.1", "[::1]"].includes(new URL(databaseUrl).hostname)) {
   throw new Error("Kiểm thử messaging chỉ chạy với database cục bộ.");
 }
 process.env.DATABASE_URL = databaseUrl;
@@ -39,15 +35,10 @@ globalThis.Temporal = Temporal;
 const { AppModule } = await import("../app.module.js");
 const { PrismaService } = await import("../prisma/prisma.service.js");
 const { MessagingRepository } = await import("./messaging.repository.js");
-const { AllExceptionsFilter } =
-  await import("../common/filters/all-exceptions.filter.js");
-const app = await NestFactory.create<NestFastifyApplication>(
-  AppModule,
-  new FastifyAdapter(),
-  {
-    logger: false,
-  },
-);
+const { AllExceptionsFilter } = await import("../common/filters/all-exceptions.filter.js");
+const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+  logger: false,
+});
 const createdUserIds: string[] = [];
 const sockets: WebSocket[] = [];
 
@@ -58,18 +49,14 @@ async function connectSocket(url: string, token: string) {
   sockets.push(socket);
   const events: Array<[string, Record<string, unknown>]> = [];
   await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("WebSocket connection timed out")),
-      5000,
-    );
+    const timeout = setTimeout(() => reject(new Error("WebSocket connection timed out")), 5000);
     socket.addEventListener("error", () => {
       clearTimeout(timeout);
       reject(new Error("WebSocket connection failed"));
     });
     socket.addEventListener("message", (event) => {
       const packet = String(event.data);
-      if (packet.startsWith("0"))
-        socket.send("40" + JSON.stringify({ token: `Bearer ${token}` }));
+      if (packet.startsWith("0")) socket.send("40" + JSON.stringify({ token: `Bearer ${token}` }));
       if (packet === "2") socket.send("3");
       if (packet.startsWith("40")) {
         clearTimeout(timeout);
@@ -85,10 +72,7 @@ async function connectSocket(url: string, token: string) {
   return events;
 }
 
-async function waitForEvent(
-  events: Array<[string, Record<string, unknown>]>,
-  name: string,
-) {
+async function waitForEvent(events: Array<[string, Record<string, unknown>]>, name: string) {
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     const event = events.find(([eventName]) => eventName === name);
@@ -145,11 +129,7 @@ try {
       signal: AbortSignal.timeout(10000),
     });
     const result = await response.json();
-    assert.equal(
-      response.status,
-      expectedStatus,
-      `${path}: ${JSON.stringify(result)}`,
-    );
+    assert.equal(response.status, expectedStatus, `${path}: ${JSON.stringify(result)}`);
     return result as T;
   }
 
@@ -158,12 +138,7 @@ try {
   const outsider = await createUser("outsider");
   async function login(email: string) {
     return (
-      await request<{ accessToken: string }>(
-        "/auth/login",
-        undefined,
-        { email, password },
-        200,
-      )
+      await request<{ accessToken: string }>("/auth/login", undefined, { email, password }, 200)
     ).accessToken;
   }
   const aliceToken = await login(alice.email);
@@ -173,38 +148,27 @@ try {
   const bobEvents = await connectSocket(url, bobToken);
   const outsiderEvents = await connectSocket(url, outsiderToken);
 
-  const conversation = await request<ConversationResponseDto>(
-    "/conversations/direct",
-    aliceToken,
-    {
-      targetUserId: bob.id,
-    },
-  );
-  const same = await request<ConversationResponseDto>(
-    "/conversations/direct",
-    bobToken,
-    {
-      targetUserId: alice.id,
-    },
-  );
+  const conversation = await request<ConversationResponseDto>("/conversations/direct", aliceToken, {
+    targetUserId: bob.id,
+  });
+  const same = await request<ConversationResponseDto>("/conversations/direct", bobToken, {
+    targetUserId: alice.id,
+  });
   assert.equal(same.id, conversation.id);
 
   // Keep the original conversation outside the first page and test equal-timestamp cursors.
   for (let i = 0; i < 32; i++) {
     const peer = await createUser(`peer${i}`);
-    const item = await repository.createDirectConversation(
-      [alice.id, peer.id].sort().join(":"),
-      [alice.id, peer.id],
-    );
+    const item = await repository.createDirectConversation([alice.id, peer.id].sort().join(":"), [
+      alice.id,
+      peer.id,
+    ]);
     assert.ok(item);
     await repository.conversation
       .where({ id: item.id })
       .update({ updatedAt: Temporal.Instant.from("2099-01-01T00:00:00Z") });
   }
-  const firstPage = await request<ConversationPageDto>(
-    "/conversations?limit=30",
-    aliceToken,
-  );
+  const firstPage = await request<ConversationPageDto>("/conversations?limit=30", aliceToken);
   assert.equal(firstPage.data.length, 30);
   assert.equal(firstPage.hasMore, true);
   assert.ok(firstPage.nextCursor);
@@ -215,28 +179,14 @@ try {
   );
   assert.equal(secondPage.hasMore, false);
   assert.equal(secondPage.data.length, 3);
-  assert.equal(
-    new Set([...firstPage.data, ...secondPage.data].map((item) => item.id))
-      .size,
-    33,
-  );
+  assert.equal(new Set([...firstPage.data, ...secondPage.data].map((item) => item.id)).size, 33);
   const detail = await request<ConversationResponseDto>(
     `/conversations/${conversation.id}`,
     aliceToken,
   );
   assert.equal(detail.participant.id, bob.id);
-  await request(
-    `/conversations/${conversation.id}`,
-    outsiderToken,
-    undefined,
-    404,
-  );
-  await request(
-    `/conversations/${conversation.id}/messages`,
-    outsiderToken,
-    undefined,
-    403,
-  );
+  await request(`/conversations/${conversation.id}`, outsiderToken, undefined, 404);
+  await request(`/conversations/${conversation.id}/messages`, outsiderToken, undefined, 403);
   await request(
     `/conversations/${conversation.id}/messages`,
     outsiderToken,
@@ -257,8 +207,7 @@ try {
   );
   assert.equal(message.id, retried.id);
   assert.equal(
-    (await waitForEvent(aliceEvents, "conversation:new-message"))
-      .conversationId,
+    (await waitForEvent(aliceEvents, "conversation:new-message")).conversationId,
     conversation.id,
   );
   assert.equal(
@@ -266,21 +215,16 @@ try {
     conversation.id,
   );
   assert.equal(
-    (await request<{ count: number }>("/conversations/unread-count", bobToken))
-      .count,
+    (await request<{ count: number }>("/conversations/unread-count", bobToken)).count,
     1,
   );
   await request(`/conversations/${conversation.id}/read`, bobToken, {});
   await waitForEvent(bobEvents, "conversation:read");
   assert.equal(
-    (await request<{ count: number }>("/conversations/unread-count", bobToken))
-      .count,
+    (await request<{ count: number }>("/conversations/unread-count", bobToken)).count,
     0,
   );
-  assert.equal(
-    bobEvents.filter(([name]) => name === "conversation:new-message").length,
-    1,
-  );
+  assert.equal(bobEvents.filter(([name]) => name === "conversation:new-message").length, 1);
   assert.equal(outsiderEvents.length, 0);
 
   await request(`/conversations/${conversation.id}/messages`, bobToken, {
@@ -288,12 +232,7 @@ try {
     clientMessageId: randomUUID(),
   });
   assert.equal(
-    (
-      await request<{ count: number }>(
-        "/conversations/unread-count",
-        aliceToken,
-      )
-    ).count,
+    (await request<{ count: number }>("/conversations/unread-count", aliceToken)).count,
     1,
   );
   for (let i = 0; i < 32; i++) {
@@ -316,10 +255,7 @@ try {
   );
   assert.equal(older.data.length, 4);
   assert.equal(older.hasMore, false);
-  assert.equal(
-    new Set([...recent.data, ...older.data].map((item) => item.id)).size,
-    34,
-  );
+  assert.equal(new Set([...recent.data, ...older.data].map((item) => item.id)).size, 34);
   console.log(
     "PASS: login, 33 conversations across pages, old deep link, access control, two-way messaging, retry deduplication, realtime isolation, read/unread, 34 paginated messages.",
   );

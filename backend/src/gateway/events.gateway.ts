@@ -9,10 +9,7 @@ import { Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import { AccessSessionService } from "../auth/access-session.service.js";
 import { AUTH_EVENTS } from "../events/event-types.js";
-import type {
-  SessionRevokedEvent,
-  UserSessionsRevokedEvent,
-} from "../events/event-types.js";
+import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
 
 // NOTE: @WebSocketGateway decorator is evaluated at class-load time (static context),
 // before NestJS DI container boots — ConfigService cannot be injected here.
@@ -34,8 +31,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     try {
-      const authHeader =
-        client.handshake.auth?.token || client.handshake.headers?.authorization;
+      const authHeader = client.handshake.auth?.token || client.handshake.headers?.authorization;
 
       if (!authHeader || typeof authHeader !== "string") {
         this.logger.warn(`Client ${client.id} bị từ chối: Không có auth token`);
@@ -43,9 +39,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const token = authHeader.startsWith("Bearer ")
-        ? authHeader.slice(7)
-        : authHeader;
+      const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 
       const payload = await this.accessSessionService.verifyAccessToken(token);
 
@@ -60,9 +54,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
       this.onlineUsers.get(userId)!.add(client.id);
 
-      this.logger.log(
-        `User ${userId} đã kết nối WebSocket (Socket ID: ${client.id})`,
-      );
+      this.logger.log(`User ${userId} đã kết nối WebSocket (Socket ID: ${client.id})`);
     } catch (error) {
       this.logger.warn(`Xác thực WebSocket thất bại cho socket ${client.id}`);
       client.disconnect();
@@ -101,10 +93,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent(AUTH_EVENTS.USER_SESSIONS_REVOKED)
   handleUserSessionsRevoked(event: UserSessionsRevokedEvent) {
     for (const socket of this.server.sockets.values()) {
-      if (
-        socket.data.userId === event.userId &&
-        socket.data.sessionId !== event.exceptSessionId
-      ) {
+      if (socket.data.userId === event.userId && socket.data.sessionId !== event.exceptSessionId) {
         socket.disconnect(true);
       }
     }
