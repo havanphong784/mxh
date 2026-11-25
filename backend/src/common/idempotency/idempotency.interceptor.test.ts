@@ -2,7 +2,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ExecutionContext, HttpStatus } from "@nestjs/common";
-import { of, throwError, firstValueFrom } from "rxjs";
+import { NEVER, of, throwError, firstValueFrom } from "rxjs";
 import { IdempotencyService } from "./idempotency.service.js";
 import { IdempotencyInterceptor } from "./idempotency.interceptor.js";
 import { DomainException, ERROR_CODES } from "../exceptions/domain.exception.js";
@@ -12,6 +12,8 @@ function createMockContext(options: {
   headers?: Record<string, string>;
   user?: { sub?: string; id?: string };
   ip?: string;
+  url?: string;
+  body?: unknown;
 }) {
   const headers = options.headers || {};
   let setHeaderCalledWith: [string, string] | null = null;
@@ -19,6 +21,8 @@ function createMockContext(options: {
 
   const request = {
     method: options.method,
+    url: options.url ?? "/api/v1/posts",
+    body: options.body,
     headers,
     user: options.user,
     ip: options.ip || "127.0.0.1",
@@ -141,9 +145,6 @@ test("IdempotencyInterceptor rejects concurrent in-flight request with 409 Confl
   const interceptor = new IdempotencyInterceptor(service);
   const idempotencyKey = "in-flight-key";
 
-  // Set the key as in-flight
-  service.setInFlight(`user-1:${idempotencyKey}`);
-
   const { context } = createMockContext({
     method: "POST",
     headers: { "idempotency-key": idempotencyKey },
@@ -153,6 +154,8 @@ test("IdempotencyInterceptor rejects concurrent in-flight request with 409 Confl
   const next = {
     handle: () => of({ success: true }),
   };
+
+  interceptor.intercept(context, { handle: () => NEVER });
 
   assert.throws(
     () => {
@@ -233,6 +236,108 @@ test("IdempotencyInterceptor scopes keys by user ID", async () => {
   assert.equal(countAlpha, 1);
   assert.equal(countBeta, 1);
   assert.deepEqual(resultBeta, { user: "beta" });
+});
+
+test("anonymous auth requests sharing IP and key always execute independently", async () => {
+  const service = new IdempotencyService();
+  const interceptor = new IdempotencyInterceptor(service);
+  try {
+    let executions = 0;
+    for (const url of ["/api/v1/auth/login", "/api/v1/auth/login", "/api/v1/auth/reset-password"]) {
+      const { context, getSetHeader } = createMockContext({
+        method: "POST",
+        url,
+        ip: "192.0.2.10",
+        headers: { "idempotency-key": "shared-login-key" },
+        body: { email: `user-${executions}@example.test`, password: "password" },
+      });
+      const expected = { accessToken: `token-${executions}` };
+      const result = await firstValueFrom(
+        interceptor.intercept(context, {
+          handle: () => {
+            executions++;
+            return of(expected);
+          },
+        }),
+      );
+      assert.deepEqual(result, expected);
+      assert.equal(getSetHeader(), null);
+    }
+    assert.equal(executions, 3);
+    assert.equal(service.get("192.0.2.10:shared-login-key"), undefined);
+  } finally {
+    service.onModuleDestroy();
+  }
+});
+
+for (const change of ["method", "url", "body"] as const) {
+  test(`idempotency rejects reusing a key with a different ${change}`, async () => {
+    const service = new IdempotencyService();
+    const interceptor = new IdempotencyInterceptor(service);
+    try {
+      const options = {
+        method: "POST",
+        url: "/api/v1/posts",
+        body: { content: "original" },
+        user: { sub: "user-1" },
+        headers: { "idempotency-key": "same-key" },
+      };
+      await firstValueFrom(
+        interceptor.intercept(createMockContext(options).context, {
+          handle: () => of({ id: "original" }),
+        }),
+      );
+      const changed = {
+        ...options,
+        ...(change === "method"
+          ? { method: "DELETE" }
+          : change === "url"
+            ? { url: "/api/v1/posts/another-post" }
+            : { body: { content: "different" } }),
+      };
+      assert.throws(
+        () =>
+          interceptor.intercept(createMockContext(changed).context, {
+            handle: () => {
+              assert.fail("A mismatched retry must not execute");
+            },
+          }),
+        (error: unknown) => error instanceof DomainException && error.getStatus() === 409,
+      );
+    } finally {
+      service.onModuleDestroy();
+    }
+  });
+}
+
+test("idempotency treats reordered object keys as the same request body", async () => {
+  const service = new IdempotencyService();
+  const interceptor = new IdempotencyInterceptor(service);
+  try {
+    let executions = 0;
+    for (const body of [
+      { content: "post", metadata: { a: 1, b: 2 } },
+      { metadata: { b: 2, a: 1 }, content: "post" },
+    ]) {
+      const { context } = createMockContext({
+        method: "POST",
+        body,
+        user: { sub: "user-1" },
+        headers: { "idempotency-key": "same-body" },
+      });
+      await firstValueFrom(
+        interceptor.intercept(context, {
+          handle: () => {
+            executions++;
+            return of({ id: "post" });
+          },
+        }),
+      );
+    }
+    assert.equal(executions, 1);
+  } finally {
+    service.onModuleDestroy();
+  }
 });
 
 test("IdempotencyInterceptor rejects keys exceeding 128 characters", async () => {

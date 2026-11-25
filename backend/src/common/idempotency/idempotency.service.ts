@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy } from "@nestjs/common";
 
 export interface IdempotencyRecord {
   status: "IN_FLIGHT" | "COMPLETED";
+  fingerprint: string;
   statusCode?: number;
   body?: unknown;
   createdAt: number;
@@ -42,19 +43,27 @@ export class IdempotencyService implements OnModuleDestroy {
     return record;
   }
 
-  setInFlight(key: string, ttlMs = 300_000): void {
+  setInFlight(key: string, fingerprint: string, ttlMs = 300_000): void {
     const now = Date.now();
     this.storage.set(key, {
       status: "IN_FLIGHT",
+      fingerprint,
       createdAt: now,
       expiresAt: now + ttlMs,
     });
   }
 
-  setCompleted(key: string, statusCode: number, body: unknown, ttlMs = 300_000): void {
+  setCompleted(
+    key: string,
+    fingerprint: string,
+    statusCode: number,
+    body: unknown,
+    ttlMs = 300_000,
+  ): void {
     const now = Date.now();
     this.storage.set(key, {
       status: "COMPLETED",
+      fingerprint,
       statusCode,
       body,
       createdAt: now,

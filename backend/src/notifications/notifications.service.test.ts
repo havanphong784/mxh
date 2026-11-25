@@ -6,7 +6,9 @@ import { NotificationsService } from "./notifications.service.js";
 import { NotificationsRepository } from "./notifications.repository.js";
 
 function createService(prisma: any, gateway: any) {
-  return new NotificationsService(new NotificationsRepository(prisma), gateway);
+  return new NotificationsService(new NotificationsRepository(prisma), gateway, {
+    canViewMany: async (posts: unknown[]) => posts.map(() => true),
+  } as any);
 }
 
 test("an invalid notification cursor is ignored instead of being sent to the database", async () => {

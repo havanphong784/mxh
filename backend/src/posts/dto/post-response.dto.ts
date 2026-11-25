@@ -113,6 +113,17 @@ export type PostResponseDto =
   | UnavailablePostResponseDto;
 
 export class PostResponseMapper {
+  private static isPubliclyShareable(post: any): boolean {
+    if (!post || post.isDeleted || post.visibility !== "PUBLIC") return false;
+    if (!post.rootId) return true;
+    return (
+      !!post.root &&
+      post.root.visibility === "PUBLIC" &&
+      !!post.root.author?.isActive &&
+      !!post.root.author?.isEmailVerified
+    );
+  }
+
   static fromEntity(
     post: any,
     options?: {
@@ -147,11 +158,7 @@ export class PostResponseMapper {
     let isQuotedPostDeleted = false;
 
     if (post.quotedPostId) {
-      if (
-        !post.quotedPost ||
-        post.quotedPost.isDeleted ||
-        post.quotedPost.visibility !== "PUBLIC"
-      ) {
+      if (!PostResponseMapper.isPubliclyShareable(post.quotedPost)) {
         isQuotedPostDeleted = true;
       } else if (
         !post.quotedPost.author ||
@@ -195,10 +202,7 @@ export class PostResponseMapper {
       rootId: post.rootId,
       repostOfId: post.repostOfId,
       repostOf:
-        post.repostOfId &&
-        post.repostOf &&
-        !post.repostOf.isDeleted &&
-        post.repostOf.visibility === "PUBLIC"
+        post.repostOfId && PostResponseMapper.isPubliclyShareable(post.repostOf)
           ? PostResponseMapper.fromEntity(post.repostOf)
           : null,
       quotedPostId: post.quotedPostId ?? null,

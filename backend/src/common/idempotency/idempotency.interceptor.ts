@@ -5,6 +5,7 @@ import {
   Injectable,
   NestInterceptor,
 } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import { Observable, of } from "rxjs";
 import { tap } from "rxjs/operators";
 import type { FastifyReply, FastifyRequest } from "fastify";
@@ -45,14 +46,33 @@ export class IdempotencyInterceptor implements NestInterceptor {
       );
     }
 
-    // Scope key theo user ID (nếu đã xác thực) hoặc theo IP
+    // Anonymous requests (including login/refresh) must never share cached credentials by IP.
     const user = (request as unknown as { user?: { sub?: string; id?: string } }).user;
-    const scope = user?.sub || user?.id || request.ip || "anonymous";
+    const scope = user?.sub || user?.id;
+    if (!scope) return next.handle();
     const scopedKey = `${scope}:${sanitizedKey}`;
+    const fingerprint = createHash("sha256")
+      .update(
+        JSON.stringify([method, request.url, request.body ?? null], (_key, value: unknown) =>
+          value && typeof value === "object" && !Array.isArray(value)
+            ? Object.fromEntries(
+                Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+              )
+            : value,
+        ),
+      )
+      .digest("hex");
 
     // 3. Kiểm tra trạng thái trong bộ đệm idempotency
     const existing = this.idempotencyService.get(scopedKey);
     if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        throw new DomainException(
+          ERROR_CODES.IDEMPOTENCY_KEY_REUSED,
+          "Idempotency-Key đã được sử dụng cho một yêu cầu khác",
+          HttpStatus.CONFLICT,
+        );
+      }
       if (existing.status === "IN_FLIGHT") {
         throw new DomainException(
           ERROR_CODES.IDEMPOTENT_OPERATION_IN_PROGRESS,
@@ -73,14 +93,14 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     // 4. Đánh dấu key đang được thực thi (IN_FLIGHT)
-    this.idempotencyService.setInFlight(scopedKey);
+    this.idempotencyService.setInFlight(scopedKey, fingerprint);
 
     return next.handle().pipe(
       tap({
         next: (body) => {
           const statusCode =
             reply.statusCode || (method === "POST" ? HttpStatus.CREATED : HttpStatus.OK);
-          this.idempotencyService.setCompleted(scopedKey, statusCode, body);
+          this.idempotencyService.setCompleted(scopedKey, fingerprint, statusCode, body);
         },
         error: () => {
           // Khi phát sinh lỗi, hủy key để client có thể sửa input và gửi lại

@@ -40,7 +40,7 @@ export interface MarkAllReadResultDto {
 }
 
 export class NotificationResponseMapper {
-  static toItemDto(item: any): NotificationItemDto {
+  static toItemDto(item: any, canViewPost = false): NotificationItemDto {
     return {
       id: item.id,
       type: item.type,
@@ -54,12 +54,13 @@ export class NotificationResponseMapper {
             avatarUrl: item.actor.avatarUrl,
           }
         : null,
-      post: item.post
-        ? {
-            id: item.post.id,
-            content: item.post.content ? item.post.content.slice(0, 100) : null,
-          }
-        : null,
+      post:
+        canViewPost && item.post && !item.post.isDeleted
+          ? {
+              id: item.post.id,
+              content: item.post.content ? item.post.content.slice(0, 100) : null,
+            }
+          : null,
     };
   }
 }

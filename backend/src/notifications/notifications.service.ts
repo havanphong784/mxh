@@ -3,6 +3,7 @@ import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js"
 import { EventsGateway } from "../gateway/events.gateway.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { NotificationsRepository } from "./notifications.repository.js";
+import { PostsService } from "../posts/posts.service.js";
 import {
   MarkAllReadResultDto,
   MarkReadResultDto,
@@ -16,6 +17,7 @@ export class NotificationsService {
   constructor(
     private readonly notificationsRepository: NotificationsRepository,
     private readonly eventsGateway: EventsGateway,
+    private readonly postsService: PostsService,
   ) {}
 
   async getNotifications(
@@ -58,8 +60,16 @@ export class NotificationsService {
       );
     }
 
+    const posts = dataItems.flatMap((item) => (item.post ? [item.post] : []));
+    const access = posts.length > 0 ? await this.postsService.canViewMany(posts, userId) : [];
+    const visiblePostIds = new Set(
+      posts.filter((_post, index) => access[index]).map((post) => post.id),
+    );
+
     return {
-      data: dataItems.map(NotificationResponseMapper.toItemDto),
+      data: dataItems.map((item) =>
+        NotificationResponseMapper.toItemDto(item, !!item.post && visiblePostIds.has(item.post.id)),
+      ),
       nextCursor,
       hasMore,
     };

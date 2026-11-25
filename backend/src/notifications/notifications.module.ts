@@ -6,9 +6,10 @@ import { NotificationsRepository } from "./notifications.repository.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { GatewayModule } from "../gateway/gateway.module.js";
 import { UsersModule } from "../users/users.module.js";
+import { PostsModule } from "../posts/posts.module.js";
 
 @Module({
-  imports: [AuthModule, GatewayModule, UsersModule],
+  imports: [AuthModule, GatewayModule, UsersModule, PostsModule],
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationsListener, NotificationsRepository],
   exports: [NotificationsService],

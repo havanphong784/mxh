@@ -4,6 +4,8 @@ import { EventsGateway } from "../gateway/events.gateway.js";
 import { UsersService } from "../users/users.service.js";
 import { POST_EVENTS, USER_EVENTS } from "../events/event-types.js";
 import { NotificationsRepository } from "./notifications.repository.js";
+import { PostsService } from "../posts/posts.service.js";
+import { NotificationResponseMapper } from "./dto/notification-response.dto.js";
 import type {
   PostCreatedEvent,
   PostLikedEvent,
@@ -21,6 +23,7 @@ export class NotificationsListener {
     private readonly notificationsRepository: NotificationsRepository,
     private readonly eventsGateway: EventsGateway,
     private readonly usersService: UsersService,
+    private readonly postsService: PostsService,
   ) {}
 
   @OnEvent(POST_EVENTS.CREATED)
@@ -184,24 +187,14 @@ export class NotificationsListener {
 
       if (!notif) return;
 
-      this.eventsGateway.pushToUser(recipientId, "notification:new", {
-        id: notif.id,
-        type: notif.type,
-        isRead: notif.isRead,
-        createdAt: notif.createdAt,
-        actor: {
-          id: notif.actor.id,
-          username: notif.actor.username,
-          displayName: notif.actor.displayName,
-          avatarUrl: notif.actor.avatarUrl,
-        },
-        post: notif.post
-          ? {
-              id: notif.post.id,
-              content: notif.post.content ? notif.post.content.slice(0, 100) : null,
-            }
-          : null,
-      });
+      const access = notif.post
+        ? await this.postsService.canViewMany([notif.post], recipientId)
+        : [];
+      this.eventsGateway.pushToUser(
+        recipientId,
+        "notification:new",
+        NotificationResponseMapper.toItemDto(notif, access[0] ?? false),
+      );
 
       const unreadCount = await this.notificationsRepository.countUnread(recipientId);
 

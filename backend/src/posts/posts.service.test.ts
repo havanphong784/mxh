@@ -627,7 +627,13 @@ test("changing root visibility propagates to every reply in the thread", async (
           return rows.find(matches) ?? null;
         },
         async update(payload: Record<string, unknown>) {
-          rows.filter(matches).forEach((row) => Object.assign(row, payload));
+          const row = rows.find(matches);
+          if (row) Object.assign(row, payload);
+        },
+        async updateAndCount(payload: Record<string, unknown>) {
+          const matched = rows.filter(matches);
+          matched.forEach((row) => Object.assign(row, payload));
+          return matched.length;
         },
       };
       return query;
@@ -1656,6 +1662,71 @@ test("concurrent unlikes decrement the counter only when a like row is deleted",
 
   assert.deepEqual(state, { liked: false, likeCount: 1 });
 });
+
+for (const visibility of ["PRIVATE", "FOLLOWERS"] as const) {
+  for (const action of ["quote", "repost"] as const) {
+    test(`${action} rejects a stale public reply in a ${visibility} thread, even for the root owner`, async () => {
+      const root = postFixture({
+        id: "root",
+        authorId: "owner",
+        author: activeAuthor("owner"),
+        parentId: null,
+        rootId: null,
+        visibility,
+      });
+      const reply = postFixture({ id: "reply", rootId: "root", visibility: "PUBLIC" });
+      const repository = {
+        findById: async () => reply,
+        findByIdWithAuthor: async (id: string) => (id === "root" ? root : reply),
+        findRepost: async () => null,
+        createRepostAndIncrement: async () => assert.fail("Must not create a public repost"),
+        createPostWithMedia: async () => assert.fail("Must not create a public quote"),
+      };
+      const service = new PostsService(
+        repository as unknown as PostsRepository,
+        {} as any,
+        {} as any,
+        { ensureActiveUser: async () => {} } as any,
+      );
+      await assert.rejects(
+        action === "quote"
+          ? service.createPost("owner", { content: "Quote", quotedPostId: "reply" })
+          : service.repost("reply", "owner"),
+        ForbiddenException,
+      );
+    });
+  }
+}
+
+for (const visibility of ["PRIVATE", "FOLLOWERS"] as const) {
+  test(`embedded quote and repost hide a public reply whose root is ${visibility}`, () => {
+    const original = postFixture({
+      id: "reply",
+      visibility: "PUBLIC",
+      rootId: "root",
+      root: postFixture({ id: "root", parentId: null, rootId: null, visibility }),
+    });
+    const quote = postFixture({
+      id: "quote",
+      rootId: null,
+      parentId: null,
+      visibility: "PUBLIC",
+      quotedPostId: original.id,
+      quotedPost: original,
+    });
+    const service = new PostsService({} as any, {} as any, {} as any, {} as any);
+    const quoted = service.toPostResponse(quote) as ActivePostResponseDto;
+    assert.equal(quoted.quotedPost, null);
+    const reposted = service.toPostResponse({
+      ...quote,
+      quotedPostId: null,
+      quotedPost: null,
+      repostOfId: original.id,
+      repostOf: original,
+    }) as ActivePostResponseDto;
+    assert.equal(reposted.repostOf, null);
+  });
+}
 
 test("the same Cloudinary asset cannot be attached more than once", async () => {
   const previousSecret = process.env.CLOUDINARY_API_SECRET;

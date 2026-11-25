@@ -89,13 +89,13 @@ export class PostsService {
     }
 
     if (dto.quotedPostId) {
-      quotedPost = await this.postRepository.findById(dto.quotedPostId);
+      quotedPost = await this.postRepository.findByIdWithAuthor(dto.quotedPostId);
 
       if (!quotedPost || quotedPost.isDeleted) {
         throw new BadRequestException("Không thể trích dẫn bài viết không tồn tại hoặc đã bị xóa");
       }
 
-      if (quotedPost.visibility !== "PUBLIC") {
+      if (quotedPost.visibility !== "PUBLIC" || !(await this.canView(quotedPost))) {
         throw new ForbiddenException("Chỉ có thể trích dẫn bài viết công khai");
       }
     }
@@ -445,13 +445,13 @@ export class PostsService {
   async repost(postId: string, userId: string) {
     await this.ensureActiveUser(userId);
 
-    const targetPost = await this.postRepository.findById(postId);
+    const targetPost = await this.postRepository.findByIdWithAuthor(postId);
 
     if (!targetPost || targetPost.isDeleted) {
       throw new NotFoundException("Không tìm thấy bài viết");
     }
 
-    if (targetPost.visibility !== "PUBLIC") {
+    if (targetPost.visibility !== "PUBLIC" || !(await this.canView(targetPost))) {
       throw new ForbiddenException("Chỉ có thể chia sẻ lại bài viết công khai");
     }
 

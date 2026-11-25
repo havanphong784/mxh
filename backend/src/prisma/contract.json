@@ -184,8 +184,12 @@
               "messages": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["conversationId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "conversationId"
+                  ]
                 },
                 "to": {
                   "model": "Message",
@@ -195,8 +199,12 @@
               "participants": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["conversationId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "conversationId"
+                  ]
                 },
                 "to": {
                   "model": "ConversationParticipant",
@@ -262,8 +270,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["conversationId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "conversationId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Conversation",
@@ -274,8 +286,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["userId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -331,8 +347,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["followerId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "followerId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -343,8 +363,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["followingId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "followingId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -445,8 +469,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["conversationId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "conversationId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Conversation",
@@ -457,8 +485,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["senderId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "senderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -563,8 +595,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["actorId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -575,8 +611,12 @@
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
-                  "localFields": ["postId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "postId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -587,8 +627,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["recipientId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "recipientId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -688,8 +732,12 @@
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
-                  "localFields": ["userId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -861,8 +909,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["authorId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "authorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -872,8 +924,12 @@
               "bookmarks": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["postId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "postId"
+                  ]
                 },
                 "to": {
                   "model": "PostBookmark",
@@ -883,8 +939,12 @@
               "likes": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["postId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "postId"
+                  ]
                 },
                 "to": {
                   "model": "PostLike",
@@ -894,8 +954,12 @@
               "media": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["postId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "postId"
+                  ]
                 },
                 "to": {
                   "model": "PostMedia",
@@ -905,8 +969,12 @@
               "notifications": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["postId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "postId"
+                  ]
                 },
                 "to": {
                   "model": "Notification",
@@ -917,8 +985,12 @@
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
-                  "localFields": ["parentId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "parentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -929,8 +1001,12 @@
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
-                  "localFields": ["quotedPostId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "quotedPostId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -940,8 +1016,12 @@
               "quotes": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["quotedPostId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "quotedPostId"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -951,8 +1031,12 @@
               "replies": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["parentId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "parentId"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -963,8 +1047,12 @@
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
-                  "localFields": ["repostOfId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "repostOfId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -974,8 +1062,12 @@
               "reposts": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["repostOfId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "repostOfId"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -986,8 +1078,12 @@
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
-                  "localFields": ["rootId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "rootId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -997,8 +1093,12 @@
               "rootReplies": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["rootId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "rootId"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -1093,8 +1193,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["postId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "postId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -1105,8 +1209,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["userId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -1159,8 +1267,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["postId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "postId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -1171,8 +1283,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["userId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -1280,8 +1396,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["postId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "postId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -1397,8 +1517,12 @@
                 "cardinality": "N:1",
                 "nullable": false,
                 "on": {
-                  "localFields": ["userId"],
-                  "targetFields": ["id"]
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
                 },
                 "to": {
                   "model": "User",
@@ -1545,8 +1669,12 @@
               "conversationParticipants": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["userId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
                 },
                 "to": {
                   "model": "ConversationParticipant",
@@ -1556,8 +1684,12 @@
               "followers": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["followingId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "followingId"
+                  ]
                 },
                 "to": {
                   "model": "Follow",
@@ -1567,8 +1699,12 @@
               "following": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["followerId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "followerId"
+                  ]
                 },
                 "to": {
                   "model": "Follow",
@@ -1578,8 +1714,12 @@
               "notificationActions": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["actorId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "actorId"
+                  ]
                 },
                 "to": {
                   "model": "Notification",
@@ -1589,8 +1729,12 @@
               "notifications": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["recipientId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "recipientId"
+                  ]
                 },
                 "to": {
                   "model": "Notification",
@@ -1600,8 +1744,12 @@
               "otpCodes": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["userId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
                 },
                 "to": {
                   "model": "OtpVerification",
@@ -1611,8 +1759,12 @@
               "postBookmarks": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["userId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
                 },
                 "to": {
                   "model": "PostBookmark",
@@ -1622,8 +1774,12 @@
               "postLikes": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["userId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
                 },
                 "to": {
                   "model": "PostLike",
@@ -1633,8 +1789,12 @@
               "posts": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["authorId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "authorId"
+                  ]
                 },
                 "to": {
                   "model": "Post",
@@ -1644,8 +1804,12 @@
               "sentMessages": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["senderId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "senderId"
+                  ]
                 },
                 "to": {
                   "model": "Message",
@@ -1655,8 +1819,12 @@
               "sessions": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": ["id"],
-                  "targetFields": ["userId"]
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
                 },
                 "to": {
                   "model": "Session",
@@ -1774,18 +1942,24 @@
               "foreignKeys": [],
               "indexes": [
                 {
-                  "columns": ["updatedAt"],
+                  "columns": [
+                    "updatedAt"
+                  ],
                   "name": "conversation_updatedAt_idx_8c508b31",
                   "prefix": "conversation_updatedAt_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": [
                 {
-                  "columns": ["directKey"]
+                  "columns": [
+                    "directKey"
+                  ]
                 }
               ]
             },
@@ -1820,12 +1994,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["conversationId"],
+                    "columns": [
+                      "conversationId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "conversationParticipant"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "conversation"
                   }
@@ -1833,12 +2011,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["userId"],
+                    "columns": [
+                      "userId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "conversationParticipant"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -1846,26 +2028,36 @@
               ],
               "indexes": [
                 {
-                  "columns": ["conversationId"],
+                  "columns": [
+                    "conversationId"
+                  ],
                   "name": "conversationParticipant_conversationId_idx_669215a6",
                   "prefix": "conversationParticipant_conversationId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId"],
+                  "columns": [
+                    "userId"
+                  ],
                   "name": "conversationParticipant_userId_idx_a489d58a",
                   "prefix": "conversationParticipant_userId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId", "lastReadAt"],
+                  "columns": [
+                    "userId",
+                    "lastReadAt"
+                  ],
                   "name": "conversationParticipant_userId_lastReadAt_idx_2b7fec09",
                   "prefix": "conversationParticipant_userId_lastReadAt_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["conversationId", "userId"]
+                "columns": [
+                  "conversationId",
+                  "userId"
+                ]
               },
               "uniques": []
             },
@@ -1895,12 +2087,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["followerId"],
+                    "columns": [
+                      "followerId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "follow"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -1908,12 +2104,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["followingId"],
+                    "columns": [
+                      "followingId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "follow"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -1921,20 +2121,27 @@
               ],
               "indexes": [
                 {
-                  "columns": ["followerId"],
+                  "columns": [
+                    "followerId"
+                  ],
                   "name": "follow_followerId_idx_2aa6c62d",
                   "prefix": "follow_followerId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["followingId"],
+                  "columns": [
+                    "followingId"
+                  ],
                   "name": "follow_followingId_idx_1cf16645",
                   "prefix": "follow_followingId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["followerId", "followingId"]
+                "columns": [
+                  "followerId",
+                  "followingId"
+                ]
               },
               "uniques": []
             },
@@ -2011,12 +2218,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["conversationId"],
+                    "columns": [
+                      "conversationId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "message"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "conversation"
                   }
@@ -2024,12 +2235,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["senderId"],
+                    "columns": [
+                      "senderId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "message"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2037,36 +2252,51 @@
               ],
               "indexes": [
                 {
-                  "columns": ["conversationId", "createdAt"],
+                  "columns": [
+                    "conversationId",
+                    "createdAt"
+                  ],
                   "name": "message_conversationId_createdAt_idx_44d4ac61",
                   "prefix": "message_conversationId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["conversationId"],
+                  "columns": [
+                    "conversationId"
+                  ],
                   "name": "message_conversationId_idx_669215a6",
                   "prefix": "message_conversationId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["senderId", "createdAt"],
+                  "columns": [
+                    "senderId",
+                    "createdAt"
+                  ],
                   "name": "message_senderId_createdAt_idx_ed252b01",
                   "prefix": "message_senderId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["senderId"],
+                  "columns": [
+                    "senderId"
+                  ],
                   "name": "message_senderId_idx_4689c490",
                   "prefix": "message_senderId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": [
                 {
-                  "columns": ["senderId", "clientMessageId"]
+                  "columns": [
+                    "senderId",
+                    "clientMessageId"
+                  ]
                 }
               ]
             },
@@ -2133,12 +2363,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["recipientId"],
+                    "columns": [
+                      "recipientId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "notification"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2146,12 +2380,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["actorId"],
+                    "columns": [
+                      "actorId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "notification"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2159,12 +2397,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["postId"],
+                    "columns": [
+                      "postId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "notification"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2172,38 +2414,53 @@
               ],
               "indexes": [
                 {
-                  "columns": ["actorId"],
+                  "columns": [
+                    "actorId"
+                  ],
                   "name": "notification_actorId_idx_a58f6b4b",
                   "prefix": "notification_actorId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["postId"],
+                  "columns": [
+                    "postId"
+                  ],
                   "name": "notification_postId_idx_a7a72715",
                   "prefix": "notification_postId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["recipientId", "createdAt"],
+                  "columns": [
+                    "recipientId",
+                    "createdAt"
+                  ],
                   "name": "notification_recipientId_createdAt_idx_4cb575bd",
                   "prefix": "notification_recipientId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["recipientId"],
+                  "columns": [
+                    "recipientId"
+                  ],
                   "name": "notification_recipientId_idx_c9527cf8",
                   "prefix": "notification_recipientId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["recipientId", "isRead", "createdAt"],
+                  "columns": [
+                    "recipientId",
+                    "isRead",
+                    "createdAt"
+                  ],
                   "name": "notification_recipientId_isRead_createdAt_idx_f5035d6e",
                   "prefix": "notification_recipientId_isRead_createdAt_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": []
             },
@@ -2262,12 +2519,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["userId"],
+                    "columns": [
+                      "userId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "otpVerification"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2275,20 +2536,27 @@
               ],
               "indexes": [
                 {
-                  "columns": ["email", "type"],
+                  "columns": [
+                    "email",
+                    "type"
+                  ],
                   "name": "otpVerification_email_type_idx_c44cd4f9",
                   "prefix": "otpVerification_email_type_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId"],
+                  "columns": [
+                    "userId"
+                  ],
                   "name": "otpVerification_userId_idx_a489d58a",
                   "prefix": "otpVerification_userId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": []
             },
@@ -2429,12 +2697,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["authorId"],
+                    "columns": [
+                      "authorId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2442,12 +2714,16 @@
                 {
                   "onDelete": "setNull",
                   "source": {
-                    "columns": ["parentId"],
+                    "columns": [
+                      "parentId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2455,12 +2731,16 @@
                 {
                   "onDelete": "setNull",
                   "source": {
-                    "columns": ["rootId"],
+                    "columns": [
+                      "rootId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2468,12 +2748,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["repostOfId"],
+                    "columns": [
+                      "repostOfId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2481,12 +2765,16 @@
                 {
                   "onDelete": "setNull",
                   "source": {
-                    "columns": ["quotedPostId"],
+                    "columns": [
+                      "quotedPostId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2494,66 +2782,92 @@
               ],
               "indexes": [
                 {
-                  "columns": ["authorId", "createdAt"],
+                  "columns": [
+                    "authorId",
+                    "createdAt"
+                  ],
                   "name": "post_authorId_createdAt_idx_854b4c86",
                   "prefix": "post_authorId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["authorId"],
+                  "columns": [
+                    "authorId"
+                  ],
                   "name": "post_authorId_idx_e47547ed",
                   "prefix": "post_authorId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["createdAt"],
+                  "columns": [
+                    "createdAt"
+                  ],
                   "name": "post_createdAt_idx_9575dbd7",
                   "prefix": "post_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["parentId", "createdAt"],
+                  "columns": [
+                    "parentId",
+                    "createdAt"
+                  ],
                   "name": "post_parentId_createdAt_idx_d5e7872e",
                   "prefix": "post_parentId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["parentId"],
+                  "columns": [
+                    "parentId"
+                  ],
                   "name": "post_parentId_idx_6a68f597",
                   "prefix": "post_parentId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["quotedPostId"],
+                  "columns": [
+                    "quotedPostId"
+                  ],
                   "name": "post_quotedPostId_idx_0fd2e558",
                   "prefix": "post_quotedPostId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["repostOfId"],
+                  "columns": [
+                    "repostOfId"
+                  ],
                   "name": "post_repostOfId_idx_629bb631",
                   "prefix": "post_repostOfId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["rootId", "createdAt"],
+                  "columns": [
+                    "rootId",
+                    "createdAt"
+                  ],
                   "name": "post_rootId_createdAt_idx_1af84128",
                   "prefix": "post_rootId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["rootId"],
+                  "columns": [
+                    "rootId"
+                  ],
                   "name": "post_rootId_idx_d68d7552",
                   "prefix": "post_rootId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": [
                 {
-                  "columns": ["authorId", "repostOfId"]
+                  "columns": [
+                    "authorId",
+                    "repostOfId"
+                  ]
                 }
               ]
             },
@@ -2583,12 +2897,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["userId"],
+                    "columns": [
+                      "userId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "postBookmark"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2596,12 +2914,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["postId"],
+                    "columns": [
+                      "postId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "postBookmark"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2609,26 +2931,36 @@
               ],
               "indexes": [
                 {
-                  "columns": ["postId"],
+                  "columns": [
+                    "postId"
+                  ],
                   "name": "postBookmark_postId_idx_a7a72715",
                   "prefix": "postBookmark_postId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId", "createdAt"],
+                  "columns": [
+                    "userId",
+                    "createdAt"
+                  ],
                   "name": "postBookmark_userId_createdAt_idx_f726f04a",
                   "prefix": "postBookmark_userId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId"],
+                  "columns": [
+                    "userId"
+                  ],
                   "name": "postBookmark_userId_idx_a489d58a",
                   "prefix": "postBookmark_userId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["userId", "postId"]
+                "columns": [
+                  "userId",
+                  "postId"
+                ]
               },
               "uniques": []
             },
@@ -2658,12 +2990,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["userId"],
+                    "columns": [
+                      "userId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "postLike"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2671,12 +3007,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["postId"],
+                    "columns": [
+                      "postId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "postLike"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2684,32 +3024,45 @@
               ],
               "indexes": [
                 {
-                  "columns": ["postId", "createdAt"],
+                  "columns": [
+                    "postId",
+                    "createdAt"
+                  ],
                   "name": "postLike_postId_createdAt_idx_b244c517",
                   "prefix": "postLike_postId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["postId"],
+                  "columns": [
+                    "postId"
+                  ],
                   "name": "postLike_postId_idx_a7a72715",
                   "prefix": "postLike_postId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId", "createdAt"],
+                  "columns": [
+                    "userId",
+                    "createdAt"
+                  ],
                   "name": "postLike_userId_createdAt_idx_f726f04a",
                   "prefix": "postLike_userId_createdAt_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["userId"],
+                  "columns": [
+                    "userId"
+                  ],
                   "name": "postLike_userId_idx_a489d58a",
                   "prefix": "postLike_userId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["userId", "postId"]
+                "columns": [
+                  "userId",
+                  "postId"
+                ]
               },
               "uniques": []
             },
@@ -2791,12 +3144,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["postId"],
+                    "columns": [
+                      "postId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "postMedia"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "post"
                   }
@@ -2804,24 +3161,33 @@
               ],
               "indexes": [
                 {
-                  "columns": ["postId"],
+                  "columns": [
+                    "postId"
+                  ],
                   "name": "postMedia_postId_idx_a7a72715",
                   "prefix": "postMedia_postId_idx",
                   "unique": false
                 },
                 {
-                  "columns": ["postId", "order"],
+                  "columns": [
+                    "postId",
+                    "order"
+                  ],
                   "name": "postMedia_postId_order_idx_8a2a2182",
                   "prefix": "postMedia_postId_order_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": [
                 {
-                  "columns": ["publicId"]
+                  "columns": [
+                    "publicId"
+                  ]
                 }
               ]
             },
@@ -2885,12 +3251,16 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": ["userId"],
+                    "columns": [
+                      "userId"
+                    ],
                     "namespaceId": "public",
                     "tableName": "session"
                   },
                   "target": {
-                    "columns": ["id"],
+                    "columns": [
+                      "id"
+                    ],
                     "namespaceId": "public",
                     "tableName": "user"
                   }
@@ -2898,18 +3268,24 @@
               ],
               "indexes": [
                 {
-                  "columns": ["userId"],
+                  "columns": [
+                    "userId"
+                  ],
                   "name": "session_userId_idx_a489d58a",
                   "prefix": "session_userId_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": [
                 {
-                  "columns": ["tokenHash"]
+                  "columns": [
+                    "tokenHash"
+                  ]
                 }
               ]
             },
@@ -3001,14 +3377,20 @@
               "foreignKeys": [],
               "indexes": [],
               "primaryKey": {
-                "columns": ["id"]
+                "columns": [
+                  "id"
+                ]
               },
               "uniques": [
                 {
-                  "columns": ["email"]
+                  "columns": [
+                    "email"
+                  ]
                 },
                 {
-                  "columns": ["username"]
+                  "columns": [
+                    "username"
+                  ]
                 }
               ]
             }
@@ -3016,23 +3398,41 @@
           "valueSet": {
             "ConversationType": {
               "kind": "valueSet",
-              "values": ["DIRECT"]
+              "values": [
+                "DIRECT"
+              ]
             },
             "MediaType": {
               "kind": "valueSet",
-              "values": ["IMAGE", "VIDEO", "AUDIO"]
+              "values": [
+                "IMAGE",
+                "VIDEO",
+                "AUDIO"
+              ]
             },
             "MessageType": {
               "kind": "valueSet",
-              "values": ["TEXT"]
+              "values": [
+                "TEXT"
+              ]
             },
             "NotificationType": {
               "kind": "valueSet",
-              "values": ["LIKE", "REPLY", "REPOST", "QUOTE", "FOLLOW"]
+              "values": [
+                "LIKE",
+                "REPLY",
+                "REPOST",
+                "QUOTE",
+                "FOLLOW"
+              ]
             },
             "PostVisibility": {
               "kind": "valueSet",
-              "values": ["PUBLIC", "FOLLOWERS", "PRIVATE"]
+              "values": [
+                "PUBLIC",
+                "FOLLOWERS",
+                "PRIVATE"
+              ]
             }
           }
         },

@@ -133,7 +133,7 @@ export class UsersRepository {
       });
       await tx.orm.public.OtpVerification.where({ id: otpId }).delete();
       if (userId) {
-        await tx.orm.public.Session.where((session) => session.userId.eq(userId)).update({
+        await tx.orm.public.Session.where((session) => session.userId.eq(userId)).updateAndCount({
           isRevoked: true,
         });
       }
@@ -145,7 +145,9 @@ export class UsersRepository {
   }
 
   async revokeSessionsForUser(userId: string) {
-    return this.session.where((session) => session.userId.eq(userId)).update({ isRevoked: true });
+    return this.session
+      .where((session) => session.userId.eq(userId))
+      .updateAndCount({ isRevoked: true });
   }
 
   async rotateRefreshSession(
@@ -308,7 +310,11 @@ export class UsersRepository {
       .limit(options.limit)
       .include("follower");
     if (options.offset !== undefined) query = query.offset(options.offset);
-    if (options.cursor) query = query.cursor(options.cursor);
+    if (options.cursor)
+      query = query.cursor({
+        createdAt: options.cursor.createdAt,
+        followerId: options.cursor.id,
+      });
     return query.all();
   }
 
@@ -328,7 +334,11 @@ export class UsersRepository {
       .limit(options.limit)
       .include("following");
     if (options.offset !== undefined) query = query.offset(options.offset);
-    if (options.cursor) query = query.cursor(options.cursor);
+    if (options.cursor)
+      query = query.cursor({
+        createdAt: options.cursor.createdAt,
+        followingId: options.cursor.id,
+      });
     return query.all();
   }
 

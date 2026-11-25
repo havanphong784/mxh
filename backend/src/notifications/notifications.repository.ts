@@ -28,7 +28,7 @@ export class NotificationsRepository {
 
     return q
       .include("actor")
-      .include("post")
+      .include("post", (post) => post.include("author"))
       .limit(limit + 1)
       .all();
   }
@@ -47,7 +47,11 @@ export class NotificationsRepository {
   }
 
   async findByIdWithDetails(notificationId: string) {
-    return this.notification.where({ id: notificationId }).include("actor").include("post").first();
+    return this.notification
+      .where({ id: notificationId })
+      .include("actor")
+      .include("post", (post) => post.include("author"))
+      .first();
   }
 
   async markAsRead(notificationId: string): Promise<void> {

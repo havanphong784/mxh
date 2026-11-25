@@ -26,6 +26,7 @@ test("reactivating an existing notification writes a Temporal.Instant", async ()
     new NotificationsRepository(prisma as any),
     {} as any,
     {} as any,
+    {} as any,
   );
   (listener as any).sendRealtimeNotification = async () => {};
 

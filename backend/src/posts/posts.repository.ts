@@ -58,9 +58,23 @@ export class PostsRepository {
       .where({ id: postId })
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .first();
   }
@@ -73,7 +87,9 @@ export class PostsRepository {
     await this.prisma.client.transaction(async (tx) => {
       await tx.orm.public.Post.where({ id: postId }).update(payload);
       if (visibility !== undefined) {
-        await tx.orm.public.Post.where((post) => post.rootId.eq(postId)).update({ visibility });
+        await tx.orm.public.Post.where((post) => post.rootId.eq(postId)).updateAndCount({
+          visibility,
+        });
       }
     });
   }
@@ -110,9 +126,23 @@ export class PostsRepository {
       .limit(limit + 1)
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .all();
   }
@@ -263,9 +293,23 @@ export class PostsRepository {
       .where((post) => post.id.in(postIds))
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .all();
   }
@@ -337,9 +381,23 @@ export class PostsRepository {
       .limit(limit + 1)
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .all();
   }
@@ -366,9 +424,23 @@ export class PostsRepository {
       .limit(limit + 1)
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .all();
   }
@@ -390,9 +462,23 @@ export class PostsRepository {
       .limit(limit + 1)
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .all();
   }
@@ -412,9 +498,23 @@ export class PostsRepository {
       .limit(limit + 1)
       .include("author")
       .include("media")
-      .include("quotedPost")
+      .include("quotedPost", (quote) =>
+        quote
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author")),
+      )
       .include("repostOf", (repost) =>
-        repost.include("author").include("media").include("quotedPost"),
+        repost
+          .include("author")
+          .include("media")
+          .include("root", (root) => root.include("author"))
+          .include("quotedPost", (quote) =>
+            quote
+              .include("author")
+              .include("media")
+              .include("root", (root) => root.include("author")),
+          ),
       )
       .include("parent")
       .all();
@@ -562,10 +662,12 @@ export class PostsRepository {
           isDeleted: true,
           content: null,
         });
-        await tx.orm.public.PostMedia.where((media) => media.postId.eq(postId)).delete();
-        await tx.orm.public.PostLike.where((like) => like.postId.eq(postId)).delete();
-        await tx.orm.public.PostBookmark.where((bookmark) => bookmark.postId.eq(postId)).delete();
-        await tx.orm.public.Post.where((repost) => repost.repostOfId.eq(postId)).delete();
+        await tx.orm.public.PostMedia.where((media) => media.postId.eq(postId)).deleteAndCount();
+        await tx.orm.public.PostLike.where((like) => like.postId.eq(postId)).deleteAndCount();
+        await tx.orm.public.PostBookmark.where((bookmark) =>
+          bookmark.postId.eq(postId),
+        ).deleteAndCount();
+        await tx.orm.public.Post.where((repost) => repost.repostOfId.eq(postId)).deleteAndCount();
       } else {
         await tx.orm.public.Post.where({ id: postId }).delete();
       }
@@ -669,9 +771,23 @@ export class PostsRepository {
       return tx.orm.public.Post.where({ id: post.id })
         .include("author")
         .include("media")
-        .include("quotedPost")
+        .include("quotedPost", (quote) =>
+          quote
+            .include("author")
+            .include("media")
+            .include("root", (root) => root.include("author")),
+        )
         .include("repostOf", (repost) =>
-          repost.include("author").include("media").include("quotedPost"),
+          repost
+            .include("author")
+            .include("media")
+            .include("root", (root) => root.include("author"))
+            .include("quotedPost", (quote) =>
+              quote
+                .include("author")
+                .include("media")
+                .include("root", (root) => root.include("author")),
+            ),
         )
         .first();
     });
