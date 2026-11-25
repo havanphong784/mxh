@@ -289,7 +289,9 @@ export class PostsService {
       ),
     ];
     const followedIds = new Set(
-      viewerId ? await this.getUsersService().getFollowedIds(viewerId, followAuthorIds) : [],
+      viewerId && followAuthorIds.length > 0
+        ? await this.getUsersService().getFollowedIds(viewerId, followAuthorIds)
+        : [],
     );
 
     return sources.map((source: any) => {
@@ -407,19 +409,7 @@ export class PostsService {
       return { ancestors: [] };
     }
 
-    const ancestorsList: any[] = [];
-    let currentParentId: string | null = currentPost.parentId;
-
-    let depth = 0;
-    while (currentParentId && depth < 20) {
-      depth++;
-      const parent: any = await this.postRepository.findByIdForResponse(currentParentId);
-
-      if (!parent) break;
-
-      ancestorsList.unshift(parent);
-      currentParentId = parent.parentId;
-    }
+    const ancestorsList = await this.postRepository.findAncestorsForResponse(postId, 20);
 
     if (ancestorsList.length > 0) {
       const rootPost = ancestorsList[0];
@@ -1067,15 +1057,16 @@ export class PostsService {
             replyCount: actualReplies,
           },
         });
-
-        await this.postRepository.updatePostCounters(post.id, {
-          likeCount: actualLikes,
-          bookmarkCount: actualBookmarks,
-          repostCount: actualReposts,
-          quoteCount: actualQuotes,
-          replyCount: actualReplies,
-        });
       }
+    }
+
+    for (let offset = 0; offset < discrepancies.length; offset += 500) {
+      await this.postRepository.updatePostCountersForPosts(
+        discrepancies.slice(offset, offset + 500).map(({ postId, after }) => ({
+          postId,
+          ...after,
+        })),
+      );
     }
 
     return {

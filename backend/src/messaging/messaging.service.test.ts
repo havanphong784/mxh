@@ -126,8 +126,15 @@ test("conversation pages are limited in the repository and include a next cursor
       receivedCursor = cursor;
       return { items: [conversation], hasMore: true };
     },
-    findLatestMessage: async () => null,
-    countUnreadForConversation: async () => 0,
+    findLatestMessages: async (ids: string[]) => {
+      assert.deepEqual(ids, [conversation.id]);
+      return [];
+    },
+    countUnreadForConversations: async (ids: string[], userId: string) => {
+      assert.deepEqual(ids, [conversation.id]);
+      assert.equal(userId, "user-a");
+      return new Map([[conversation.id, 0]]);
+    },
   };
   const service = createService(repository);
   const cursor = Buffer.from(
@@ -187,8 +194,7 @@ test("retrying a client message returns the existing message and emits only once
       return { message, created: true };
     },
     findConversationWithParticipants: async () => conversationFixture(),
-    countUnreadForConversation: async () => 1,
-    findUnreadParticipants: async () => [conversationFixture().participants[1]],
+    countAllUnreadForUser: async () => 1,
   };
   const gateway = {
     pushToUser: (_userId: string, event: string) => pushed.push(event),
@@ -231,8 +237,7 @@ test("a concurrent idempotent insert does not emit a duplicate realtime event", 
     findMessageByClientId: async () => null,
     createMessage: async () => ({ message, created: false }),
     findConversationWithParticipants: async () => conversationFixture(),
-    countUnreadForConversation: async () => 1,
-    findUnreadParticipants: async () => [conversationFixture().participants[1]],
+    countAllUnreadForUser: async () => 1,
   };
   const gateway = {
     pushToUser: (_userId: string, event: string) => pushed.push(event),

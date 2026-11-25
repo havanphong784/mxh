@@ -47,23 +47,7 @@ export class UsersService {
   }
 
   async suggestUsers(viewerId?: string) {
-    const suggested: Awaited<ReturnType<UsersRepository["findSuggestionCandidates"]>> = [];
-    let offset = 0;
-    while (suggested.length < 6) {
-      const candidates = await this.repo.findSuggestionCandidates(offset);
-      if (candidates.length === 0) break;
-      const candidateIds = candidates.map((user) => user.id);
-      const follows =
-        viewerId && candidateIds.length > 0
-          ? await this.repo.findFollowsToCandidates(viewerId, candidateIds)
-          : [];
-      const followedIds = new Set(follows.map((follow) => follow.followingId));
-      suggested.push(
-        ...candidates.filter((user) => user.id !== viewerId && !followedIds.has(user.id)),
-      );
-      offset += candidates.length;
-      if (candidates.length < 24) break;
-    }
+    const suggested = await this.repo.findSuggestionCandidates(viewerId);
     return {
       items: suggested.slice(0, 6).map((user) => ({
         id: user.id,

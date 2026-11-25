@@ -201,15 +201,19 @@ test("reply pagination reads through PostsRepository", async () => {
   assert.equal(page.items[0].id, "reply-id");
 });
 
-test("ancestor traversal reads through PostsRepository", async () => {
+test("ancestor traversal loads the full chain in one repository batch", async () => {
   const child = postFixture({ id: "child-id", parentId: "root-id", rootId: "root-id" });
   const root = postFixture({ id: "root-id", parentId: null, rootId: null, visibility: "PUBLIC" });
+  let ancestorBatchCalls = 0;
   const repository = {
     async findById() {
       return child;
     },
-    async findByIdForResponse() {
-      return root;
+    async findAncestorsForResponse(id: string, maxDepth: number) {
+      ancestorBatchCalls++;
+      assert.equal(id, "child-id");
+      assert.equal(maxDepth, 20);
+      return [root];
     },
   };
   const service = new PostsService(
@@ -221,6 +225,7 @@ test("ancestor traversal reads through PostsRepository", async () => {
 
   const result = await service.getAncestors("child-id");
   assert.equal(result.ancestors[0].id, "root-id");
+  assert.equal(ancestorBatchCalls, 1);
 });
 
 test("liking a post mutates through PostsRepository before notifying the author", async () => {
@@ -298,6 +303,9 @@ test("post likes pagination reads through PostsRepository", async () => {
 test("bookmark pagination reads references and posts through PostsRepository", async () => {
   const post = postFixture({ id: "post-id", parentId: null, rootId: null, visibility: "PUBLIC" });
   const repository = {
+    async findManyWithAuthors() {
+      return [];
+    },
     async listMarkedPostReferences() {
       return [{ postId: "post-id", createdAt: new Date() }];
     },
@@ -308,7 +316,12 @@ test("bookmark pagination reads references and posts through PostsRepository", a
       return { likes: [], bookmarks: [], reposts: [] };
     },
   };
-  const users = { async ensureActiveUser() {} };
+  const users = {
+    async ensureActiveUser() {},
+    async getFollowedIds() {
+      return [];
+    },
+  };
   const service = new PostsService(
     repository as unknown as PostsRepository,
     {} as any,
@@ -330,6 +343,9 @@ test("feed pagination reads through PostsRepository", async () => {
     visibility: "PUBLIC",
   });
   const repository = {
+    async findManyWithAuthors() {
+      return [];
+    },
     async listFeedPosts() {
       return [post];
     },
@@ -339,6 +355,9 @@ test("feed pagination reads through PostsRepository", async () => {
   };
   const users = {
     async ensureActiveUser() {},
+    async getFollowedIds() {
+      return [];
+    },
     async getActiveFollowingIds() {
       return [];
     },
@@ -361,11 +380,13 @@ test("counter reconciliation reads and writes through PostsRepository", async ()
     async listActivePosts() {
       return [post];
     },
-    async countPostRelations() {
-      return { likeCount: 1, bookmarkCount: 0, repostCount: 0, quoteCount: 0, replyCount: 0 };
+    async countPostRelationsForPosts() {
+      return new Map([
+        [post.id, { likeCount: 1, bookmarkCount: 0, repostCount: 0, quoteCount: 0, replyCount: 0 }],
+      ]);
     },
-    async updatePostCounters() {
-      updated++;
+    async updatePostCountersForPosts(updates: unknown[]) {
+      updated += updates.length;
     },
   };
   const service = new PostsService(
@@ -378,6 +399,100 @@ test("counter reconciliation reads and writes through PostsRepository", async ()
   const result = await service.reconcileCounters("post-id");
   assert.equal(result.correctedCount, 1);
   assert.equal(updated, 1);
+});
+
+test("counter reconciliation batches changed posts and skips unchanged posts", async () => {
+  const counts = { likeCount: 1, bookmarkCount: 0, repostCount: 0, quoteCount: 0, replyCount: 0 };
+  const posts = Array.from({ length: 1002 }, (_, index) =>
+    postFixture({
+      id: `post-${index}`,
+      likeCount: index === 1001 ? 1 : 0,
+    }),
+  );
+  const writes: Array<Array<{ postId: string; likeCount: number }>> = [];
+  const repository = {
+    listActivePosts: async () => posts,
+    countPostRelationsForPosts: async (ids: string[]) => {
+      assert.ok(ids.length <= 500);
+      return new Map(ids.map((id) => [id, counts]));
+    },
+    updatePostCountersForPosts: async (updates: (typeof writes)[number]) => {
+      writes.push(updates);
+    },
+  };
+  const service = new PostsService(repository as any, {} as any, {} as any, {} as any);
+  const result = await service.reconcileCounters();
+  assert.equal(result.totalScanned, 1002);
+  assert.equal(result.correctedCount, 1001);
+  assert.deepEqual(
+    writes.map((batch) => batch.length),
+    [500, 500, 1],
+  );
+  assert.deepEqual(
+    writes.flat().map((update) => update.postId),
+    posts.slice(0, 1001).map((post) => post.id),
+  );
+  assert.ok(writes.flat().every((update) => update.likeCount === 1));
+
+  writes.length = 0;
+  posts.forEach((post) => {
+    post.likeCount = 1;
+  });
+  assert.equal((await service.reconcileCounters()).correctedCount, 0);
+  assert.equal(writes.length, 0);
+});
+
+test("post media are inserted together and an empty list does not insert", async () => {
+  for (const size of [0, 1, 10]) {
+    const media = Array.from({ length: size }, (_, order) => ({
+      publicId: `asset-${order}`,
+      url: `https://example.test/${order}`,
+      type: "IMAGE" as const,
+      width: 640,
+      height: 480,
+      duration: null,
+      order,
+    }));
+    let writes = 0;
+    const query = {
+      include() {
+        return query;
+      },
+      first: async () => ({ id: "post-id" }),
+    };
+    const repository = new PostsRepository({
+      client: {
+        transaction: async (callback: (tx: any) => Promise<unknown>) =>
+          callback({
+            orm: {
+              public: {
+                Post: { create: async () => ({ id: "post-id" }), where: () => query },
+                PostMedia: {
+                  createAndCount: async (rows: unknown[]) => {
+                    writes++;
+                    assert.deepEqual(
+                      rows,
+                      media.map((item) => ({ postId: "post-id", ...item })),
+                    );
+                    return rows.length;
+                  },
+                },
+              },
+            },
+          }),
+      },
+    } as any);
+    await repository.createPostWithMedia({
+      authorId: "author-id",
+      content: "post",
+      visibility: "PUBLIC",
+      parentId: null,
+      rootId: null,
+      quotedPostId: null,
+      media,
+    });
+    assert.equal(writes, size > 0 ? 1 : 0);
+  }
 });
 
 test("a follower of the reply author cannot read a reply in another author's followers-only thread", async () => {
@@ -596,23 +711,20 @@ test("a deleted followers-only root still protects the ancestor chain", async ()
     isDeleted: true,
   });
   const reply = postFixture({ id: "reply-id", parentId: "root-id", rootId: "root-id" });
-  const postTable = {
-    where(condition: { id: string }) {
-      const query: any = {
-        include() {
-          return query;
-        },
-        async first() {
-          if (condition.id === "reply-id") return reply;
-          if (condition.id === "root-id") return root;
-          return null;
-        },
-      };
-      return query;
+  const repository = {
+    async findById() {
+      return reply;
+    },
+    async findAncestorsForResponse() {
+      return [root];
     },
   };
-  const prisma = { client: { orm: { public: { Post: postTable } } } };
-  const service = createPostsService(prisma as any, {} as any, {} as any);
+  const service = new PostsService(
+    repository as unknown as PostsRepository,
+    {} as any,
+    {} as any,
+    {} as any,
+  );
 
   await assert.rejects(service.getAncestors("reply-id", undefined), ForbiddenException);
 });
@@ -869,6 +981,9 @@ test("bookmarks no longer return a followers-only post after the user unfollows 
               const query: any = {
                 where() {
                   return query;
+                },
+                async all() {
+                  return [];
                 },
                 async first() {
                   return null;

@@ -45,7 +45,7 @@ export class PostsRepository {
   }
 
   async findRootsWithAuthors(rootIds: string[]) {
-    if (rootIds.length > 0) return [];
+    if (rootIds.length === 0) return [];
 
     return this.post
       .where((post) => post.id.in(rootIds))
@@ -258,6 +258,7 @@ export class PostsRepository {
   }
 
   async findPostsByIdsForResponse(postIds: string[]) {
+    if (postIds.length === 0) return [];
     return this.post
       .where((post) => post.id.in(postIds))
       .include("author")
@@ -267,6 +268,34 @@ export class PostsRepository {
         repost.include("author").include("media").include("quotedPost"),
       )
       .all();
+  }
+
+  async findAncestorsForResponse(postId: string, maxDepth = 20) {
+    const plan = this.prisma.client.raw.sql`
+      WITH RECURSIVE ancestors AS (
+        SELECT parent.id, parent."parentId", 1 AS depth
+        FROM "post" child
+        JOIN "post" parent ON parent.id = child."parentId"
+        WHERE child.id = ${postId}
+
+        UNION ALL
+
+        SELECT parent.id, parent."parentId", ancestors.depth + 1
+        FROM ancestors
+        JOIN "post" parent ON parent.id = ancestors."parentId"
+        WHERE ancestors.depth < ${maxDepth}
+      )
+      SELECT id FROM ancestors ORDER BY depth DESC
+    `
+      .returnsRow({ id: "pg/text@1" })
+      .build();
+    const ancestors = await this.prisma.client.runtime().query(plan);
+    const ids = ancestors.map((ancestor: { id: string }) => ancestor.id);
+    if (ids.length === 0) return [];
+
+    const posts = await this.findPostsByIdsForResponse(ids);
+    const postsById = new Map(posts.map((post: any) => [post.id, post]));
+    return ids.map((id: string) => postsById.get(id)).filter(Boolean);
   }
 
   async findSecondaryMarks(kind: "bookmark" | "like", userId: string, postIds: string[]) {
@@ -484,17 +513,34 @@ export class PostsRepository {
     return result;
   }
 
-  async updatePostCounters(
-    postId: string,
-    counts: {
+  async updatePostCountersForPosts(
+    updates: Array<{
+      postId: string;
       likeCount: number;
       bookmarkCount: number;
       repostCount: number;
       quoteCount: number;
       replyCount: number;
-    },
+    }>,
   ) {
-    return this.post.where({ id: postId }).update(counts);
+    if (updates.length === 0) return;
+    const plan = this.prisma.client.raw.sql`
+      UPDATE "post" AS post
+      SET "likeCount" = counts."likeCount",
+          "bookmarkCount" = counts."bookmarkCount",
+          "repostCount" = counts."repostCount",
+          "quoteCount" = counts."quoteCount",
+          "replyCount" = counts."replyCount",
+          "updatedAt" = CURRENT_TIMESTAMP
+      FROM jsonb_to_recordset(${JSON.stringify(updates)}::jsonb) AS counts(
+        "postId" text, "likeCount" int, "bookmarkCount" int,
+        "repostCount" int, "quoteCount" int, "replyCount" int
+      )
+      WHERE post.id = counts."postId"
+    `
+      .affectedCount()
+      .build();
+    await this.prisma.client.transaction((tx) => tx.execute(plan));
   }
 
   async deletePostRecord(
@@ -605,17 +651,19 @@ export class PostsRepository {
         await tx.execute(plan);
       }
 
-      for (const media of data.media) {
-        await tx.orm.public.PostMedia.create({
-          postId: post.id,
-          publicId: media.publicId,
-          url: media.url,
-          type: media.type,
-          width: media.width,
-          height: media.height,
-          duration: media.duration,
-          order: media.order,
-        });
+      if (data.media.length > 0) {
+        await tx.orm.public.PostMedia.createAndCount(
+          data.media.map((media) => ({
+            postId: post.id,
+            publicId: media.publicId,
+            url: media.url,
+            type: media.type,
+            width: media.width,
+            height: media.height,
+            duration: media.duration,
+            order: media.order,
+          })),
+        );
       }
 
       return tx.orm.public.Post.where({ id: post.id })

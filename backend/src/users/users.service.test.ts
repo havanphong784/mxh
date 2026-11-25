@@ -169,7 +169,7 @@ test("profile reads and counts use the Users repository boundary", async () => {
   assert.equal(profile.email, "a@example.test");
 });
 
-test("suggestions read candidates and follows through the Users repository", async () => {
+test("suggestions fetch eligible users once through the Users repository", async () => {
   const candidate = {
     id: "candidate",
     username: "candidate",
@@ -177,38 +177,18 @@ test("suggestions read candidates and follows through the Users repository", asy
     avatarUrl: null,
     bio: null,
   };
+  const calls: Array<string | undefined> = [];
   const repository = {
-    async findSuggestionCandidates() {
+    async findSuggestionCandidates(viewerId?: string) {
+      calls.push(viewerId);
       return [candidate];
-    },
-    async findFollowsToCandidates() {
-      return [];
-    },
-  };
-  const users = createUsersService({} as any, {} as any, {} as any, repository as any);
-
-  assert.deepEqual((await users.suggestUsers("viewer")).items, [candidate]);
-});
-
-test("suggestions continue past followed recent users to older candidates", async () => {
-  const candidates = Array.from({ length: 25 }, (_, index) => ({
-    id: `user-${index}`,
-    username: `user-${index}`,
-    displayName: `User ${index}`,
-    avatarUrl: null,
-    bio: null,
-  }));
-  const repository = {
-    async findSuggestionCandidates(offset = 0) {
-      return candidates.slice(offset, offset + 24);
-    },
-    async findFollowsToCandidates(_viewerId: string, ids: string[]) {
-      return ids.filter((id) => id !== "user-24").map((followingId) => ({ followingId }));
     },
   };
   const users = createUsersService({}, {}, {}, repository);
 
-  assert.deepEqual((await users.suggestUsers("viewer")).items, [candidates[24]]);
+  assert.deepEqual((await users.suggestUsers("viewer")).items, [candidate]);
+  assert.deepEqual((await users.suggestUsers()).items, [candidate]);
+  assert.deepEqual(calls, ["viewer", undefined]);
 });
 
 test("profile update rejects an external avatar URL without an owned media reference", async () => {
@@ -403,6 +383,83 @@ test("a failed profile database update keeps the currently referenced media", as
   assert.deepEqual(deletedPublicIds, []);
 });
 
+test("password change revokes all other sessions in one write without reading them", async () => {
+  for (const size of [1, 100]) {
+    for (const currentSessionId of ["session-0", undefined]) {
+      const sessions = Array.from({ length: size }, (_, index) => ({
+        id: `session-${index}`,
+        userId: "viewer",
+        isRevoked: false,
+      }));
+      sessions.push({ id: "unrelated", userId: "another-user", isRevoked: false });
+      let writes = 0;
+      const predicates: Array<(session: (typeof sessions)[number]) => boolean> = [];
+      const query = {
+        where(predicate: (fields: any) => (session: (typeof sessions)[number]) => boolean) {
+          predicates.push(
+            predicate({
+              userId: {
+                eq: (id: string) => (session: (typeof sessions)[number]) => session.userId === id,
+              },
+              id: {
+                neq: (id: string) => (session: (typeof sessions)[number]) => session.id !== id,
+              },
+            }),
+          );
+          return query;
+        },
+        async updateAndCount(data: { isRevoked: boolean }) {
+          writes++;
+          const matches = sessions.filter((session) =>
+            predicates.every((predicate) => predicate(session)),
+          );
+          matches.forEach((session) => Object.assign(session, data));
+          return matches.length;
+        },
+      };
+      const repository = new UsersRepository({
+        client: {
+          transaction: async (callback: (tx: any) => Promise<void>) =>
+            callback({
+              orm: {
+                public: {
+                  User: { where: () => ({ update: async () => {} }) },
+                  Session: query,
+                },
+              },
+            }),
+        },
+      } as any);
+
+      await repository.changePasswordAndRevokeSessions("viewer", "hash", true, currentSessionId);
+      assert.equal(writes, 1);
+      for (const session of sessions) {
+        assert.equal(
+          session.isRevoked,
+          session.userId === "viewer" && session.id !== currentSessionId,
+        );
+      }
+    }
+  }
+});
+
+test("password change leaves sessions alone when logout is disabled", async () => {
+  const repository = new UsersRepository({
+    client: {
+      transaction: async (callback: (tx: any) => Promise<void>) =>
+        callback({
+          orm: {
+            public: {
+              User: { where: () => ({ update: async () => {} }) },
+              Session: { where: () => assert.fail("Sessions must not be queried") },
+            },
+          },
+        }),
+    },
+  } as any);
+  await repository.changePasswordAndRevokeSessions("viewer", "hash", false, "current");
+});
+
 test("password change rolls back when revoking other sessions fails", async () => {
   const originalHash = await argon2.hash("Old1234!");
   let passwordHash = originalHash;
@@ -421,10 +478,10 @@ test("password change rolls back when revoking other sessions fails", async () =
   const sessionTable = {
     where() {
       return {
-        async all() {
-          return [{ id: "current" }, { id: "other" }];
+        where() {
+          return this;
         },
-        async update() {
+        async updateAndCount() {
           throw new Error("session update failed");
         },
       };

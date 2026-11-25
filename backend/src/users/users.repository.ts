@@ -208,20 +208,18 @@ export class UsersRepository {
     return { byUsername, byDisplayName };
   }
 
-  async findSuggestionCandidates(offset = 0) {
-    return this.user
+  async findSuggestionCandidates(viewerId?: string) {
+    let query = this.user
       .where((u) => u.isActive.eq(true))
-      .where((u) => u.isEmailVerified.eq(true))
-      .orderBy((u) => u.createdAt.desc())
-      .offset(offset)
-      .limit(24)
-      .all();
-  }
-
-  async findFollowsToCandidates(viewerId: string, candidateIds: string[]) {
-    return this.follow
-      .where((f) => f.followerId.eq(viewerId))
-      .where((f) => f.followingId.in(candidateIds))
+      .where((u) => u.isEmailVerified.eq(true));
+    if (viewerId) {
+      query = query
+        .where((u) => u.id.neq(viewerId))
+        .where((u) => u.followers.none((follow) => follow.followerId.eq(viewerId)));
+    }
+    return query
+      .orderBy([(u) => u.createdAt.desc(), (u) => u.id.desc()])
+      .limit(6)
       .all();
   }
 
@@ -245,14 +243,11 @@ export class UsersRepository {
       });
       if (!logoutOtherDevices) return;
 
-      const sessions = await tx.orm.public.Session.where((s) => s.userId.eq(userId)).all();
-      for (const session of sessions) {
-        if (session.id !== currentSessionId) {
-          await tx.orm.public.Session.where({ id: session.id }).update({
-            isRevoked: true,
-          });
-        }
+      let sessions = tx.orm.public.Session.where((s) => s.userId.eq(userId));
+      if (currentSessionId) {
+        sessions = sessions.where((s) => s.id.neq(currentSessionId));
       }
+      await sessions.updateAndCount({ isRevoked: true });
     });
   }
 
