@@ -273,7 +273,6 @@ flowchart TD
 6.  **Controller Layer**: Giữ code siêu mỏng (thin controller). Không chứa câu lệnh logic nghiệp vụ. Chỉ nhận input, chuyển tiếp vào Service và trả kết quả.
 7.  **Service Layer**: Nơi duy nhất chứa các quy tắc nghiệp vụ, tính toán logic và gọi database.
 8.  **Chuẩn Hóa Mã Lỗi Máy Đọc Được (Machine-Readable Error Codes - Playbook v3)**:
-
     -   `AllExceptionsFilter` bắt toàn bộ ngoại lệ và format theo chuẩn cấu trúc:
 
     ```json
@@ -486,12 +485,12 @@ private verifyMediaItems(userId: string, mediaItems: PostMediaItemDto[]) {
 
 Nhằm giữ cho dung lượng cơ sở dữ liệu PostgreSQL luôn gọn nhẹ, tối ưu hóa kích thước B-Tree Index và đảm bảo tuân thủ quyền riêng tư người dùng, hệ thống áp dụng lịch trình dọn dẹp dữ liệu định kỳ (Automated Purge Worker):
 
-| Bảng dữ liệu | Điều kiện kích hoạt Purge | Chu kỳ thực thi | Hành động thực hiện |
-| :--- | :--- | :--- | :--- |
-| **`OtpVerification`** | Mã xác thực đã hết hạn (`expiresAt < NOW() - INTERVAL '1 day'`) | Hàng ngày (02:00 UTC) | **Hard Delete**: Xóa vĩnh viễn bản ghi OTP cũ để tránh phình to bảng xác thực. |
-| **`Session`** | Phiên đã bị thu hồi (`isRevoked = true`) hoặc hết hạn quá 30 ngày (`expiresAt < NOW() - INTERVAL '30 days'`) | Hàng tuần (Chủ nhật 03:00 UTC) | **Hard Delete**: Xóa các phiên cũ đã hết giá trị kiểm toán để giải phóng bộ nhớ index `tokenHash`. |
-| **`Notification`** | Các thông báo đã đọc (`isRead = true`) tạo cách đây hơn 90 ngày | Hàng tháng (Ngày 1 đầu tháng) | **Archive / Purge**: Xóa hoặc chuyển vào kho lưu trữ nguội (Cold storage), giữ danh sách thông báo nhẹ nhàng cho người dùng. |
-| **Tombstone `Post`** | Bài viết `isDeleted = true` nhưng không có bất kỳ bài reply nào liên kết | Hàng tuần | **Purge**: Chuyển từ Tombstone sang Hard Delete nếu toàn bộ cây thread con phía dưới đã bị xóa sạch. |
+| Bảng dữ liệu          | Điều kiện kích hoạt Purge                                                                                    | Chu kỳ thực thi                | Hành động thực hiện                                                                                                          |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------- | :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **`OtpVerification`** | Mã xác thực đã hết hạn (`expiresAt < NOW() - INTERVAL '1 day'`)                                              | Hàng ngày (02:00 UTC)          | **Hard Delete**: Xóa vĩnh viễn bản ghi OTP cũ để tránh phình to bảng xác thực.                                               |
+| **`Session`**         | Phiên đã bị thu hồi (`isRevoked = true`) hoặc hết hạn quá 30 ngày (`expiresAt < NOW() - INTERVAL '30 days'`) | Hàng tuần (Chủ nhật 03:00 UTC) | **Hard Delete**: Xóa các phiên cũ đã hết giá trị kiểm toán để giải phóng bộ nhớ index `tokenHash`.                           |
+| **`Notification`**    | Các thông báo đã đọc (`isRead = true`) tạo cách đây hơn 90 ngày                                              | Hàng tháng (Ngày 1 đầu tháng)  | **Archive / Purge**: Xóa hoặc chuyển vào kho lưu trữ nguội (Cold storage), giữ danh sách thông báo nhẹ nhàng cho người dùng. |
+| **Tombstone `Post`**  | Bài viết `isDeleted = true` nhưng không có bất kỳ bài reply nào liên kết                                     | Hàng tuần                      | **Purge**: Chuyển từ Tombstone sang Hard Delete nếu toàn bộ cây thread con phía dưới đã bị xóa sạch.                         |
 
 ---
 
@@ -523,35 +522,38 @@ graph TD
 
 1. **Luật Sở Hữu Dữ Liệu Độc Quyền (Single Table Ownership)**:
    - Mỗi bảng trong Database chỉ được phép thuộc về **duy nhất một Module quản lý**:
-     * `UsersModule` sở hữu: `User`, `Follow`, `OtpVerification`, `Session`.
-     * `PostsModule` sở hữu: `Post`, `PostMedia`, `PostLike`, `PostBookmark`.
-     * `NotificationsModule` sở hữu: `Notification`.
+     - `UsersModule` sở hữu: `User`, `Follow`, `OtpVerification`, `Session`.
+     - `PostsModule` sở hữu: `Post`, `PostMedia`, `PostLike`, `PostBookmark`.
+     - `NotificationsModule` sở hữu: `Notification`.
 2. **Luật Private Repository (Nghiêm Cấm Truy Cập Chéo Bảng)**:
    - Repository là tài sản nội bộ (**Private**) của module.
    - Module A **TUYỆT ĐỐI CẤM** inject Repository hoặc viết lệnh `prisma.<bảng_khác>` chọc trực tiếp vào bảng do Module B sở hữu.
-   - *Ví dụ*: `PostsService` cần kiểm tra trạng thái hoạt động của User trước khi đăng bài? **CẤM** viết `prisma.user.findUnique()`. Bắt buộc phải inject `UsersService` và gọi method công khai `await this.usersService.ensureActiveUser(userId)`.
+   - _Ví dụ_: `PostsService` cần kiểm tra trạng thái hoạt động của User trước khi đăng bài? **CẤM** viết `prisma.user.findUnique()`. Bắt buộc phải inject `UsersService` và gọi method công khai `await this.usersService.ensureActiveUser(userId)`.
 3. **Hai Kênh Giao Tiếp Hợp Lệ Giữa Các Module**:
    - **Kênh 1: Public Service Interface (Đồng bộ - Synchronous)**:
-     * Dùng khi Module A cần dữ liệu tức thời từ Module B để hoàn thành nghiệp vụ của mình.
-     * Module B chỉ export các Service chứa các hàm public trả về DTO đã được đóng gói cẩn thận.
+     - Dùng khi Module A cần dữ liệu tức thời từ Module B để hoàn thành nghiệp vụ của mình.
+     - Module B chỉ export các Service chứa các hàm public trả về DTO đã được đóng gói cẩn thận.
    - **Kênh 2: Domain Events (Bất đồng bộ - Asynchronous)**:
-     * Dùng khi hành động ở Module A kéo theo hiệu ứng phụ (side-effects) ở Module B (như: Bài viết được like $\rightarrow$ sinh thông báo; Người dùng đổi mật khẩu $\rightarrow$ thu hồi socket realtime).
-     * Module A chỉ cần phát ra sự kiện (`this.eventEmitter.emit(...)`). Module B tự đăng ký lắng nghe (`@OnEvent(...)`) và tự xử lý ghi vào bảng của mình. Hai bên đạt mức độ phân tách (Decoupling) tối đa.
+     - Dùng khi hành động ở Module A kéo theo hiệu ứng phụ (side-effects) ở Module B (như: Bài viết được like $\rightarrow$ sinh thông báo; Người dùng đổi mật khẩu $\rightarrow$ thu hồi socket realtime).
+     - Module A chỉ cần phát ra sự kiện (`this.eventEmitter.emit(...)`). Module B tự đăng ký lắng nghe (`@OnEvent(...)`) và tự xử lý ghi vào bảng của mình. Hai bên đạt mức độ phân tách (Decoupling) tối đa.
 
 ---
 
 ### 7.2. 10 Quy Tắc Vàng Khi Viết Code Backend (The 10 Golden Engineering Rules)
 
 #### Rule 1: Phân Tầng Trách Nhiệm Duy Nhất (Single Responsibility per Layer)
+
 - **Controller (Siêu Mỏng - Thin Controller)**: Chỉ làm 3 việc: tiếp nhận HTTP request, kích hoạt validation DTO/Guard, chuyển tiếp dữ liệu vào Service và định dạng HTTP response.
-  * *CẤM*: Không viết `if/else` nghiệp vụ, không gọi database, không tính toán dữ liệu trong Controller.
+  - _CẤM_: Không viết `if/else` nghiệp vụ, không gọi database, không tính toán dữ liệu trong Controller.
 - **Service (Dày - Rich Domain Logic)**: Nơi duy nhất chứa quy tắc nghiệp vụ, điều phối transaction và phát domain events.
 - **Repository (Truy Xuất - Data Access)**: Nơi duy nhất chứa các câu lệnh truy vấn Prisma/SQL, che giấu chi tiết lưu trữ khỏi tầng Service.
 
 #### Rule 2: Cấm Trả Raw Database Model Ra Ngoại Vi (No Raw DB Leakage)
+
 - Tuyệt đối không `return post` hay `return user` trực tiếp từ database ra Controller rồi gửi về Client.
 - **Lý do**: Rất dễ vô tình làm lộ các trường nhạy cảm (`passwordHash`, `tokenHash`, `ipAddress`, `isDeleted`). Đồng thời khiến cấu trúc API Client bị phụ thuộc cứng vào cấu trúc cột DB (tight coupling).
 - **Quy chuẩn**: Luôn đi qua **Response DTO** hoặc Mapper Function:
+
   ```typescript
   // ❌ SAI: Rò rỉ bản ghi DB nguyên bản
   @Get(':id')
@@ -568,8 +570,10 @@ graph TD
   ```
 
 #### Rule 3: Guard Clauses & Triết Lý Chặn Sớm (Fail-Fast)
+
 - Loại bỏ hoàn toàn mô hình `if/else` lồng nhau nhiều tầng (Pyramid of Doom) khiến mã nguồn khó theo dõi và dễ sót case.
 - Luôn kiểm tra các điều kiện tiên quyết (Preconditions) và quăng lỗi (`throw Exception`) ngay ở những dòng đầu tiên của hàm:
+
   ```typescript
   // ✅ CHUẨN: Fail-Fast, code thẳng hàng, dễ đọc, dễ viết unit test
   async createReply(userId: string, parentId: string, content: string) {
@@ -587,20 +591,24 @@ graph TD
   ```
 
 #### Rule 4: Giới Hạn Transaction & Cấm Network I/O Trong DB Lock
+
 - Transaction được sinh ra để đảm bảo tính toán vẹn dữ liệu ACID giữa các bảng.
 - **Quy Tắc Thép**: **Tuyệt đối cấm** gọi các tác vụ có độ trễ không đoán trước (gửi Email SMTP, upload file Cloudinary, gọi AI Gateway, phát WebSocket) bên trong khối `transaction(async (tx) => { ... })`.
-- *Hậu quả nếu vi phạm*: Các câu lệnh mạng ngoài có thể mất từ 1–5 giây, giữ chặt kết nối DB trong connection pool $\rightarrow$ Cạn kiệt pool $\rightarrow$ Toàn bộ server bị nghẽn (Denial of Service tự gây ra).
+- _Hậu quả nếu vi phạm_: Các câu lệnh mạng ngoài có thể mất từ 1–5 giây, giữ chặt kết nối DB trong connection pool $\rightarrow$ Cạn kiệt pool $\rightarrow$ Toàn bộ server bị nghẽn (Denial of Service tự gây ra).
 
 #### Rule 5: Tính Nhất Quán Của Bộ Đếm (Atomic Mutation vs Memory Mutation)
+
 - Trong mạng xã hội, các bộ đếm `likeCount`, `replyCount`, `repostCount` bị hàng nghìn người dùng cập nhật liên tục.
 - **CẤM**: Đọc bản ghi từ DB lên biến JavaScript trong RAM, cộng `count + 1`, rồi lưu ngược lại (chắc chắn gây mất dữ liệu do Race Condition khi 2 request chạy đồng thời).
 - **BẮT BUỘC**: Sử dụng câu lệnh tăng/giảm nguyên tử (Atomic Increment/Decrement) ở tầng SQL Database:
+
   ```sql
   -- Atomic Counter Update (An toàn tuyệt đối dưới tải cao)
   UPDATE "Post" SET "likeCount" = "likeCount" + 1 WHERE "id" = :postId;
   ```
 
 #### Rule 6: Ngoại Lệ Nghiệp Vụ Có Danh Tính (Strongly-Typed Domain Errors)
+
 - Tránh `throw new BadRequestException('Lỗi rồi')` bằng chuỗi văn bản chung chung.
 - Xây dựng các lớp Exception nghiệp vụ mang danh tính rõ ràng:
   - `PostNotFoundException(postId)`
@@ -609,19 +617,23 @@ graph TD
 - Nhờ đó, Exception Filter ở tầng ngoài cùng sẽ tự động trích xuất đúng HTTP Status Code và `code` máy đọc được (`AUTH_SESSION_REVOKED`, `POST_NOT_FOUND`) một cách đồng nhất.
 
 #### Rule 7: Sẵn Sàng Phân Tách Luồng Đọc và Ghi (CQRS-Lite Readiness)
+
 - **Luồng Ghi (Write / Command)**: Tối ưu cho tính đúng đắn và toàn vẹn dữ liệu. Bắt buộc kiểm tra quyền sở hữu (Ownership check), bọc Transaction khi cần, và phát Domain Event.
 - **Luồng Đọc (Read / Query)**: Tối ưu cho tốc độ và khả năng chịu tải. Được phép dùng projection chỉ lấy các trường cần thiết, tận dụng Keyset Cursor Pagination, và bypass các bước xử lý phức tạp không cần thiết.
 
 #### Rule 8: Che Giấu Thư Viện Bên Thứ Ba Bằng Adapter Pattern (Vendor Agnostic)
+
 - Code nghiệp vụ lõi trong `Services` không được phụ thuộc trực tiếp vào SDK của nhà cung cấp cụ thể (tránh Vendor Lock-in).
-- *Ví dụ*: Không gọi trực tiếp `cloudinary.uploader.destroy()` rải rác trong `PostsService`. Thay vào đó, gọi qua interface trừu tượng `StorageService.deleteFile(publicId)`.
-- *Lợi ích*: Khi dự án quyết định chuyển từ Cloudinary sang **Cloudflare R2** hoặc **AWS S3**, ta chỉ cần viết lại 1 file Adapter mới thực thi interface đó mà không cần sửa đổi một dòng code nào trong `PostsService`.
+- _Ví dụ_: Không gọi trực tiếp `cloudinary.uploader.destroy()` rải rác trong `PostsService`. Thay vào đó, gọi qua interface trừu tượng `StorageService.deleteFile(publicId)`.
+- _Lợi ích_: Khi dự án quyết định chuyển từ Cloudinary sang **Cloudflare R2** hoặc **AWS S3**, ta chỉ cần viết lại 1 file Adapter mới thực thi interface đó mà không cần sửa đổi một dòng code nào trong `PostsService`.
 
 #### Rule 9: Viết Logic Nghiệp Vụ Phức Tạp Bằng Hàm Thuần Khiết (Pure Functions)
+
 - Các thuật toán tính điểm trending feed, bóc tách hashtag `#topic`, trích xuất mention `@username`, hoặc kiểm tra chữ ký HMAC phải được tổ chức thành các **Pure Function** (cùng input $\rightarrow$ luôn trả về cùng output, không phụ thuộc vào trạng thái DB bên ngoài).
-- *Lợi ích*: Cực kỳ dễ dàng viết Unit Test đạt độ phủ 100% với thời gian chạy chỉ vài mili-giây mà không cần dựng mock database phức tạp.
+- _Lợi ích_: Cực kỳ dễ dàng viết Unit Test đạt độ phủ 100% với thời gian chạy chỉ vài mili-giây mà không cần dựng mock database phức tạp.
 
 #### Rule 10: Cơ Chế Tự Chữa Lành Dữ Liệu (Self-Healing & Data Reconcilers)
+
 - Trong hệ thống có bộ đếm phi chuẩn hóa (denormalized counters), dù thiết kế chuẩn đến đâu vẫn có xác suất nhỏ bị lệch số liệu do database crash hoặc sự cố ngoài ý muốn.
 - **Quy định**: Mọi tính năng sử dụng bộ đếm hoặc trạng thái bất đồng bộ phải có **Reconciler Script** đi kèm (như `src/scripts/reconcile-counters.ts`). Định kỳ hoặc khi có nghi ngờ sai lệch, Reconciler sẽ quét và tự động đồng bộ lại bộ đếm từ quan hệ thực tế (Truth of Source).
 
@@ -629,11 +641,11 @@ graph TD
 
 ### 7.3. Bảng Đối Chiếu Code Smells (Anti-Patterns) vs Clean Architecture
 
-| Trường hợp (Scenario) | ❌ Anti-Pattern (Cấm Làm) | ✅ Clean Architecture (Chuẩn Dự Án) |
-| :--- | :--- | :--- |
-| **Truy vấn user trong Posts Module** | `this.prisma.user.findUnique({ where: { id } })` | `await this.usersService.findActiveUser(id)` |
-| **Bình luận bài viết gây thông báo** | `PostsService` gọi trực tiếp `NotificationsService.createNotification()` (gây circular dependency) | `PostsService` phát event `this.eventEmitter.emit(POST_EVENTS.REPLIED, payload)` |
-| **Tăng lượt thích (Like Counter)** | `post.likeCount += 1; await this.prisma.post.update(...)` (Race condition) | Dùng lệnh Atomic: `UPDATE "Post" SET "likeCount" = "likeCount" + 1 WHERE id = ...` |
-| **Trả dữ liệu API bài viết** | `return this.prisma.post.findFirst(...)` (Lộ `isDeleted`, raw structure) | `return PostResponseDto.fromEntity(post)` |
-| **Tác vụ gửi mail trong đăng ký** | Bọc `this.mailService.sendOtp()` bên trong `prisma.transaction()` (Giữ DB connection) | Commit transaction tạo User + OTP trước, sau đó mới gọi gửi Mail ở ngoài |
-| **Kiểm tra quyền sửa/xóa** | Nhận `userId` từ `req.body.userId` của client (Lỗ hổng IDOR) | Bắt buộc lấy `userId` từ token `@CurrentUser('sub')` và so khớp với `authorId` trong DB |
+| Trường hợp (Scenario)                | ❌ Anti-Pattern (Cấm Làm)                                                                          | ✅ Clean Architecture (Chuẩn Dự Án)                                                     |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| **Truy vấn user trong Posts Module** | `this.prisma.user.findUnique({ where: { id } })`                                                   | `await this.usersService.findActiveUser(id)`                                            |
+| **Bình luận bài viết gây thông báo** | `PostsService` gọi trực tiếp `NotificationsService.createNotification()` (gây circular dependency) | `PostsService` phát event `this.eventEmitter.emit(POST_EVENTS.REPLIED, payload)`        |
+| **Tăng lượt thích (Like Counter)**   | `post.likeCount += 1; await this.prisma.post.update(...)` (Race condition)                         | Dùng lệnh Atomic: `UPDATE "Post" SET "likeCount" = "likeCount" + 1 WHERE id = ...`      |
+| **Trả dữ liệu API bài viết**         | `return this.prisma.post.findFirst(...)` (Lộ `isDeleted`, raw structure)                           | `return PostResponseDto.fromEntity(post)`                                               |
+| **Tác vụ gửi mail trong đăng ký**    | Bọc `this.mailService.sendOtp()` bên trong `prisma.transaction()` (Giữ DB connection)              | Commit transaction tạo User + OTP trước, sau đó mới gọi gửi Mail ở ngoài                |
+| **Kiểm tra quyền sửa/xóa**           | Nhận `userId` từ `req.body.userId` của client (Lỗ hổng IDOR)                                       | Bắt buộc lấy `userId` từ token `@CurrentUser('sub')` và so khớp với `authorId` trong DB |

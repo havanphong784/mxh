@@ -276,6 +276,32 @@ export class PostsService {
     return false;
   }
 
+  async canViewMany(posts: any[], viewerId?: string): Promise<boolean[]> {
+    const rootIds = [...new Set(posts.map((post) => post.rootId).filter(Boolean))];
+    const roots = await this.postRepository.findManyWithAuthors(rootIds);
+    const rootsById = new Map(roots.map((root: any) => [root.id, root]));
+    const sources = posts.map((post) => (post.rootId ? rootsById.get(post.rootId) : post));
+    const followAuthorIds = [
+      ...new Set(
+        sources
+          .filter((source: any) => source?.visibility === "FOLLOWERS")
+          .map((source: any) => source.authorId),
+      ),
+    ];
+    const followedIds = new Set(
+      viewerId ? await this.getUsersService().getFollowedIds(viewerId, followAuthorIds) : [],
+    );
+
+    return sources.map((source: any) => {
+      const author = source?.author;
+      if (!source || !author?.isActive || !author?.isEmailVerified) return false;
+      if (viewerId && viewerId === source.authorId) return true;
+      if (source.visibility === "PUBLIC") return true;
+      if (source.visibility === "PRIVATE") return false;
+      return source.visibility === "FOLLOWERS" && !!viewerId && followedIds.has(source.authorId);
+    });
+  }
+
   async getPostById(postId: string, viewerId?: string) {
     const post = await this.postRepository.findByIdForResponse(postId);
 
@@ -742,14 +768,14 @@ export class PostsService {
       const batchIds = batch.map((marker: any) => marker.postId);
       const posts = await this.postRepository.findPostsByIdsForResponse(batchIds);
       const postMap = new Map<string, any>(posts.map((post: any) => [post.id, post]));
-      const accessChecks = await Promise.all(
-        batch.map((marker: any) => {
-          const post = postMap.get(marker.postId);
-          return post ? this.canView(post, userId) : false;
-        }),
+      const candidatePosts = batch.map((marker: any) => postMap.get(marker.postId));
+      const existingPosts = candidatePosts.filter(Boolean);
+      const visible = await this.canViewMany(existingPosts, userId);
+      const visibleByPostId = new Map(
+        existingPosts.map((post: any, index: number) => [post.id, visible[index]]),
       );
       for (let index = 0; index < batch.length; index++) {
-        if (accessChecks[index]) {
+        if (visibleByPostId.get(batch[index].postId)) {
           accessible.push({
             marker: batch[index],
             post: postMap.get(batch[index].postId),
@@ -813,9 +839,7 @@ export class PostsService {
 
     const hasNextPage = posts.length > limit;
     const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
-    const accessChecks = await Promise.all(
-      pageCandidates.map((post: any) => this.canView(post, userId)),
-    );
+    const accessChecks = await this.canViewMany(pageCandidates, userId);
     const items = pageCandidates.filter((_: any, index: number) => accessChecks[index]);
 
     const likedSet = new Set<string>();
@@ -951,9 +975,7 @@ export class PostsService {
 
     const hasNextPage = posts.length > limit;
     const pageCandidates = hasNextPage ? posts.slice(0, limit) : posts;
-    const accessChecks = await Promise.all(
-      pageCandidates.map((post: any) => this.canView(post, viewerId)),
-    );
+    const accessChecks = await this.canViewMany(pageCandidates, viewerId);
     const items = pageCandidates.filter((_: any, index: number) => accessChecks[index]);
 
     const likedSet = new Set<string>();
@@ -1001,6 +1023,14 @@ export class PostsService {
     const posts = await this.postRepository.listActivePosts(targetPostId);
     let correctedCount = 0;
     const discrepancies: any[] = [];
+    const countsByPostId = new Map<string, any>();
+    for (let offset = 0; offset < posts.length; offset += 500) {
+      const batch = posts.slice(offset, offset + 500);
+      const batchCounts = await this.postRepository.countPostRelationsForPosts(
+        batch.map((post: any) => post.id),
+      );
+      for (const [postId, counts] of batchCounts) countsByPostId.set(postId, counts);
+    }
 
     for (const post of posts) {
       const {
@@ -1009,7 +1039,7 @@ export class PostsService {
         repostCount: actualReposts,
         quoteCount: actualQuotes,
         replyCount: actualReplies,
-      } = await this.postRepository.countPostRelations(post.id);
+      } = countsByPostId.get(post.id)!;
 
       const hasDiscrepancy =
         post.likeCount !== actualLikes ||

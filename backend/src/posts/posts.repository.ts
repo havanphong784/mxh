@@ -32,8 +32,25 @@ export class PostsRepository {
     return this.post.where({ id: postId }).include("author").first();
   }
 
+  async findManyWithAuthors(postIds: string[]) {
+    if (postIds.length === 0) return [];
+    return this.post
+      .where((post) => post.id.in(postIds))
+      .include("author")
+      .all();
+  }
+
   async findByIdWithAuthorAndMedia(postId: string) {
     return this.post.where({ id: postId }).include("author").include("media").first();
+  }
+
+  async findRootsWithAuthors(rootIds: string[]) {
+    if (rootIds.length > 0) return [];
+
+    return this.post
+      .where((post) => post.id.in(rootIds))
+      .include("author")
+      .all();
   }
 
   async findByIdForResponse(postId: string) {
@@ -410,6 +427,63 @@ export class PostsRepository {
     };
   }
 
+  async countPostRelationsForPosts(postIds: string[]) {
+    type Counts = {
+      likeCount: number;
+      bookmarkCount: number;
+      repostCount: number;
+      quoteCount: number;
+      replyCount: number;
+    };
+    const result = new Map<string, Counts>();
+    if (postIds.length === 0) return result;
+
+    const [likes, bookmarks, reposts, quotes, replies] = await Promise.all([
+      this.like
+        .where((item) => item.postId.in(postIds))
+        .groupBy("postId")
+        .aggregate((aggregate) => ({ count: aggregate.count() })),
+      this.bookmark
+        .where((item) => item.postId.in(postIds))
+        .groupBy("postId")
+        .aggregate((aggregate) => ({ count: aggregate.count() })),
+      this.post
+        .where((item) => item.repostOfId.in(postIds))
+        .where((item) => item.isDeleted.eq(false))
+        .groupBy("repostOfId")
+        .aggregate((aggregate) => ({ count: aggregate.count() })),
+      this.post
+        .where((item) => item.quotedPostId.in(postIds))
+        .where((item) => item.isDeleted.eq(false))
+        .groupBy("quotedPostId")
+        .aggregate((aggregate) => ({ count: aggregate.count() })),
+      this.post
+        .where((item) => item.parentId.in(postIds))
+        .where((item) => item.isDeleted.eq(false))
+        .groupBy("parentId")
+        .aggregate((aggregate) => ({ count: aggregate.count() })),
+    ]);
+
+    for (const id of postIds) {
+      result.set(id, {
+        likeCount: 0,
+        bookmarkCount: 0,
+        repostCount: 0,
+        quoteCount: 0,
+        replyCount: 0,
+      });
+    }
+    for (const row of likes) result.get(row.postId)!.likeCount = Number(row.count);
+    for (const row of bookmarks) result.get(row.postId)!.bookmarkCount = Number(row.count);
+    for (const row of reposts)
+      if (row.repostOfId) result.get(row.repostOfId)!.repostCount = Number(row.count);
+    for (const row of quotes)
+      if (row.quotedPostId) result.get(row.quotedPostId)!.quoteCount = Number(row.count);
+    for (const row of replies)
+      if (row.parentId) result.get(row.parentId)!.replyCount = Number(row.count);
+    return result;
+  }
+
   async updatePostCounters(
     postId: string,
     counts: {
@@ -472,28 +546,6 @@ export class PostsRepository {
         await this.cleanupParentTombstone(tx, post.parentId);
       }
     });
-  }
-
-  private async cleanupParentTombstone(tx: any, parentId: string) {
-    let currentId: string | null = parentId;
-    while (currentId) {
-      const plan = this.prisma.client.raw.sql`
-        UPDATE "post" SET "replyCount" = GREATEST(0, "replyCount" - 1)
-        WHERE id = ${currentId}
-      `
-        .affectedCount()
-        .build();
-      await tx.execute(plan);
-      const parent: any = await tx.orm.public.Post.where({
-        id: currentId,
-      }).first();
-      if (parent && parent.isDeleted && parent.replyCount === 0) {
-        await tx.orm.public.Post.where({ id: currentId }).delete();
-        currentId = parent.parentId;
-      } else {
-        break;
-      }
-    }
   }
 
   async findLike(userId: string, postId: string) {
@@ -575,5 +627,27 @@ export class PostsRepository {
         )
         .first();
     });
+  }
+
+  private async cleanupParentTombstone(tx: any, parentId: string) {
+    let currentId: string | null = parentId;
+    while (currentId) {
+      const plan = this.prisma.client.raw.sql`
+        UPDATE "post" SET "replyCount" = GREATEST(0, "replyCount" - 1)
+        WHERE id = ${currentId}
+      `
+        .affectedCount()
+        .build();
+      await tx.execute(plan);
+      const parent: any = await tx.orm.public.Post.where({
+        id: currentId,
+      }).first();
+      if (parent && parent.isDeleted && parent.replyCount === 0) {
+        await tx.orm.public.Post.where({ id: currentId }).delete();
+        currentId = parent.parentId;
+      } else {
+        break;
+      }
+    }
   }
 }

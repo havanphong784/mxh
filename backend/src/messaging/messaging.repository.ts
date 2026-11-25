@@ -109,6 +109,66 @@ export class MessagingRepository {
     return messages[0] ?? null;
   }
 
+  async findLatestMessages(conversationIds: string[]) {
+    if (conversationIds.length === 0) return [];
+    const plan = this.prisma.client.raw.sql`
+      SELECT DISTINCT ON ("conversationId")
+        id, "conversationId", "senderId", "clientMessageId", type, body,
+        "createdAt", "editedAt", "deletedAt"
+      FROM "message"
+      WHERE "conversationId" = ANY(string_to_array(${conversationIds.join(",")}, ','))
+      ORDER BY "conversationId", "createdAt" DESC, id DESC
+    `
+      .returnsRow({
+        id: "pg/text@1",
+        conversationId: "pg/text@1",
+        senderId: "pg/text@1",
+        clientMessageId: "pg/text@1",
+        type: "pg/text@1",
+        body: "pg/text@1",
+        createdAt: "pg/timestamptz-temporal@1",
+        editedAt: "pg/timestamptz-temporal@1",
+        deletedAt: "pg/timestamptz-temporal@1",
+      })
+      .build();
+    return this.prisma.client.runtime().query(plan);
+  }
+
+  async countUnreadForConversations(conversationIds: string[], userId: string) {
+    if (conversationIds.length === 0) return new Map<string, number>();
+    const plan = this.prisma.client.raw.sql`
+      SELECT p."conversationId", COUNT(m.id)::int AS count
+      FROM "conversationParticipant" p
+      LEFT JOIN "message" m
+        ON m."conversationId" = p."conversationId"
+       AND m."senderId" <> p."userId"
+       AND (p."lastReadAt" IS NULL OR m."createdAt" > p."lastReadAt")
+      WHERE p."userId" = ${userId}
+        AND p."conversationId" = ANY(string_to_array(${conversationIds.join(",")}, ','))
+      GROUP BY p."conversationId"
+    `
+      .returnsRow({ conversationId: "pg/text@1", count: "pg/int4@1" })
+      .build();
+    const rows = await this.prisma.client.runtime().query(plan);
+    return new Map(rows.map((row: any) => [row.conversationId, Number(row.count)]));
+  }
+
+  async countAllUnreadForUser(userId: string): Promise<number> {
+    const plan = this.prisma.client.raw.sql`
+      SELECT COUNT(m.id)::int AS count
+      FROM "conversationParticipant" p
+      LEFT JOIN "message" m
+        ON m."conversationId" = p."conversationId"
+       AND m."senderId" <> p."userId"
+       AND (p."lastReadAt" IS NULL OR m."createdAt" > p."lastReadAt")
+      WHERE p."userId" = ${userId}
+    `
+      .returnsRow({ count: "pg/int4@1" })
+      .build();
+    const [row] = await this.prisma.client.runtime().query(plan);
+    return Number(row?.count ?? 0);
+  }
+
   async listMessages(
     conversationId: string,
     limit: number,

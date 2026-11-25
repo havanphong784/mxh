@@ -5,10 +5,7 @@ import { ExecutionContext, HttpStatus } from "@nestjs/common";
 import { of, throwError, firstValueFrom } from "rxjs";
 import { IdempotencyService } from "./idempotency.service.js";
 import { IdempotencyInterceptor } from "./idempotency.interceptor.js";
-import {
-  DomainException,
-  ERROR_CODES,
-} from "../exceptions/domain.exception.js";
+import { DomainException, ERROR_CODES } from "../exceptions/domain.exception.js";
 
 function createMockContext(options: {
   method: string;
@@ -115,9 +112,7 @@ test("IdempotencyInterceptor caches response and replays on duplicate request", 
     },
   };
 
-  const result1 = await firstValueFrom(
-    interceptor.intercept(req1.context, next1 as any),
-  );
+  const result1 = await firstValueFrom(interceptor.intercept(req1.context, next1 as any));
   assert.equal(executions, 1);
   assert.deepEqual(result1, { id: "post-1", content: "Hello world" });
 
@@ -135,9 +130,7 @@ test("IdempotencyInterceptor caches response and replays on duplicate request", 
     },
   };
 
-  const result2 = await firstValueFrom(
-    interceptor.intercept(req2.context, next2 as any),
-  );
+  const result2 = await firstValueFrom(interceptor.intercept(req2.context, next2 as any));
   assert.equal(executions, 1, "Handler should NOT have executed a second time");
   assert.deepEqual(result2, { id: "post-1", content: "Hello world" });
   assert.deepEqual(req2.getSetHeader(), ["x-idempotent-replay", "true"]);

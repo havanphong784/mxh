@@ -8,15 +8,15 @@ Tài liệu này là **Cẩm Nang Vận Hành & Ứng Cứu Sự Cố (Productio
 
 ### 1.1. Ma Trận Môi Trường Hệ Thống
 
-| Tiêu chí | Local Development | Staging / Pre-Production | Production |
-| :--- | :--- | :--- | :--- |
-| **Mục đích** | Phát triển tính năng, debug, chạy unit/integration test. | Kiểm thử tích hợp E2E, diễn tập tải (Load test), nghiệm thu trước release. | Phục vụ người dùng thực tế với lưu lượng truy cập cao. |
-| **Frontend URL** | `http://localhost:3000` | `https://staging.mxh.domain` | `https://mxh.domain` |
-| **Backend API** | `http://localhost:5000/api/v1` | `https://api-staging.mxh.domain/api/v1` | `https://api.mxh.domain/api/v1` |
-| **Database** | PostgreSQL 16 (Local / Docker) | PostgreSQL 16 Managed (Dedicated Staging DB) | PostgreSQL 16 High-Availability (Primary + Read Replica) |
-| **Cơ Chế Seed** | Hỗ trợ `npm run seed` (19 accounts, >100 posts) | Hỗ trợ Seed dữ liệu mẫu có kiểm soát | **NGHIÊM CẤM** chạy seed script (`NODE_ENV === 'production'` tự chặn) |
-| **Cloudinary** | Account Test / Shared Dev Cloud | Separate Staging Folder / Bucket | Production Dedicated Cloudinary Account |
-| **Email SMTP** | Ethereal Mail / Mailhog / Gmail Dev | SMTP Test Gateway | Production Amazon SES / SendGrid Transactional Mail |
+| Tiêu chí         | Local Development                                        | Staging / Pre-Production                                                   | Production                                                            |
+| :--------------- | :------------------------------------------------------- | :------------------------------------------------------------------------- | :-------------------------------------------------------------------- |
+| **Mục đích**     | Phát triển tính năng, debug, chạy unit/integration test. | Kiểm thử tích hợp E2E, diễn tập tải (Load test), nghiệm thu trước release. | Phục vụ người dùng thực tế với lưu lượng truy cập cao.                |
+| **Frontend URL** | `http://localhost:3000`                                  | `https://staging.mxh.domain`                                               | `https://mxh.domain`                                                  |
+| **Backend API**  | `http://localhost:5000/api/v1`                           | `https://api-staging.mxh.domain/api/v1`                                    | `https://api.mxh.domain/api/v1`                                       |
+| **Database**     | PostgreSQL 16 (Local / Docker)                           | PostgreSQL 16 Managed (Dedicated Staging DB)                               | PostgreSQL 16 High-Availability (Primary + Read Replica)              |
+| **Cơ Chế Seed**  | Hỗ trợ `npm run seed` (19 accounts, >100 posts)          | Hỗ trợ Seed dữ liệu mẫu có kiểm soát                                       | **NGHIÊM CẤM** chạy seed script (`NODE_ENV === 'production'` tự chặn) |
+| **Cloudinary**   | Account Test / Shared Dev Cloud                          | Separate Staging Folder / Bucket                                           | Production Dedicated Cloudinary Account                               |
+| **Email SMTP**   | Ethereal Mail / Mailhog / Gmail Dev                      | SMTP Test Gateway                                                          | Production Amazon SES / SendGrid Transactional Mail                   |
 
 ---
 
@@ -24,32 +24,32 @@ Tài liệu này là **Cẩm Nang Vận Hành & Ứng Cứu Sự Cố (Productio
 
 #### 1. Backend (`backend/.env`)
 
-| Tên biến | Bắt buộc | Ví dụ giá trị | Mục đích & Giải thích bảo mật |
-| :--- | :---: | :--- | :--- |
-| `NODE_ENV` | Có | `production` | Bật chế độ tối ưu hiệu năng của Fastify & NestJS, khóa các script seed/reset. |
-| `PORT` | Có | `5000` | Cổng lắng nghe của máy chủ Fastify HTTP. |
-| `DATABASE_URL` | Có | `postgresql://user:pass@host:5432/mxh_prod?sslmode=require` | Chuỗi kết nối PostgreSQL (Bắt buộc bật SSL trên Staging/Production). |
-| `JWT_ACCESS_SECRET` | Có | *Chuỗi ngẫu nhiên tối thiểu 64 ký tự* | Khóa bí mật ký Access Token (Thời hạn 15 phút). |
-| `JWT_ACCESS_EXPIRES_IN`| Có | `15m` | Thời gian sống của JWT Access Token trong RAM. |
-| `JWT_REFRESH_SECRET` | Có | *Chuỗi ngẫu nhiên tối thiểu 64 ký tự* | Khóa bí mật ký Refresh Token trong HttpOnly Cookie. |
-| `JWT_REFRESH_EXPIRES_IN`| Có | `7d` | Thời hạn sống của Refresh Token (7 ngày). |
-| `COOKIE_SECRET` | Có | *Chuỗi ngẫu nhiên tối thiểu 32 ký tự* | Dùng để ký bảo vệ Cookie (`@fastify/cookie`), chống sửa đổi client-side. |
-| `CORS_ORIGIN` | Có | `https://mxh.domain` | Nguồn được phép gọi API (Tuyệt đối không dùng `*` trên production). |
-| `CLOUDINARY_CLOUD_NAME`| Có | `mxh-prod` | Tên đám mây lưu trữ Cloudinary. |
-| `CLOUDINARY_API_KEY` | Có | `123456789012345` | API Key công khai của Cloudinary. |
-| `CLOUDINARY_API_SECRET`| Có | *Chuỗi bí mật 32 ký tự* | **Bí mật tuyệt đối**: Dùng để ký và kiểm tra HMAC SHA-1 upload signature. |
-| `SMTP_HOST` | Có | `smtp.sendgrid.net` | Địa chỉ máy chủ SMTP gửi mail OTP xác thực. |
-| `SMTP_PORT` | Có | `465` | Cổng SMTP (465 SSL hoặc 587 TLS). |
-| `SMTP_SECURE` | Có | `true` | Sử dụng giao thức TLS/SSL an toàn. |
-| `SMTP_USER` | Có | `apikey` | Tài khoản đăng nhập SMTP. |
-| `SMTP_PASS` | Có | *Mật khẩu / API Key gửi mail* | Mật khẩu ứng dụng hoặc khóa bảo mật gửi email. |
-| `EMAIL_FROM` | Có | `"MXH Security" <no-reply@mxh.domain>` | Tên hiển thị người gửi trong hòm thư người dùng. |
+| Tên biến                 | Bắt buộc | Ví dụ giá trị                                               | Mục đích & Giải thích bảo mật                                                 |
+| :----------------------- | :------: | :---------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `NODE_ENV`               |    Có    | `production`                                                | Bật chế độ tối ưu hiệu năng của Fastify & NestJS, khóa các script seed/reset. |
+| `PORT`                   |    Có    | `5000`                                                      | Cổng lắng nghe của máy chủ Fastify HTTP.                                      |
+| `DATABASE_URL`           |    Có    | `postgresql://user:pass@host:5432/mxh_prod?sslmode=require` | Chuỗi kết nối PostgreSQL (Bắt buộc bật SSL trên Staging/Production).          |
+| `JWT_ACCESS_SECRET`      |    Có    | _Chuỗi ngẫu nhiên tối thiểu 64 ký tự_                       | Khóa bí mật ký Access Token (Thời hạn 15 phút).                               |
+| `JWT_ACCESS_EXPIRES_IN`  |    Có    | `15m`                                                       | Thời gian sống của JWT Access Token trong RAM.                                |
+| `JWT_REFRESH_SECRET`     |    Có    | _Chuỗi ngẫu nhiên tối thiểu 64 ký tự_                       | Khóa bí mật ký Refresh Token trong HttpOnly Cookie.                           |
+| `JWT_REFRESH_EXPIRES_IN` |    Có    | `7d`                                                        | Thời hạn sống của Refresh Token (7 ngày).                                     |
+| `COOKIE_SECRET`          |    Có    | _Chuỗi ngẫu nhiên tối thiểu 32 ký tự_                       | Dùng để ký bảo vệ Cookie (`@fastify/cookie`), chống sửa đổi client-side.      |
+| `CORS_ORIGIN`            |    Có    | `https://mxh.domain`                                        | Nguồn được phép gọi API (Tuyệt đối không dùng `*` trên production).           |
+| `CLOUDINARY_CLOUD_NAME`  |    Có    | `mxh-prod`                                                  | Tên đám mây lưu trữ Cloudinary.                                               |
+| `CLOUDINARY_API_KEY`     |    Có    | `123456789012345`                                           | API Key công khai của Cloudinary.                                             |
+| `CLOUDINARY_API_SECRET`  |    Có    | _Chuỗi bí mật 32 ký tự_                                     | **Bí mật tuyệt đối**: Dùng để ký và kiểm tra HMAC SHA-1 upload signature.     |
+| `SMTP_HOST`              |    Có    | `smtp.sendgrid.net`                                         | Địa chỉ máy chủ SMTP gửi mail OTP xác thực.                                   |
+| `SMTP_PORT`              |    Có    | `465`                                                       | Cổng SMTP (465 SSL hoặc 587 TLS).                                             |
+| `SMTP_SECURE`            |    Có    | `true`                                                      | Sử dụng giao thức TLS/SSL an toàn.                                            |
+| `SMTP_USER`              |    Có    | `apikey`                                                    | Tài khoản đăng nhập SMTP.                                                     |
+| `SMTP_PASS`              |    Có    | _Mật khẩu / API Key gửi mail_                               | Mật khẩu ứng dụng hoặc khóa bảo mật gửi email.                                |
+| `EMAIL_FROM`             |    Có    | `"MXH Security" <no-reply@mxh.domain>`                      | Tên hiển thị người gửi trong hòm thư người dùng.                              |
 
 #### 2. Frontend (`frontend/.env.production`)
 
-| Tên biến | Bắt buộc | Ví dụ giá trị | Mục đích & Giải thích |
-| :--- | :---: | :--- | :--- |
-| `VITE_API_ORIGIN` | Không | `https://api.mxh.domain` | Origin của REST và Socket.IO, không có `/api/v1`. Mặc định để trống và dùng proxy cùng origin. Đặt trước khi build. |
+| Tên biến          | Bắt buộc | Ví dụ giá trị            | Mục đích & Giải thích                                                                                               |
+| :---------------- | :------: | :----------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| `VITE_API_ORIGIN` |  Không   | `https://api.mxh.domain` | Origin của REST và Socket.IO, không có `/api/v1`. Mặc định để trống và dùng proxy cùng origin. Đặt trước khi build. |
 
 Build bằng `npm run build -w frontend` và phục vụ `frontend/dist/` bằng static host. Chuyển tiếp `/api/v1/*` và `/socket.io/*` (hỗ trợ WebSocket upgrade) tới backend trước quy tắc fallback về `index.html`. Khi dùng origin riêng, cấu hình CORS đúng origin frontend và dùng cùng site để giữ phiên refresh. Chữ ký và thông tin Cloudinary công khai được cấp qua API, không cấu hình secret ở frontend.
 
@@ -114,6 +114,7 @@ npm run build # tương đương turbo run build
 #### Dockerfile Cho Backend (NestJS 12 Fastify Multi-stage Build)
 
 Đặt tại `backend/Dockerfile`:
+
 ```dockerfile
 # ----------------------------------------------------
 # Stage 1: Dependency & Build
@@ -175,6 +176,7 @@ CMD ["node", "--import", "@swc-node/register/esm-register", "src/index.ts"]
 2. **Healthcheck Probe (Kiểm Tra Sức Khỏe Máy Chủ)**:
    - Endpoint: `GET /api/v1/health`
    - Trả về HTTP `200 OK`:
+
      ```json
      {
        "status": "ok",
@@ -204,6 +206,7 @@ flowchart TD
 ```
 
 **Quy tắc an toàn**:
+
 - Không bao giờ chạy migration trực tiếp từ máy cá nhân lập trình viên lên Production DB.
 - Migration phải được thực thi qua **CI/CD Pipeline Runner** có phân quyền giới hạn mạng (IP Allowlist).
 
@@ -212,17 +215,21 @@ flowchart TD
 ### 3.2. Chiến Lược Sao Lưu Tự Động (Automated Backup & Retention)
 
 Hệ thống đặt ra 2 chỉ số phục hồi cốt lõi:
+
 - **RPO (Recovery Point Objective)**: $\le 15$ phút (mức dữ liệu tối đa chấp nhận mất khi thảm họa xảy ra).
 - **RTO (Recovery Time Objective)**: $\le 60$ phút (thời gian tối đa để khôi phục toàn bộ hệ thống hoạt động bình thường).
 
 #### Lịch Trình Sao Lưu:
+
 1. **Continuous WAL Archiving (Write-Ahead Logging)**:
    - Lưu trữ liên tục các file WAL sang Cloud Object Storage (AWS S3 Glacier / Cloudflare R2), cho phép phục hồi về bất kỳ giây nào trong quá khứ (Point-In-Time Recovery - PITR) trong vòng 14 ngày.
 2. **Daily Logical Dump (`pg_dump`)**:
    - Chạy tự động lúc 03:00 sáng hàng ngày:
+
    ```bash
    pg_dump -Fc -v -h $DB_HOST -U $DB_USER -d $DB_NAME -f "/backups/mxh_db_$(date +%Y%m%d_%H%M%S).dump"
    ```
+
    - Nén và mã hóa AES-256 trước khi đẩy lên S3 Backup Bucket (Lưu trữ 30 ngày).
 
 ---
@@ -277,19 +284,19 @@ Hệ thống sử dụng **Pino Logger** (tích hợp mặc định của Fastif
 }
 ```
 
-*Lợi ích*: Dễ dàng đẩy trực tiếp vào các hệ thống tập trung nhật ký (Datadog, Loki, Grafana, AWS CloudWatch) để lọc lỗi theo `reqId` hoặc `userId`.
+_Lợi ích_: Dễ dàng đẩy trực tiếp vào các hệ thống tập trung nhật ký (Datadog, Loki, Grafana, AWS CloudWatch) để lọc lỗi theo `reqId` hoặc `userId`.
 
 ---
 
 ### 4.2. Ma Trận Cảnh Báo & Ngưỡng Khẩn Cấp (Alerting Rules)
 
-| Chỉ số giám sát (Metric) | Ngưỡng cảnh báo (Threshold) | Kênh thông báo | Hành động ngay lập tức |
-| :--- | :--- | :--- | :--- |
-| **API Error Rate (5xx)** | $> 1\%$ trong 5 phút | Slack `#alerts-critical` + PagerDuty | Kiểm tra error log trong AllExceptionsFilter, truy vết nguyên nhân lỗi hệ thống. |
-| **P95 Request Latency** | $> 800\text{ ms}$ trong 5 phút | Slack `#alerts-dev` | Kiểm tra Slow Queries trên Postgres hoặc tắc nghẽn Pool kết nối. |
-| **Database Pool Busy** | $> 80\%$ pool capacity | Slack `#alerts-critical` | Kiểm tra các truy vấn giữ transaction quá lâu hoặc thiếu index. |
-| **Server Memory Usage** | $> 85\%$ RAM kéo dài | Slack `#alerts-warning` | Kiểm tra hiện tượng rò rỉ bộ nhớ (Memory Leak) do WebSocket clients chưa ngắt kết nối. |
-| **Healthcheck Failed** | 2 lần probe thất bại liên tiếp | PagerDuty gọi khẩn cấp | Khởi động lại container backend tự động, kiểm tra trạng thái tiến trình Fastify. |
+| Chỉ số giám sát (Metric) | Ngưỡng cảnh báo (Threshold)    | Kênh thông báo                       | Hành động ngay lập tức                                                                 |
+| :----------------------- | :----------------------------- | :----------------------------------- | :------------------------------------------------------------------------------------- |
+| **API Error Rate (5xx)** | $> 1\%$ trong 5 phút           | Slack `#alerts-critical` + PagerDuty | Kiểm tra error log trong AllExceptionsFilter, truy vết nguyên nhân lỗi hệ thống.       |
+| **P95 Request Latency**  | $> 800\text{ ms}$ trong 5 phút | Slack `#alerts-dev`                  | Kiểm tra Slow Queries trên Postgres hoặc tắc nghẽn Pool kết nối.                       |
+| **Database Pool Busy**   | $> 80\%$ pool capacity         | Slack `#alerts-critical`             | Kiểm tra các truy vấn giữ transaction quá lâu hoặc thiếu index.                        |
+| **Server Memory Usage**  | $> 85\%$ RAM kéo dài           | Slack `#alerts-warning`              | Kiểm tra hiện tượng rò rỉ bộ nhớ (Memory Leak) do WebSocket clients chưa ngắt kết nối. |
+| **Healthcheck Failed**   | 2 lần probe thất bại liên tiếp | PagerDuty gọi khẩn cấp               | Khởi động lại container backend tự động, kiểm tra trạng thái tiến trình Fastify.       |
 
 ---
 
@@ -308,14 +315,17 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
   3. Xung đột cơ chế xoay vòng Refresh Token (Token Rotation) khi client mở nhiều tab cùng lúc nhưng Single-Flight bị lỗi.
 - **Quy trình xử lý (SOP)**:
   1. Kiểm tra log của `AuthService.refreshToken`:
+
      ```bash
      grep "AUTH_SESSION_REVOKED" /var/log/backend.log
      ```
   2. Kiểm tra đồng bộ thời gian máy chủ:
+
      ```bash
      timedatectl status # Đảm bảo "NTP service: active" và "System clock synchronized: yes"
      ```
   3. Kiểm tra các bản ghi trong bảng `Session`:
+
      ```sql
      -- Kiểm tra số lượng session bị revoke bất thường trong 1 giờ qua
      SELECT count(*), "isRevoked" FROM "Session"
@@ -334,6 +344,7 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
   2. Ai đó vi phạm **Rule 4**: bọc tác vụ I/O chậm (gửi mail SMTP hoặc upload Cloudinary) vào bên trong `prisma.transaction()`.
 - **Quy trình xử lý (SOP)**:
   1. Truy vấn các câu lệnh đang chạy lâu nhất trên PostgreSQL:
+
      ```sql
      SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state
      FROM pg_stat_activity
@@ -342,6 +353,7 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
      ORDER BY duration DESC;
      ```
   2. Kill ngay lập tức các truy vấn đang giữ khóa (Locking Queries):
+
      ```sql
      SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid = <PID_GAY_NGHEN>;
      ```
@@ -356,6 +368,7 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
 - **Nguyên nhân tiềm ẩn**: Sự cố mạng giữa chừng khi cập nhật bài viết con, hoặc dữ liệu seed/test chưa được đối soát.
 - **Quy trình xử lý (SOP)**:
   1. Chạy script đối soát và tự động chữa lành bộ đếm (đã tích hợp sẵn trong repo):
+
      ```bash
      cd backend
      npm run reconcile:counters
@@ -377,6 +390,7 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
      - Kiểm tra chuỗi payload tạo signature: `public_id=${publicId}&version=${version}${apiSecret}`.
   2. Đảm bảo biến môi trường `CLOUDINARY_API_SECRET` trên server không bị khoảng trắng thừa (trailing spaces).
   3. Thử tạo một upload signature mẫu qua API:
+
      ```bash
      curl -X GET "https://api.mxh.domain/api/v1/media/upload-signature?folder=posts&mediaType=image" \
        -H "Authorization: Bearer <VALID_TOKEN>"
@@ -391,11 +405,13 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
 - **Nguyên nhân tiềm ẩn**: Client bị mất mạng đột ngột (tắt máy, chuyển mạng Wi-Fi sang 4G) nhưng sự kiện `disconnect` không kích hoạt dọn dẹp `Set<socketId>` trong Map `onlineUsers`.
 - **Quy trình xử lý (SOP)**:
   1. Kiểm tra kích thước map người dùng trực tuyến trong `EventsGateway`:
+
      ```typescript
      // Số lượng user online thực tế vs số lượng socket kết nối
      this.logger.log(`Online users map size: ${this.onlineUsers.size}`);
      ```
   2. Cấu hình Ping/Pong timeout chặt chẽ hơn trong Socket.IO server:
+
      ```typescript
      // Trong cấu hình @WebSocketGateway
      pingInterval: 10000, // 10 giây ping một lần

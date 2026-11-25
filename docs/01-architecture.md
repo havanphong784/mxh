@@ -79,23 +79,23 @@ graph TB
 
 ## 2. Ma Trận Công Nghệ (Tech Stack & Vai Trò)
 
-| Tầng (Layer) | Công nghệ / Thư viện | Phiên bản | Vai trò & Bài toán giải quyết trong dự án |
-| :--- | :--- | :--- | :--- |
-| **Monorepo Engine** | Turborepo | ^2.11 | Quản lý multi-package (`frontend`, `backend`), tối ưu build pipeline, caching artifact, chạy đồng thời dev server. |
-| **Frontend Framework** | Next.js (App Router) | ^16.4 | Cung cấp routing hiện đại (Route Groups `(auth)`, `(main)`), hybrid rendering, tối ưu Core Web Vitals và SEO. |
-| **UI Library & Style** | React 19 + Tailwind CSS | v19.2 / v4.x | Render component hiệu năng cao, compiler mới loại bỏ memoization dư thừa; Tailwind v4 styling hệ thống pastel hiện đại. |
-| **Client Server-State** | TanStack React Query | ^5.104 | Caching, deduplication request, quản lý vòng đời query, pagination, infinite scroll và optimistic updates. |
-| **Client Local-State** | Zustand | ^5.0 | Quản lý state gọn nhẹ: session token, current user info, socket state (tránh re-render không cần thiết). |
-| **HTTP Client** | Axios | ^1.20 | Quản lý interceptor đính kèm JWT Bearer Token, bắt lỗi 401 và thực thi luồng refresh token dạng **Single-Flight**. |
-| **Client Realtime** | Socket.IO Client | ^4.8 | Kết nối WSS tới backend, nhận real-time notification, feed updates và cập nhật UI tức thời. |
-| **Backend Framework** | NestJS | ^12.0 | Kiến trúc module phân lớp chuẩn chỉnh (Controller -> Service -> Repository), Dependency Injection, Guards, Pipes. |
-| **Backend HTTP Engine** | Fastify (`@nestjs/platform-fastify`) | ^5.12 | Thay thế Express mặc định, tối ưu throughput xử lý request cao gấp 2–3 lần, giảm memory footprint và CPU overhead. |
-| **Database & ORM** | PostgreSQL + Prisma ORM | v16+ / v8.0-rc | RDBMS quan hệ chuẩn ACID; Prisma contract quản lý type-safe schema, migrations, quan hệ CUIDv2 và temporal timestamps. |
-| **Security & Auth** | Argon2 + `@nestjs/jwt` + Fastify Cookie | ^0.45 / ^12.0 / ^11.1 | Băm mật khẩu kháng GPU cracking (Argon2id), ký/giải mã JWT access token, phát hành HttpOnly Secure Refresh Token. |
-| **Event Bus** | `@nestjs/event-emitter` (EventEmitter2) | ^12.0 | Xử lý bất đồng bộ in-process: tách biệt nghiệp vụ chính (tạo bài viết/like) khỏi tác vụ phụ (tạo notification, push socket). |
-| **Realtime Gateway** | Socket.IO (`@nestjs/platform-socket.io`) | ^4.8 / ^12.1 | Quản lý WebSocket connection, phân phòng theo user ID (`user:<userId>`), ép ngắt kết nối khi thu hồi phiên (revocation). |
-| **Media Storage** | Cloudinary SDK | ^2.11 | Sinh Presigned Upload Signature cho client upload trực tiếp; quản lý CDN, tối ưu chuyển đổi ảnh/video on-the-fly. |
-| **Email Service** | Nodemailer | ^10.0 | Gửi mã xác thực OTP 6 số (đăng ký) và link khôi phục mật khẩu qua SMTP có template HTML responsive. |
+| Tầng (Layer)            | Công nghệ / Thư viện                     | Phiên bản             | Vai trò & Bài toán giải quyết trong dự án                                                                                    |
+| :---------------------- | :--------------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **Monorepo Engine**     | Turborepo                                | ^2.11                 | Quản lý multi-package (`frontend`, `backend`), tối ưu build pipeline, caching artifact, chạy đồng thời dev server.           |
+| **Frontend Framework**  | Next.js (App Router)                     | ^16.4                 | Cung cấp routing hiện đại (Route Groups `(auth)`, `(main)`), hybrid rendering, tối ưu Core Web Vitals và SEO.                |
+| **UI Library & Style**  | React 19 + Tailwind CSS                  | v19.2 / v4.x          | Render component hiệu năng cao, compiler mới loại bỏ memoization dư thừa; Tailwind v4 styling hệ thống pastel hiện đại.      |
+| **Client Server-State** | TanStack React Query                     | ^5.104                | Caching, deduplication request, quản lý vòng đời query, pagination, infinite scroll và optimistic updates.                   |
+| **Client Local-State**  | Zustand                                  | ^5.0                  | Quản lý state gọn nhẹ: session token, current user info, socket state (tránh re-render không cần thiết).                     |
+| **HTTP Client**         | Axios                                    | ^1.20                 | Quản lý interceptor đính kèm JWT Bearer Token, bắt lỗi 401 và thực thi luồng refresh token dạng **Single-Flight**.           |
+| **Client Realtime**     | Socket.IO Client                         | ^4.8                  | Kết nối WSS tới backend, nhận real-time notification, feed updates và cập nhật UI tức thời.                                  |
+| **Backend Framework**   | NestJS                                   | ^12.0                 | Kiến trúc module phân lớp chuẩn chỉnh (Controller -> Service -> Repository), Dependency Injection, Guards, Pipes.            |
+| **Backend HTTP Engine** | Fastify (`@nestjs/platform-fastify`)     | ^5.12                 | Thay thế Express mặc định, tối ưu throughput xử lý request cao gấp 2–3 lần, giảm memory footprint và CPU overhead.           |
+| **Database & ORM**      | PostgreSQL + Prisma ORM                  | v16+ / v8.0-rc        | RDBMS quan hệ chuẩn ACID; Prisma contract quản lý type-safe schema, migrations, quan hệ CUIDv2 và temporal timestamps.       |
+| **Security & Auth**     | Argon2 + `@nestjs/jwt` + Fastify Cookie  | ^0.45 / ^12.0 / ^11.1 | Băm mật khẩu kháng GPU cracking (Argon2id), ký/giải mã JWT access token, phát hành HttpOnly Secure Refresh Token.            |
+| **Event Bus**           | `@nestjs/event-emitter` (EventEmitter2)  | ^12.0                 | Xử lý bất đồng bộ in-process: tách biệt nghiệp vụ chính (tạo bài viết/like) khỏi tác vụ phụ (tạo notification, push socket). |
+| **Realtime Gateway**    | Socket.IO (`@nestjs/platform-socket.io`) | ^4.8 / ^12.1          | Quản lý WebSocket connection, phân phòng theo user ID (`user:<userId>`), ép ngắt kết nối khi thu hồi phiên (revocation).     |
+| **Media Storage**       | Cloudinary SDK                           | ^2.11                 | Sinh Presigned Upload Signature cho client upload trực tiếp; quản lý CDN, tối ưu chuyển đổi ảnh/video on-the-fly.            |
+| **Email Service**       | Nodemailer                               | ^10.0                 | Gửi mã xác thực OTP 6 số (đăng ký) và link khôi phục mật khẩu qua SMTP có template HTML responsive.                          |
 
 ---
 
@@ -191,9 +191,9 @@ graph TD
 1. **Ranh giới Tuyệt đối giữa Client và Server**:
    - `frontend/` **tuyệt đối không bao giờ** được `import` code từ `backend/src/` (kể cả file schema prisma hay service).
    - Mọi giao tiếp giữa frontend và backend đều phải thông qua **Network Contract**:
-     * HTTP RESTful Request (JSON Payload qua `/api/v1/*`).
-     * WebSocket Event Messages (Socket.IO).
-     * Các TypeScript interface tương ứng được đồng bộ tại `frontend/types/api.ts`.
+     - HTTP RESTful Request (JSON Payload qua `/api/v1/*`).
+     - WebSocket Event Messages (Socket.IO).
+     - Các TypeScript interface tương ứng được đồng bộ tại `frontend/types/api.ts`.
 2. **Quy tắc Phân Tầng Frontend (Feature-Driven Architecture)**:
    - `components/ui/*` là các component hiển thị thuần túy (presentational/dumb components, ví dụ `Button`, `Avatar`, `Modal`). Chúng chỉ nhận `props` và render UI, không được chứa business logic, không gọi API, không import từ `features/` hay `stores/`.
    - `features/<name>/*` đóng gói toàn bộ logic nghiệp vụ của một miền cụ thể (ví dụ: `features/posts` quản lý composer, thread view, post query). Các feature khác nhau chỉ được trao đổi thông qua export công khai hoặc qua global state (`stores/`).
@@ -210,6 +210,7 @@ graph TD
 ### 4.1. Luồng Xác Thực, Session & Single-Flight Token Refresh
 
 Hệ thống sử dụng cơ chế **Dual-Token**:
+
 - **Access Token (JWT)**: Thời hạn ngắn (15 phút), lưu trong bộ nhớ RAM client (`authStore`), gửi qua header `Authorization: Bearer <token>`.
 - **Refresh Token**: Thời hạn dài (7 ngày), lưu trong cookie `HttpOnly, Secure, SameSite=Lax`. Trong cơ sở dữ liệu, mã băm SHA-256 của token được lưu trong bảng `Session`.
 - **Single-Flight Mechanism**: Khi nhiều request đồng thời gặp lỗi `401 Unauthorized` hoặc khi ứng dụng khởi động lại, frontend gộp tất cả các yêu cầu cấp lại token vào **duy nhất một HTTP call** `/auth/refresh`, ngăn chặn triệt để lỗi race condition xoay vòng token (Token Rotation Desync).

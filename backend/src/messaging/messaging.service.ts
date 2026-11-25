@@ -87,10 +87,24 @@ export class MessagingService {
       limit,
       cursor,
     );
+    const conversationIds = items.map((conversation) => conversation.id);
+    const [latestRows, unreadByConversation] = await Promise.all([
+      this.messagingRepository.findLatestMessages(conversationIds),
+      this.messagingRepository.countUnreadForConversations(conversationIds, userId),
+    ]);
+    const latestByConversation = new Map(
+      latestRows.map((message: any) => [message.conversationId, message]),
+    );
     const data = await Promise.all(
       items.map((conversation) => {
         const participant = conversation.participants.find((item) => item.userId === userId);
-        return this.toConversationResponse(conversation, participant, userId);
+        return this.toConversationResponse(
+          conversation,
+          participant,
+          userId,
+          latestByConversation.get(conversation.id) ?? null,
+          unreadByConversation.get(conversation.id) ?? 0,
+        );
       }),
     );
     const last = items[items.length - 1];
@@ -193,13 +207,8 @@ export class MessagingService {
     this.eventsGateway.pushToUser(userId, MESSAGE_EVENTS.NEW_MESSAGE, event);
     this.eventsGateway.pushToUser(recipient.userId, MESSAGE_EVENTS.NEW_MESSAGE, event);
 
-    const recipientUnreadCount = await this.messagingRepository.countUnreadForConversation(
-      conversationId,
-      recipient.userId,
-      recipient.lastReadAt ?? null,
-    );
     this.eventsGateway.pushToUser(recipient.userId, MESSAGE_EVENTS.UNREAD_COUNT, {
-      count: await this.getUnreadCountValue(recipient.userId, recipientUnreadCount, conversationId),
+      count: await this.getUnreadCountValue(recipient.userId),
     });
 
     return response;
@@ -234,50 +243,33 @@ export class MessagingService {
     return { count: await this.getUnreadCountValue(userId) };
   }
 
-  private async getUnreadCountValue(
-    userId: string,
-    knownConversationCount?: number,
-    knownConversationId?: string,
-  ): Promise<number> {
-    const participants = await this.messagingRepository.findUnreadParticipants(userId);
-    let total = 0;
-
-    for (const participant of participants) {
-      if (
-        participant.conversationId === knownConversationId &&
-        knownConversationCount !== undefined
-      ) {
-        total += knownConversationCount;
-        continue;
-      }
-      total += await this.messagingRepository.countUnreadForConversation(
-        participant.conversationId,
-        userId,
-        participant.lastReadAt ?? null,
-      );
-    }
-
-    return total;
+  private async getUnreadCountValue(userId: string): Promise<number> {
+    return this.messagingRepository.countAllUnreadForUser(userId);
   }
 
   private async toConversationResponse(
     conversation: ConversationWithParticipants,
     participant: ConversationParticipantRecord | undefined,
     userId: string,
+    prefetchedLastMessage?: MessageRecord | null,
+    prefetchedUnreadCount?: number,
   ): Promise<ConversationResponseDto> {
     const participantRecord = this.getOtherParticipantRecord(conversation, userId);
     if (!participantRecord?.user || !participant) {
       throw new NotFoundException("Người tham gia cuộc trò chuyện không tồn tại");
     }
 
-    const [lastMessage, unreadCount] = await Promise.all([
-      this.messagingRepository.findLatestMessage(conversation.id),
-      this.messagingRepository.countUnreadForConversation(
-        conversation.id,
-        userId,
-        participant.lastReadAt ?? null,
-      ),
-    ]);
+    const [lastMessage, unreadCount] =
+      prefetchedUnreadCount !== undefined
+        ? [prefetchedLastMessage ?? null, prefetchedUnreadCount]
+        : await Promise.all([
+            this.messagingRepository.findLatestMessage(conversation.id),
+            this.messagingRepository.countUnreadForConversation(
+              conversation.id,
+              userId,
+              participant.lastReadAt ?? null,
+            ),
+          ]);
 
     return {
       id: conversation.id,

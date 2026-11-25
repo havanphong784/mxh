@@ -626,6 +626,10 @@ export class UsersService {
     return !!(await this.repo.findFollow(followerId, followingId));
   }
 
+  async getFollowedIds(followerId: string, followingIds: string[]): Promise<string[]> {
+    return this.repo.findFollowedIds(followerId, followingIds);
+  }
+
   async getActiveFollowingIds(followerId: string): Promise<string[]> {
     return this.repo.findActiveFollowingIds(followerId);
   }

@@ -274,6 +274,15 @@ export class UsersRepository {
       .first();
   }
 
+  async findFollowedIds(followerId: string, followingIds: string[]): Promise<string[]> {
+    if (followingIds.length === 0) return [];
+    const follows = await this.follow
+      .where((f) => f.followerId.eq(followerId))
+      .where((f) => f.followingId.in(followingIds))
+      .all();
+    return follows.map((follow) => follow.followingId);
+  }
+
   async findActiveFollowingIds(followerId: string): Promise<string[]> {
     const follows = await this.follow
       .where((f) => f.followerId.eq(followerId))
