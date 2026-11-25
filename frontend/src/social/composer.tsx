@@ -71,7 +71,14 @@ export function Composer({
   inline?: boolean;
   onCreated?: (post: Post) => void;
 }) {
-  const [text, setText] = useState("");
+  const draftKey = `mxh:draft:post:${user.id}:${placement.parentId ? `reply:${placement.parentId}` : placement.quotedPostId ? `quote:${placement.quotedPostId}` : "new"}`;
+  const [text, setText] = useState(() => {
+    try {
+      return sessionStorage.getItem(draftKey) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [notice, setNotice] = useState("");
@@ -100,6 +107,14 @@ export function Composer({
       ? "Thêm lời bình của bạn…"
       : "Bạn đang nghĩ gì?";
   const length = Array.from(text).length;
+  useEffect(() => {
+    try {
+      if (text) sessionStorage.setItem(draftKey, text);
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // Draft persistence is best effort when browser storage is unavailable.
+    }
+  }, [draftKey, text]);
   useEffect(() => () => request.current?.abort(), []);
 
   function pick(files: FileList | null) {
@@ -170,6 +185,11 @@ export function Composer({
       if (signal.aborted) return;
       setPublished(post);
       setText("");
+      try {
+        sessionStorage.removeItem(draftKey);
+      } catch {
+        // Ignore unavailable storage after a successful post.
+      }
       setAttachments([]);
       setVisibility("PUBLIC");
       uploads.current.clear();

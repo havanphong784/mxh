@@ -279,6 +279,28 @@ function Shell({
   const params = new URLSearchParams(route.split("?")[1]);
   const [counts, setCounts] = useState({ mail: 0, bell: 0 });
   const [more, setMore] = useState(false);
+  const morePanel = useRef<HTMLDivElement>(null);
+  const moreToggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!more) return;
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!morePanel.current?.contains(target) && !moreToggle.current?.contains(target))
+        setMore(false);
+    };
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMore(false);
+      moreToggle.current?.focus();
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeEscape);
+    };
+  }, [more]);
   const [term, setTerm] = useState(params.get("q") ?? "");
   useEffect(() => {
     setTerm(new URLSearchParams(route.split("?")[1]).get("q") ?? "");
@@ -455,6 +477,7 @@ function Shell({
         {links.map(navLink)}
         {user && (
           <button
+            ref={moreToggle}
             type="button"
             className="nav-link"
             onClick={() => setMore((v) => !v)}
@@ -467,7 +490,7 @@ function Shell({
         )}
       </nav>
       {user && (
-        <div id="phone-more" className="phone-more" hidden={!more}>
+        <div ref={morePanel} id="phone-more" className="phone-more" hidden={!more}>
           <a className="button button-primary" href="/compose">
             <Icon name="plus" />
             Viết bài

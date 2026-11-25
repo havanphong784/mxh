@@ -108,6 +108,14 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
   const lock = useRef(false);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (menu.current?.open && !menu.current.contains(event.target as Node))
+        menu.current.open = false;
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, []);
 
   async function perform(
     action: NonNullable<typeof busy>,
@@ -254,6 +262,7 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
         className="social-post-menu"
         onKeyDown={(event) => {
           if (event.key === "Escape") {
+            event.preventDefault();
             if (menu.current) menu.current.open = false;
             menuToggle.current?.focus();
           }

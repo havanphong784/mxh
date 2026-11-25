@@ -24,7 +24,14 @@ export function Thread({
   const loadConversation = useCallback((signal: AbortSignal) => readConversation(id, signal), [id]);
   const history = usePages(load, revision, true);
   const conversation = useResource(loadConversation, revision);
-  const [draft, setDraft] = useState("");
+  const draftKey = `mxh:draft:message:${userId}:${id}`;
+  const [draft, setDraft] = useState(() => {
+    try {
+      return sessionStorage.getItem(draftKey) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
   const pendingDraft = useRef<MessageDraft | null>(null);
@@ -45,6 +52,15 @@ export function Thread({
     latest && (latest.senderId !== userId || !!conversation.value?.unreadCount)
       ? latest.id
       : undefined;
+
+  useEffect(() => {
+    try {
+      if (draft) sessionStorage.setItem(draftKey, draft);
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // Draft persistence is best effort when browser storage is unavailable.
+    }
+  }, [draftKey, draft]);
 
   useEffect(() => {
     const update = () => setVisible(document.visibilityState !== "hidden");
@@ -118,6 +134,11 @@ export function Thread({
         );
         history.reload();
         setDraft("");
+        try {
+          sessionStorage.removeItem(draftKey);
+        } catch {
+          // Ignore unavailable storage after a successful message.
+        }
         setSending(false);
         onActivity();
       },
