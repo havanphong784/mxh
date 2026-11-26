@@ -1,8 +1,8 @@
-import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
-import { v2 as cloudinary } from "cloudinary";
 import crypto from "node:crypto";
-import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
+import { BadRequestException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { v2 as cloudinary } from "cloudinary";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
 import type { EnvironmentVariables } from "../config/env.validation.js";
 
 export interface VerifiedMediaItem {
@@ -137,8 +137,63 @@ export class MediaService {
     }
   }
 
+  async *listMessageImagePages(): AsyncGenerator<{ publicId: string; createdAt: string }[]> {
+    let cursor: string | undefined;
+    do {
+      const result = await cloudinary.api.resources({
+        resource_type: "image",
+        type: "upload",
+        prefix: "mxh/",
+        max_results: 500,
+        next_cursor: cursor,
+      });
+      const resources: { public_id: string; created_at: string }[] = result.resources;
+      yield resources
+        .filter((asset) => /^mxh\/[^/]+\/messages\//.test(asset.public_id))
+        .map((asset) => ({ publicId: asset.public_id, createdAt: asset.created_at }));
+      cursor = result.next_cursor;
+    } while (cursor);
+  }
+
+  async deleteMessageImage(publicId: string): Promise<void> {
+    if (!/^mxh\/[^/]+\/messages\/.+/.test(publicId))
+      throw new BadRequestException("Ảnh không thuộc thư mục tin nhắn");
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "image",
+      invalidate: true,
+    });
+    if (!["ok", "not found"].includes(result.result))
+      throw new Error("Không xóa được ảnh tin nhắn");
+  }
+
+  async getImageMetadata(publicId: string): Promise<{
+    public_id: string;
+    version: number;
+    resource_type: string;
+    type: string;
+    format: string;
+    bytes: number;
+    width: number;
+    height: number;
+  }> {
+    const asset = await cloudinary.api.resource(publicId, {
+      resource_type: "image",
+      type: "upload",
+    });
+    return {
+      public_id: String(asset.public_id),
+      version: Number(asset.version),
+      resource_type: String(asset.resource_type),
+      type: String(asset.type),
+      format: String(asset.format),
+      bytes: Number(asset.bytes),
+      width: Number(asset.width),
+      height: Number(asset.height),
+    };
+  }
+
   generateUploadSignature(
-    folderName: "avatars" | "banners" | "posts",
+    folderName: "avatars" | "banners" | "posts" | "messages",
     userId: string,
     mediaType: "image" | "video" | "audio" = "image",
   ) {
