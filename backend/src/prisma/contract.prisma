@@ -43,6 +43,7 @@ enum ConversationType {
 
 enum MessageType {
   TEXT
+  IMAGE
 }
 
 model Session {
@@ -269,6 +270,7 @@ model Message {
   clientMessageId String
   type            MessageType @default(TEXT)
   body            String
+  media           MessageMedia[]
 
   createdAt DateTime  @default(now())
   editedAt  DateTime?
@@ -277,4 +279,25 @@ model Message {
   @@unique([senderId, clientMessageId])
   @@index([conversationId, createdAt])
   @@index([senderId, createdAt])
+}
+
+model MessageMedia {
+  id        String @id @default(cuid(2))
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  publicId  String @unique
+  url       String
+  width     Int
+  height    Int
+  format    String
+  bytes     Int
+  order     Int
+
+  @@unique([messageId, order])
+}
+
+model MessageMediaDeletion {
+  publicId  String @id
+  status    String @default("PENDING")
+  createdAt DateTime @default(now())
 }

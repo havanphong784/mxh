@@ -421,7 +421,30 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
 
 ---
 
-## 6. Danh Mục Kiểm Tra Khi Bàn Giao & Vận Hành (Operational Readiness Checklist)
+## 6. Dọn ảnh tin nhắn không được gửi
+
+Sau khi triển khai migration `20261126T0229_message_media`, dùng script từ thư mục gốc repo:
+
+```sh
+# Mặc định chỉ thống kê, không xóa ảnh hoặc tạo reservation.
+npm run purge:message-media -w backend
+# Xem kết quả dry-run trước khi bật xóa thật.
+npm run purge:message-media -w backend -- --apply
+```
+
+Script chỉ xét ảnh trong `mxh/{userId}/messages/` cũ hơn 24 giờ, đọc inventory theo trang. `candidates` là số ảnh cũ cần kiểm tra, có thể gồm ảnh đã gắn vào tin; `deleted` chỉ tăng khi xóa thành công. Ảnh đã được tham chiếu trong `MessageMedia` được bỏ qua khi kiểm tra dưới khóa PostgreSQL. Không áp dụng script này cho posts, avatars hoặc banners.
+
+Cleanup và gửi tin dùng cùng advisory transaction lock theo publicId. Cleanup ghi reservation `PENDING` rồi commit trước khi gọi Cloudinary; gửi tin từ chối ảnh đã có reservation. Khi Cloudinary lỗi, hoặc đã xóa nhưng bước cập nhật DB lỗi, lần chạy kế tiếp đọc lại `PENDING` từ DB để retry. Cloudinary trả `not found` được coi là xóa thành công. Không xóa thủ công reservation để tái sử dụng publicId; cần upload một ảnh mới. Script trả exit code khác 0 nếu có ảnh xử lý lỗi.
+
+Có thể cấu hình cron hàng ngày trên máy triển khai, sau khi kiểm tra dry-run bằng cùng môi trường và tài khoản chạy ứng dụng. Ví dụ (thay `/srv/mxh` và bảo đảm PATH có Node/npm):
+
+```cron
+30 2 * * * cd /srv/mxh && npm run purge:message-media -w backend -- --apply >> /var/log/mxh-message-media.log 2>&1
+```
+
+Theo dõi `failed` và số reservation `PENDING`; sửa kết nối Cloudinary/PostgreSQL rồi chạy lại cùng lệnh. Không giữ transaction trong network I/O. Cron ví dụ chỉ là hướng dẫn; tác vụ phát triển không tự cài lịch vào máy.
+
+## 7. Danh Mục Kiểm Tra Khi Bàn Giao & Vận Hành (Operational Readiness Checklist)
 
 Trước khi công bố dịch vụ cho người dùng chính thức (Go-Live):
 

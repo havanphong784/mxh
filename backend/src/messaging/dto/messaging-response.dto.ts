@@ -1,4 +1,5 @@
 import type { Temporal } from "@js-temporal/polyfill";
+import type { VerifiedMessageMedia } from "../message-media.service.js";
 
 export interface MessagingUserDto {
   id: string;
@@ -13,7 +14,8 @@ export interface MessageResponseDto {
   conversationId: string;
   senderId: string;
   clientMessageId: string;
-  type: "TEXT";
+  type: "TEXT" | "IMAGE";
+  media: (VerifiedMessageMedia & { id: string })[];
   body: string | null;
   createdAt: Temporal.Instant;
   editedAt: Temporal.Instant | null;

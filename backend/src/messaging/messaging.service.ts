@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ConflictException,
@@ -5,18 +6,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Temporal } from "@js-temporal/polyfill";
-import { EventsGateway } from "../gateway/events.gateway.js";
 import { MESSAGE_EVENTS } from "../events/event-types.js";
-import { MessagingRepository } from "./messaging.repository.js";
-import type {
-  ConversationParticipantRecord,
-  ConversationWithParticipants,
-  MessageRecord,
-} from "./messaging.repository.js";
+import { EventsGateway } from "../gateway/events.gateway.js";
+import { MediaService } from "../media/media.service.js";
 import { ConversationPaginationDto } from "./dto/conversation-pagination.dto.js";
 import { CreateDirectConversationDto } from "./dto/create-direct-conversation.dto.js";
-import { SendMessageDto } from "./dto/send-message.dto.js";
 import type {
   ConversationPageDto,
   ConversationResponseDto,
@@ -26,13 +20,37 @@ import type {
   MessagingUserDto,
   UnreadMessagesCountDto,
 } from "./dto/messaging-response.dto.js";
+import { SendMessageDto } from "./dto/send-message.dto.js";
+import { MessageMediaService } from "./message-media.service.js";
+import { purgeMessageMedia } from "./message-media-cleanup.js";
+import type {
+  ConversationParticipantRecord,
+  ConversationWithParticipants,
+  MessageMediaRecord,
+  MessageRecord,
+} from "./messaging.repository.js";
+import { MessagingRepository } from "./messaging.repository.js";
 
 @Injectable()
 export class MessagingService {
   constructor(
     private readonly messagingRepository: MessagingRepository,
     private readonly eventsGateway: EventsGateway,
+    private readonly messageMedia: MessageMediaService,
   ) {}
+
+  async purgeUnusedMedia(media: MediaService, dryRun = true) {
+    return purgeMessageMedia(
+      {
+        pending: () => this.messagingRepository.pendingMediaDeletions(),
+        pages: () => media.listMessageImagePages(),
+        reserve: (id) => this.messagingRepository.reserveMediaDeletion(id),
+        remove: (id) => media.deleteMessageImage(id),
+        complete: (id) => this.messagingRepository.completeMediaDeletion(id),
+      },
+      { dryRun, before: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    );
+  }
 
   async getOrCreateDirectConversation(
     userId: string,
@@ -93,7 +111,10 @@ export class MessagingService {
       this.messagingRepository.countUnreadForConversations(conversationIds, userId),
     ]);
     const latestByConversation = new Map(
-      latestRows.map((message: any) => [message.conversationId, message]),
+      latestRows.map((message) => [message.conversationId, message as MessageRecord]),
+    );
+    const mediaByMessage = await this.messagingRepository.findMediaForMessages(
+      latestRows.map((message) => message.id),
     );
     const data = await Promise.all(
       items.map((conversation) => {
@@ -104,6 +125,7 @@ export class MessagingService {
           userId,
           latestByConversation.get(conversation.id) ?? null,
           unreadByConversation.get(conversation.id) ?? 0,
+          mediaByMessage,
         );
       }),
     );
@@ -138,7 +160,12 @@ export class MessagingService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 30));
     const cursor = this.decodeMessageCursor(query.cursor);
     const result = await this.messagingRepository.listMessages(conversationId, limit, cursor);
-    const data = result.items.map((message) => this.toMessageResponse(message));
+    const media = await this.messagingRepository.findMediaForMessages(
+      result.items.map((message) => message.id),
+    );
+    const data = result.items.map((message) =>
+      this.toMessageResponse(message, media.get(message.id)),
+    );
     const nextCursor =
       result.hasMore && data.length
         ? this.encodeMessageCursor(data[0].createdAt, data[0].id)
@@ -157,8 +184,9 @@ export class MessagingService {
       throw new ForbiddenException("Bạn không có quyền gửi tin nhắn vào cuộc trò chuyện này");
     }
 
-    const body = dto.body.trim();
-    if (!body) throw new BadRequestException("Tin nhắn không được để trống");
+    const body = dto.body?.trim() ?? "";
+    if ((!body && !dto.media?.length) || body.length > 2000)
+      throw new BadRequestException("Tin nhắn cần nội dung tối đa 2000 ký tự hoặc ảnh");
 
     const existing = await this.messagingRepository.findMessageByClientId(
       userId,
@@ -168,9 +196,10 @@ export class MessagingService {
       if (existing.conversationId !== conversationId) {
         throw new ConflictException("clientMessageId đã được sử dụng cho tin nhắn khác");
       }
-      return this.toMessageResponse(existing);
+      return this.messageResponseWithMedia(existing);
     }
 
+    const media = dto.media?.length ? await this.messageMedia.verify(userId, dto.media) : [];
     let message: MessageRecord;
     let created = false;
     try {
@@ -179,10 +208,12 @@ export class MessagingService {
         senderId: userId,
         clientMessageId: dto.clientMessageId,
         body,
+        media,
       });
       message = result.message;
       created = result.created;
-    } catch {
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       const retried = await this.messagingRepository.findMessageByClientId(
         userId,
         dto.clientMessageId,
@@ -193,7 +224,7 @@ export class MessagingService {
       message = retried;
     }
 
-    const response = this.toMessageResponse(message);
+    const response = await this.messageResponseWithMedia(message);
     if (!created) return response;
 
     const recipient = await this.getOtherParticipant(conversationId, userId);
@@ -253,6 +284,7 @@ export class MessagingService {
     userId: string,
     prefetchedLastMessage?: MessageRecord | null,
     prefetchedUnreadCount?: number,
+    prefetchedMedia?: Map<string, MessageMediaRecord[]>,
   ): Promise<ConversationResponseDto> {
     const participantRecord = this.getOtherParticipantRecord(conversation, userId);
     if (!participantRecord?.user || !participant) {
@@ -275,7 +307,11 @@ export class MessagingService {
       id: conversation.id,
       type: "DIRECT",
       participant: this.toUserResponse(participantRecord.user),
-      lastMessage: lastMessage ? this.toMessageResponse(lastMessage) : null,
+      lastMessage: lastMessage
+        ? prefetchedMedia
+          ? this.toMessageResponse(lastMessage, prefetchedMedia.get(lastMessage.id))
+          : await this.messageResponseWithMedia(lastMessage)
+        : null,
       unreadCount,
       updatedAt: conversation.updatedAt,
     };
@@ -304,13 +340,33 @@ export class MessagingService {
     };
   }
 
-  private toMessageResponse(message: MessageRecord): MessageResponseDto {
+  private async messageResponseWithMedia(message: MessageRecord): Promise<MessageResponseDto> {
+    const media = await this.messagingRepository.findMediaForMessages([message.id]);
+    return this.toMessageResponse(message, media.get(message.id));
+  }
+
+  private toMessageResponse(
+    message: MessageRecord,
+    media: MessageMediaRecord[] = [],
+  ): MessageResponseDto {
     return {
       id: message.id,
       conversationId: message.conversationId,
       senderId: message.senderId,
       clientMessageId: message.clientMessageId,
-      type: "TEXT",
+      type: message.type,
+      media: message.deletedAt
+        ? []
+        : media.map(({ id, publicId, url, width, height, format, bytes, order }) => ({
+            id,
+            publicId,
+            url,
+            width,
+            height,
+            format,
+            bytes,
+            order,
+          })),
       body: message.deletedAt ? null : message.body,
       createdAt: message.createdAt,
       editedAt: message.editedAt ?? null,

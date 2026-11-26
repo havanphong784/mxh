@@ -20,6 +20,14 @@
       "model": "Message",
       "namespace": "public"
     },
+    "messageMedia": {
+      "model": "MessageMedia",
+      "namespace": "public"
+    },
+    "messageMediaDeletion": {
+      "model": "MessageMediaDeletion",
+      "namespace": "public"
+    },
     "notification": {
       "model": "Notification",
       "namespace": "public"
@@ -89,6 +97,10 @@
               {
                 "name": "TEXT",
                 "value": "TEXT"
+              },
+              {
+                "name": "IMAGE",
+                "value": "IMAGE"
               }
             ]
           },
@@ -481,6 +493,21 @@
                   "namespace": "public"
                 }
               },
+              "media": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "messageId"
+                  ]
+                },
+                "to": {
+                  "model": "MessageMedia",
+                  "namespace": "public"
+                }
+              },
               "sender": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -530,6 +557,165 @@
               },
               "namespaceId": "public",
               "table": "message"
+            }
+          },
+          "MessageMedia": {
+            "fields": {
+              "bytes": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "format": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "height": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "messageId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "order": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "publicId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "url": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "width": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "message": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "messageId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Message",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "bytes": {
+                  "column": "bytes"
+                },
+                "format": {
+                  "column": "format"
+                },
+                "height": {
+                  "column": "height"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "messageId": {
+                  "column": "messageId"
+                },
+                "order": {
+                  "column": "order"
+                },
+                "publicId": {
+                  "column": "publicId"
+                },
+                "url": {
+                  "column": "url"
+                },
+                "width": {
+                  "column": "width"
+                }
+              },
+              "namespaceId": "public",
+              "table": "messageMedia"
+            }
+          },
+          "MessageMediaDeletion": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "publicId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "publicId": {
+                  "column": "publicId"
+                },
+                "status": {
+                  "column": "status"
+                }
+              },
+              "namespaceId": "public",
+              "table": "messageMediaDeletion"
             }
           },
           "Notification": {
@@ -2148,8 +2334,8 @@
             "message": {
               "checks": [
                 {
-                  "expression": "\"type\" IN ('TEXT')",
-                  "name": "message_type_check_c345b9c4",
+                  "expression": "\"type\" IN ('TEXT', 'IMAGE')",
+                  "name": "message_type_check_c9a41325",
                   "prefix": "message_type_check"
                 }
               ],
@@ -2299,6 +2485,137 @@
                   ]
                 }
               ]
+            },
+            "messageMedia": {
+              "columns": {
+                "bytes": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "format": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "height": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "messageId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "order": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "publicId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "url": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "width": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "messageId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "messageMedia"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "message"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "messageId"
+                  ],
+                  "name": "messageMedia_messageId_idx_3cdded8d",
+                  "prefix": "messageMedia_messageId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "publicId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "messageId",
+                    "order"
+                  ]
+                }
+              ]
+            },
+            "messageMediaDeletion": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "publicId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PENDING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "publicId"
+                ]
+              },
+              "uniques": []
             },
             "notification": {
               "checks": [
@@ -3413,7 +3730,8 @@
             "MessageType": {
               "kind": "valueSet",
               "values": [
-                "TEXT"
+                "TEXT",
+                "IMAGE"
               ]
             },
             "NotificationType": {
@@ -3440,10 +3758,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a5cd9d506ba3af6ac41e72f943dbff0e43cee16b42478712ed25da289f0ee751"
+    "storageHash": "5e1d1f5b91cc0a9849531488859029e7179d93d1caa0c328de7704dc00a6c764"
   },
   "execution": {
-    "executionHash": "57fedcf5bc62801fcafb3e2a0eb0ac0e047dd3e00b50646220a255308910a801",
+    "executionHash": "157f0e167c9c3861a9383ea3bb2ddb5209799f4486cc52e45516342a6e82b8e8",
     "mutations": {
       "defaults": [
         {
@@ -3481,6 +3799,17 @@
             "column": "id",
             "namespace": "public",
             "table": "message"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "cuid2",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "messageMedia"
           }
         },
         {

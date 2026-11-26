@@ -1,0 +1,329 @@
+[
+  {
+    "id": "dropCheckConstraint.message.message_type_check_c345b9c4",
+    "label": "Drop check constraint \"message_type_check_c345b9c4\" on \"message\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "message_type_check_c345b9c4",
+        "table": "message"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"message_type_check_c345b9c4\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "message_type_check_c345b9c4",
+          "public",
+          "\"public\".\"message\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"message_type_check_c345b9c4\"",
+        "sql": "ALTER TABLE \"public\".\"message\" DROP CONSTRAINT \"message_type_check_c345b9c4\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"message_type_check_c345b9c4\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "message_type_check_c345b9c4",
+          "public",
+          "\"public\".\"message\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.messageMedia",
+    "label": "Create table \"messageMedia\"",
+    "summary": "Creates table \"messageMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "messageMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"messageMedia\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"messageMedia\"",
+        "sql": "CREATE TABLE \"public\".\"messageMedia\" (\n  \"bytes\" int4 NOT NULL,\n  \"format\" text NOT NULL,\n  \"height\" int4 NOT NULL,\n  \"id\" text NOT NULL,\n  \"messageId\" text NOT NULL,\n  \"order\" int4 NOT NULL,\n  \"publicId\" text NOT NULL,\n  \"url\" text NOT NULL,\n  \"width\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"messageMedia\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.messageMediaDeletion",
+    "label": "Create table \"messageMediaDeletion\"",
+    "summary": "Creates table \"messageMediaDeletion\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "messageMediaDeletion"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"messageMediaDeletion\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"messageMediaDeletion\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"messageMediaDeletion\"",
+        "sql": "CREATE TABLE \"public\".\"messageMediaDeletion\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"publicId\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  PRIMARY KEY (\"publicId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"messageMediaDeletion\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"messageMediaDeletion\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.message.message_type_check_c9a41325",
+    "label": "Add check constraint \"message_type_check_c9a41325\" on \"message\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "message_type_check_c9a41325",
+        "table": "message"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"message_type_check_c9a41325\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "message_type_check_c9a41325",
+          "public",
+          "\"public\".\"message\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"message_type_check_c9a41325\"",
+        "sql": "ALTER TABLE \"public\".\"message\" ADD CONSTRAINT \"message_type_check_c9a41325\" CHECK (\"type\" IN ('TEXT', 'IMAGE'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"message_type_check_c9a41325\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "message_type_check_c9a41325",
+          "public",
+          "\"public\".\"message\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.messageMedia.messageMedia_publicId_key",
+    "label": "Add unique constraint on \"messageMedia\" (publicId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "messageMedia_publicId_key",
+        "table": "messageMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"messageMedia_publicId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "messageMedia_publicId_key",
+          "public",
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"messageMedia_publicId_key\"",
+        "sql": "ALTER TABLE \"public\".\"messageMedia\" ADD CONSTRAINT \"messageMedia_publicId_key\" UNIQUE (\"publicId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"messageMedia_publicId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "messageMedia_publicId_key",
+          "public",
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.messageMedia.messageMedia_messageId_order_key",
+    "label": "Add unique constraint on \"messageMedia\" (messageId, order)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "messageMedia_messageId_order_key",
+        "table": "messageMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"messageMedia_messageId_order_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "messageMedia_messageId_order_key",
+          "public",
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"messageMedia_messageId_order_key\"",
+        "sql": "ALTER TABLE \"public\".\"messageMedia\" ADD CONSTRAINT \"messageMedia_messageId_order_key\" UNIQUE (\"messageId\", \"order\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"messageMedia_messageId_order_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "messageMedia_messageId_order_key",
+          "public",
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.messageMedia.messageMedia_messageId_idx_3cdded8d",
+    "label": "Create index \"messageMedia_messageId_idx_3cdded8d\" on \"messageMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "messageMedia_messageId_idx_3cdded8d",
+        "table": "messageMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"messageMedia_messageId_idx_3cdded8d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"messageMedia_messageId_idx_3cdded8d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"messageMedia_messageId_idx_3cdded8d\"",
+        "sql": "CREATE INDEX \"messageMedia_messageId_idx_3cdded8d\" ON \"public\".\"messageMedia\" (\"messageId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"messageMedia_messageId_idx_3cdded8d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"messageMedia_messageId_idx_3cdded8d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.messageMedia.messageMedia_messageId_fkey",
+    "label": "Add foreign key \"messageMedia_messageId_fkey\" on \"messageMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "messageMedia_messageId_fkey",
+        "table": "messageMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"messageMedia_messageId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "messageMedia_messageId_fkey",
+          "public",
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"messageMedia_messageId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"messageMedia\"\nADD CONSTRAINT \"messageMedia_messageId_fkey\"\nFOREIGN KEY (\"messageId\")\nREFERENCES \"public\".\"message\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"messageMedia_messageId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "messageMedia_messageId_fkey",
+          "public",
+          "\"public\".\"messageMedia\""
+        ]
+      }
+    ]
+  }
+]
