@@ -408,6 +408,95 @@
     gap: var(--space-xs) var(--space-md);
   }
 }
+.mx-message-images {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  max-width: 420px;
+}
+.mx-message-images:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mx-message-images button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  border-radius: var(--radius-input);
+  cursor: zoom-in;
+  min-width: 0;
+}
+.mx-message-images img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: cover;
+}
+.mx-message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.mx-message-attachments > div {
+  position: relative;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.mx-message-attachments img {
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-input);
+}
+.mx-message-attachments progress {
+  width: 100%;
+}
+.mx-message-picker {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.mx-message-picker input {
+  max-width: 100%;
+  min-width: 0;
+}
+.mx-image-viewer {
+  max-width: 96vw;
+  max-height: 94dvh;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-stock);
+  background: var(--color-card);
+  color: var(--color-ink);
+  padding: 12px;
+}
+.mx-image-viewer::backdrop {
+  background: rgb(0 0 0 / 75%);
+}
+.mx-image-viewer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.mx-image-viewer-content > img {
+  max-width: 88vw;
+  max-height: 72dvh;
+  object-fit: contain;
+}
+.mx-image-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .mx-inbox button:active {
   transform: translateY(1px);
 }

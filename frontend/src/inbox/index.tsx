@@ -115,7 +115,7 @@ function SignedInInbox({ path, userId }: { path: string; userId: string }) {
 function Count({ count }: { count?: number }) {
   return (
     !!count && (
-      <span className="mx-inbox-count" aria-label={`${count} chưa đọc`}>
+      <span className="mx-inbox-count" role="status" aria-label={`${count} chưa đọc`}>
         {count > 99 ? "99+" : count}
       </span>
     )
@@ -150,7 +150,7 @@ function ConversationList({
               ? "Chưa có tin nhắn"
               : lastMessage.deletedAt || lastMessage.body === null
                 ? "Tin nhắn đã xóa"
-                : `${lastMessage.senderId === userId ? "Bạn: " : ""}${lastMessage.body}`;
+                : `${lastMessage.senderId === userId ? "Bạn: " : ""}${lastMessage.body || `Đã gửi ${lastMessage.media?.length ?? 0} ảnh`}`;
             return (
               <li key={id}>
                 <a
@@ -186,6 +186,7 @@ function DirectStart({ target, userId }: { target: string; userId: string }) {
   const link = useRef<HTMLAnchorElement>(null);
   const self = target === userId;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt explicitly retries creation of the direct conversation.
   useEffect(() => {
     if (self) return;
     const controller = new AbortController();

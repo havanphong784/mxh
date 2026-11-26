@@ -1,3 +1,5 @@
+import type { MessageMediaInput } from "./media.ts";
+
 export type InboxRoute =
   | { kind: "messages" }
   | { kind: "thread"; id: string }
@@ -56,16 +58,20 @@ export async function readWindow<T extends Identified>(
   return result;
 }
 
-export type MessageDraft = { body: string; clientMessageId: string };
+export type MessageDraft = { body: string; clientMessageId: string; media?: MessageMediaInput[] };
 
 export function messageDraft(
   input: string,
   previous: MessageDraft | null,
   makeId: () => string,
+  media: MessageMediaInput[] = [],
 ): MessageDraft | null {
   const body = input.trim();
-  if (!body || body.length > 2000) return null;
-  return previous?.body === body ? previous : { body, clientMessageId: makeId() };
+  if ((!body && !media.length) || body.length > 2000) return null;
+  const sameMedia = JSON.stringify(previous?.media ?? []) === JSON.stringify(media);
+  return previous?.body === body && sameMedia
+    ? previous
+    : { body, clientMessageId: makeId(), ...(media.length ? { media } : {}) };
 }
 
 export function realtimeImpact(event: string, data: unknown, threadId?: string) {
