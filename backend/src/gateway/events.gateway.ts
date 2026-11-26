@@ -1,3 +1,5 @@
+import { Logger } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -5,11 +7,9 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Namespace, Socket } from "socket.io";
-import { Logger } from "@nestjs/common";
-import { OnEvent } from "@nestjs/event-emitter";
 import { AccessSessionService } from "../auth/access-session.service.js";
-import { AUTH_EVENTS } from "../events/event-types.js";
 import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
+import { AUTH_EVENTS } from "../events/event-types.js";
 
 // NOTE: @WebSocketGateway decorator is evaluated at class-load time (static context),
 // before NestJS DI container boots — ConfigService cannot be injected here.

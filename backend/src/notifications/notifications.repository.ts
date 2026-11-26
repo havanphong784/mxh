@@ -1,6 +1,6 @@
+import { Temporal } from "@js-temporal/polyfill";
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { Temporal } from "@js-temporal/polyfill";
 
 @Injectable()
 export class NotificationsRepository {

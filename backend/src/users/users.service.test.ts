@@ -1,12 +1,12 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { UsersService } from "./users.service.js";
-import { UsersRepository } from "./users.repository.js";
-import { UsersAuthService } from "./users-auth.service.js";
-import argon2 from "argon2";
 import { BadRequestException } from "@nestjs/common";
+import argon2 from "argon2";
 import { MediaService } from "../media/media.service.js";
+import { UsersRepository } from "./users.repository.js";
+import { UsersService } from "./users.service.js";
+import { UsersAuthService } from "./users-auth.service.js";
 
 function createUsersService(prisma: any, media: any, events: any, repository?: any) {
   return new UsersService(repository ?? new UsersRepository(prisma), media, events);
@@ -413,7 +413,7 @@ test("password change revokes all other sessions in one write without reading th
           const matches = sessions.filter((session) =>
             predicates.every((predicate) => predicate(session)),
           );
-          matches.forEach((session) => Object.assign(session, data));
+          matches.forEach((session) => void Object.assign(session, data));
           return matches.length;
         },
       };

@@ -1,8 +1,47 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import type { AuthSyncMessage } from "../src/api.ts";
+
 const loadApi = () => import("../src/api.ts");
 const loadRoutes = () => import("../src/routes.ts");
 
+test("a new tab reuses an active tab access token before rotating the shared cookie", async () => {
+  const { createClient } = await loadApi();
+  type Message = AuthSyncMessage;
+
+  const listeners = new Set<(message: Message) => void>();
+  const bus = {
+    publish(message: Message) {
+      for (const listener of listeners) listener(message);
+    },
+    subscribe(listener: (message: Message) => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+  let refreshes = 0;
+  const leader = createClient(
+    "",
+    async () => {
+      refreshes++;
+      return Response.json({ accessToken: "unexpected" });
+    },
+    bus,
+  );
+  const follower = createClient(
+    "",
+    async () => {
+      refreshes++;
+      return Response.json({ accessToken: "unexpected" });
+    },
+    bus,
+  );
+  leader.setToken("active-tab-token");
+  assert.equal(await follower.refresh(), "active-tab-token");
+  assert.equal(refreshes, 0);
+});
 test("concurrent expired requests reuse one refresh and retry with its token", async () => {
   const { createClient } = await loadApi();
   let refreshes = 0;

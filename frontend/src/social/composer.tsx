@@ -1,18 +1,7 @@
-import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { User } from "../session";
-import {
-  MAX_CONTENT,
-  MAX_MEDIA,
-  classifyMedia,
-  composePayload,
-  createRequest,
-  isActive,
-  mediaPayload,
-  postPath,
-  signedUpload,
-} from "./model";
 import type {
   CreateRequest,
   MediaKind,
@@ -21,6 +10,17 @@ import type {
   Post,
   UploadSignature,
   Visibility,
+} from "./model";
+import {
+  classifyMedia,
+  composePayload,
+  createRequest,
+  isActive,
+  MAX_CONTENT,
+  MAX_MEDIA,
+  mediaPayload,
+  postPath,
+  signedUpload,
 } from "./model";
 import { errorLabel, useQuery } from "./requests";
 import { Avatar, Icon, Loading, Message, VisibilityPicker } from "./ui";
@@ -307,6 +307,7 @@ export function Composer({
         />
         <span
           className="social-count"
+          role="status"
           data-over={length > MAX_CONTENT}
           aria-label={`${length} trên ${MAX_CONTENT} ký tự`}
         >

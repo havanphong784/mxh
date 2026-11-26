@@ -1,9 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
-import postgres from "@prisma/orm-postgres/runtime";
-import { orm, type RuntimeQueryable } from "@prisma/orm-postgres/orm-client";
 import { AsyncIterableResult } from "@prisma/orm-framework/components/runtime";
-import contractJson from "../prisma/contract.json" with { type: "json" };
+import { orm, type RuntimeQueryable } from "@prisma/orm-postgres/orm-client";
+import postgres from "@prisma/orm-postgres/runtime";
 import type { Contract } from "../prisma/contract.js";
+import contractJson from "../prisma/contract.json" with { type: "json" };
 import type { PrismaService } from "../prisma/prisma.service.js";
 
 export type TestPlan = Parameters<RuntimeQueryable["execute"]>[0];

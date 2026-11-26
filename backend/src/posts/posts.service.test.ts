@@ -1,15 +1,15 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as crypto from "node:crypto";
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { test } from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
-import { PostsService } from "./posts.service.js";
-import { UsersService } from "../users/users.service.js";
-import { UsersRepository } from "../users/users.repository.js";
-import { PostsRepository } from "./posts.repository.js";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { MediaService } from "../media/media.service.js";
+import { UsersRepository } from "../users/users.repository.js";
+import { UsersService } from "../users/users.service.js";
 import type { ActivePostResponseDto } from "./dto/post-response.dto.js";
+import { PostsRepository } from "./posts.repository.js";
+import { PostsService } from "./posts.service.js";
 
 function createPostsService(prisma: any, media: any, events: any): PostsService {
   const users = new UsersService(new UsersRepository(prisma), media, events);
@@ -632,7 +632,7 @@ test("changing root visibility propagates to every reply in the thread", async (
         },
         async updateAndCount(payload: Record<string, unknown>) {
           const matched = rows.filter(matches);
-          matched.forEach((row) => Object.assign(row, payload));
+          matched.forEach((row) => void Object.assign(row, payload));
           return matched.length;
         },
       };

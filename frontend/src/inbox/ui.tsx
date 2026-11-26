@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { User } from "../session";
-import { InfiniteScrollSentinel } from "../infinite-scroll";
 import { Icon as SharedIcon } from "../icons";
+import { InfiniteScrollSentinel } from "../infinite-scroll";
+import type { User } from "../session";
 
 export function Icon({ name, active = false }: { name: string; active?: boolean }) {
   return <SharedIcon name={name} size={19} active={active} />;
@@ -42,7 +42,7 @@ export function Time({ value }: { value: string }) {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return null;
   return (
-    <time dateTime={value} title={fullDate.format(date)} aria-label={fullDate.format(date)}>
+    <time dateTime={value} title={fullDate.format(date)}>
       {date.toDateString() === new Date().toDateString()
         ? clock.format(date)
         : shortDate.format(date)}

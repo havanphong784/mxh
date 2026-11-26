@@ -10,16 +10,16 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { NotificationsService } from "./notifications.service.js";
-import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js";
 import type {
   MarkAllReadResultDto,
   MarkReadResultDto,
   NotificationPaginatedResponseDto,
   UnreadCountResponseDto,
 } from "./dto/notification-response.dto.js";
+import { NotificationsService } from "./notifications.service.js";
 
 @Controller("notifications")
 @UseGuards(JwtAuthGuard)

@@ -2,8 +2,8 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
-import { UsersRepository } from "./users.repository.js";
 import { createOrmTestClient } from "../testing/orm-test-client.js";
+import { UsersRepository } from "./users.repository.js";
 
 for (const resetPassword of [false, true]) {
   test(`${resetPassword ? "password reset" : "token reuse detection"} revokes all user sessions with a bulk update`, async () => {

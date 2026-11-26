@@ -1,20 +1,21 @@
 import "reflect-metadata";
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { mock } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
+import fastifyCookie from "@fastify/cookie";
 import { Temporal } from "@js-temporal/polyfill";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { FastifyAdapter } from "@nestjs/platform-fastify";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
-import fastifyCookie from "@fastify/cookie";
+import { FastifyAdapter } from "@nestjs/platform-fastify";
 import argon2 from "argon2";
 import type {
-  ConversationResponseDto,
   ConversationPageDto,
-  MessageResponseDto,
+  ConversationResponseDto,
   MessagePageDto,
+  MessageResponseDto,
 } from "./dto/messaging-response.dto.js";
 
 // This opt-in check creates and cleans up its own fixtures in a migrated local test DB.
@@ -30,17 +31,21 @@ process.env.NODE_ENV = "test";
 process.env.JWT_ACCESS_SECRET = randomUUID() + randomUUID();
 process.env.JWT_REFRESH_SECRET = randomUUID() + randomUUID();
 process.env.COOKIE_SECRET = randomUUID() + randomUUID();
+process.env.CLOUDINARY_API_SECRET = "integration-test-only-secret";
+process.env.CLOUDINARY_CLOUD_NAME = "integration-test";
 globalThis.Temporal = Temporal;
 
 const { AppModule } = await import("../app.module.js");
 const { PrismaService } = await import("../prisma/prisma.service.js");
 const { MessagingRepository } = await import("./messaging.repository.js");
+const { MediaService } = await import("../media/media.service.js");
 const { AllExceptionsFilter } = await import("../common/filters/all-exceptions.filter.js");
 const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
   logger: false,
 });
 const createdUserIds: string[] = [];
 const sockets: WebSocket[] = [];
+const reservedMedia: string[] = [];
 
 async function connectSocket(url: string, token: string) {
   const socket = new WebSocket(
@@ -69,7 +74,7 @@ async function connectSocket(url: string, token: string) {
       }
     });
   });
-  return events;
+  return { events, socket };
 }
 
 async function waitForEvent(events: Array<[string, Record<string, unknown>]>, name: string) {
@@ -144,9 +149,12 @@ try {
   const aliceToken = await login(alice.email);
   const bobToken = await login(bob.email);
   const outsiderToken = await login(outsider.email);
-  const aliceEvents = await connectSocket(url, aliceToken);
-  const bobEvents = await connectSocket(url, bobToken);
-  const outsiderEvents = await connectSocket(url, outsiderToken);
+  const { events: aliceEvents, socket: aliceSocket } = await connectSocket(url, aliceToken);
+  const { events: bobEvents } = await connectSocket(url, bobToken);
+  const { events: outsiderEvents, socket: outsiderSocket } = await connectSocket(
+    url,
+    outsiderToken,
+  );
 
   const conversation = await request<ConversationResponseDto>("/conversations/direct", aliceToken, {
     targetUserId: bob.id,
@@ -185,6 +193,36 @@ try {
     aliceToken,
   );
   assert.equal(detail.participant.id, bob.id);
+  aliceSocket.send(
+    "42" +
+      JSON.stringify(["conversation:typing", { conversationId: conversation.id, isTyping: true }]),
+  );
+  const typing = await waitForEvent(bobEvents, "conversation:typing");
+  assert.equal(typing.userId, alice.id);
+  assert.equal(typing.conversationId, conversation.id);
+  assert.equal(typing.isTyping, true);
+  assert.equal(typeof typing.streamId, "string");
+  outsiderSocket.send(
+    "42" +
+      JSON.stringify(["conversation:typing", { conversationId: conversation.id, isTyping: true }]),
+  );
+  aliceSocket.send(
+    "42" +
+      JSON.stringify(["conversation:typing", { conversationId: conversation.id, isTyping: false }]),
+  );
+  const typingDeadline = Date.now() + 5000;
+  while (
+    bobEvents.filter(([name]) => name === "conversation:typing").length < 2 &&
+    Date.now() < typingDeadline
+  )
+    await delay(10);
+  assert.equal(bobEvents.filter(([name]) => name === "conversation:typing").length, 2);
+  assert.equal(aliceEvents.filter(([name]) => name === "conversation:typing").length, 0);
+  assert.equal(
+    (await request<{ count: number }>("/conversations/unread-count", bobToken)).count,
+    0,
+  );
+  assert.equal(outsiderEvents.length, 0);
   await request(`/conversations/${conversation.id}`, outsiderToken, undefined, 404);
   await request(`/conversations/${conversation.id}/messages`, outsiderToken, undefined, 403);
   await request(
@@ -256,13 +294,86 @@ try {
   assert.equal(older.data.length, 4);
   assert.equal(older.hasMore, false);
   assert.equal(new Set([...recent.data, ...older.data].map((item) => item.id)).size, 34);
+
+  mock.method(app.get(MediaService), "getImageMetadata", async (publicId: string) => ({
+    public_id: publicId,
+    version: 1,
+    resource_type: "image",
+    type: "upload",
+    format: "png",
+    bytes: 100,
+    width: 640,
+    height: 480,
+  }));
+  function imageInput(name: string) {
+    const publicId = `mxh/${alice.id}/messages/${runId}-${name}`;
+    return {
+      publicId,
+      version: 1,
+      signature: createHash("sha1")
+        .update(`public_id=${publicId}&version=1integration-test-only-secret`)
+        .digest("hex"),
+    };
+  }
+  const imageRequest = {
+    clientMessageId: randomUUID(),
+    media: Array.from({ length: 5 }, (_, index) => imageInput(String(index))),
+  };
+  const image = await request<MessageResponseDto>(
+    `/conversations/${conversation.id}/messages`,
+    aliceToken,
+    imageRequest,
+  );
+  const retryImage = await request<MessageResponseDto>(
+    `/conversations/${conversation.id}/messages`,
+    aliceToken,
+    imageRequest,
+  );
+  assert.equal(image.type, "IMAGE");
+  assert.equal(image.body, "");
+  assert.deepEqual(
+    image.media.map((item) => item.order),
+    [0, 1, 2, 3, 4],
+  );
+  assert.deepEqual(image, retryImage);
+  assert.equal(await repository.reserveMediaDeletion(image.media[0].publicId), false);
+  const imageHistory = await request<MessagePageDto>(
+    `/conversations/${conversation.id}/messages`,
+    bobToken,
+  );
+  assert.deepEqual(imageHistory.data.at(-1)?.media, image.media);
+  const imageDetail = await request<ConversationResponseDto>(
+    `/conversations/${conversation.id}`,
+    aliceToken,
+  );
+  assert.deepEqual(imageDetail.lastMessage?.media, image.media);
+
+  const race = imageInput("race");
+  reservedMedia.push(race.publicId);
+  const [reserved, raceResponse] = await Promise.all([
+    repository.reserveMediaDeletion(race.publicId),
+    fetch(`${url}/api/v1/conversations/${conversation.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${aliceToken}` },
+      body: JSON.stringify({ clientMessageId: randomUUID(), media: [race] }),
+    }),
+  ]);
+  const raceBody = await raceResponse.json();
+  if (reserved) assert.ok(raceResponse.status >= 400, JSON.stringify(raceBody));
+  else {
+    assert.equal(raceResponse.status, 201, JSON.stringify(raceBody));
+    assert.equal(await repository.reserveMediaDeletion(race.publicId), false);
+  }
   console.log(
-    "PASS: login, 33 conversations across pages, old deep link, access control, two-way messaging, retry deduplication, realtime isolation, read/unread, 34 paginated messages.",
+    "PASS: REST/socket authorization, typing isolation and unread neutrality, pagination, image persistence/order/history/preview/retry, and cleanup/send concurrency (Cloudinary metadata mocked).",
   );
 } finally {
   for (const socket of sockets) socket.close();
   const prisma = app.get(PrismaService);
   try {
+    for (const publicId of reservedMedia)
+      await prisma.client.orm.public.MessageMediaDeletion.where({ publicId }).delete();
+    mock.restoreAll();
     for (const userId of createdUserIds)
       await prisma.client.orm.public.User.where({ id: userId }).delete();
   } finally {

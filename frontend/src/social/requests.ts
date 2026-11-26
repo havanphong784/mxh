@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { appendPage, isActive, mergePostChange, pagePath } from "./model";
 import type { Page, Post, PostChange, PostLikesPage, Toggle } from "./model";
+import { appendPage, isActive, mergePostChange, pagePath } from "./model";
 
 export function readPostLikes(
   postId: string,
@@ -26,6 +26,7 @@ export function useQuery<T>(endpoint: string | undefined, auth: boolean) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(Boolean(endpoint));
   const [retry, setRetry] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry explicitly repeats a failed request for the same endpoint.
   useEffect(() => {
     if (!endpoint) return;
     const request = new AbortController();

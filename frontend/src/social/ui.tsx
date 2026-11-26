@@ -1,8 +1,8 @@
-import { useState } from "react";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Icon as SharedIcon } from "../icons";
-import { VISIBILITIES } from "./model";
 import type { Author, Media, Visibility } from "./model";
+import { VISIBILITIES } from "./model";
 
 export function Icon({ name, active = false }: { name: string; active?: boolean }) {
   return <SharedIcon name={name} size={20} active={active} />;
@@ -90,10 +90,12 @@ export function MediaView({ media, priority = false }: { media: Media[]; priorit
           const label = `${item.type === "IMAGE" ? "Ảnh" : item.type === "AUDIO" ? "Âm thanh" : "Video"} đính kèm ${index + 1}`;
           if (item.type === "AUDIO")
             return (
+              // biome-ignore lint/a11y/useMediaCaption: User-uploaded audio has no supplied caption track; the player retains its accessible label.
               <audio key={item.id} controls preload="none" aria-label={label} src={item.url} />
             );
           if (item.type === "VIDEO")
             return (
+              // biome-ignore lint/a11y/useMediaCaption: User-uploaded video has no supplied caption track; controls and an accessible label remain available.
               <video
                 key={item.id}
                 controls

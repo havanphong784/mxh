@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
+import * as crypto from "node:crypto";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
-import * as crypto from "node:crypto";
-import { AuthService } from "./auth.service.js";
-import { UsersAuthService } from "../users/users-auth.service.js";
 import { UsersRepository } from "../users/users.repository.js";
+import { UsersAuthService } from "../users/users-auth.service.js";
+import { AuthService } from "./auth.service.js";
 
 function createAuthService(
   prisma: any,

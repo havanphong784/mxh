@@ -140,6 +140,12 @@ export class MessagingService {
     };
   }
 
+  async getTypingRecipient(userId: string, conversationId: string): Promise<string> {
+    const member = await this.messagingRepository.findParticipant(conversationId, userId);
+    if (!member) throw new ForbiddenException("Bạn không thuộc cuộc trò chuyện này");
+    return (await this.getOtherParticipant(conversationId, userId)).userId;
+  }
+
   async getConversation(userId: string, conversationId: string): Promise<ConversationResponseDto> {
     const result = await this.messagingRepository.findConversationForUser(conversationId, userId);
     if (!result)

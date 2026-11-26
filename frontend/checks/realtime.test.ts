@@ -3,6 +3,45 @@ import test from "node:test";
 
 const recoveryModule = () => import("../src/realtime.ts");
 
+test("typing bridge only emits volatile events on its current connected socket", async () => {
+  const { bindTypingSocket, emitTyping } = await recoveryModule();
+  const sent: unknown[] = [];
+  const socket = {
+    connected: false,
+    volatile: {
+      emit: (event: string, data: unknown) => {
+        sent.push([event, data]);
+      },
+    },
+  };
+  const unbind = bindTypingSocket(socket);
+  emitTyping("thread", true);
+  assert.deepEqual(sent, []);
+  socket.connected = true;
+  assert.deepEqual(sent, []);
+  emitTyping("thread", true);
+  assert.deepEqual(sent, [["conversation:typing", { conversationId: "thread", isTyping: true }]]);
+  socket.connected = false;
+  emitTyping("thread", false);
+  socket.connected = true;
+  assert.equal(sent.length, 1);
+  const other: unknown[] = [];
+  const cleanup = bindTypingSocket({
+    connected: true,
+    volatile: {
+      emit: (_event: string, data: unknown) => {
+        other.push(data);
+      },
+    },
+  });
+  unbind();
+  emitTyping("thread", false);
+  assert.deepEqual(other, [{ conversationId: "thread", isTyping: false }]);
+  cleanup();
+  emitTyping("thread", true);
+  assert.equal(other.length, 1);
+});
+
 test("an offline refresh retries and reconnects after connectivity returns", async () => {
   const { createSocketRecovery } = await recoveryModule();
   let attempts = 0;

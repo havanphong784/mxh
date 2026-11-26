@@ -1,6 +1,6 @@
 import "dotenv/config";
-import argon2 from "argon2";
 import { Temporal } from "@js-temporal/polyfill";
+import argon2 from "argon2";
 import { db } from "../prisma/db.js";
 import { buildSeedData } from "./seed-data.js";
 

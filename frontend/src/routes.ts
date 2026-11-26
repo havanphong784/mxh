@@ -32,6 +32,7 @@ export function resolveRoute(input: string): Route {
 }
 
 export function safeReturn(value: string | null) {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in return paths to prevent unsafe navigation.
   if (!value || !value.startsWith("/") || value.startsWith("//") || /[\\\u0000- ]/.test(value))
     return "/";
   const route = resolveRoute(value);

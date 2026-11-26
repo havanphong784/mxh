@@ -1,13 +1,13 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, MouseEvent, ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { api, apiOrigin, sessionClient } from "./api";
 import { Auth } from "./auth";
+import { bindTypingSocket, createSocketRecovery } from "./realtime";
 import { resolveRoute, safeReturn } from "./routes";
-import { createSocketRecovery } from "./realtime";
 import type { AuthResult, User } from "./session";
-import { Avatar, Icon, Logo } from "./ui";
 import { ThemeToggle } from "./theme";
+import { Avatar, Icon, Logo } from "./ui";
 
 const Social = lazy(() => import("./social/index").then((m) => ({ default: m.Social })));
 const People = lazy(() => import("./people/index").then((m) => ({ default: m.People })));
@@ -72,6 +72,7 @@ export function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: startup explicitly retries session initialization after a connection failure.
   useEffect(() => {
     let active = true;
     const epoch = authEpoch.current;
@@ -101,6 +102,7 @@ export function App() {
     });
     const relay = (event: string, data: unknown) =>
       window.dispatchEvent(new CustomEvent("mxh:realtime", { detail: { event, data } }));
+    const unbindTyping = bindTypingSocket(socket);
     socket.onAny(relay);
     socket.on("connect", () => relay("connect", null));
     const recovery = createSocketRecovery(socket, sessionClient.refresh);
@@ -109,9 +111,12 @@ export function App() {
       void recovery.recover();
     });
     socket.on("disconnect", (reason) => {
+      relay("disconnect", null);
       if (reason === "io server disconnect") void recovery.recover();
     });
     return () => {
+      unbindTyping();
+      relay("disconnect", null);
       recovery.dispose();
       socket.offAny(relay);
       socket.off();
@@ -201,6 +206,7 @@ export function App() {
         <h1>Không kết nối được</h1>
         <p>MXH chưa thể kiểm tra phiên đăng nhập của bạn.</p>
         <button
+          type="button"
           className="button button-primary"
           onClick={() => {
             setSession({ phase: "loading", user: null });
@@ -250,6 +256,7 @@ export function App() {
       </Shell>
     );
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: Delegated navigation intercepts native anchor clicks, including keyboard-generated clicks.
     <div onClick={intercept}>
       <a className="skip" href="#noi-dung">
         Đi tới nội dung
@@ -307,6 +314,7 @@ function Shell({
     setTerm(new URLSearchParams(route.split("?")[1]).get("q") ?? "");
     setMore(false);
   }, [route]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigation refreshes unread counts to reconcile server changes while the socket was unavailable.
   useEffect(() => {
     if (!user?.id) return;
     let live = true;
@@ -420,6 +428,7 @@ function Shell({
           <div className="mobile-brand">
             <Logo />
           </div>
+          {/* biome-ignore lint/a11y/useSemanticElements: The search landmark is a native form with submit behavior. */}
           <form onSubmit={submitSearch} className="workspace-search" role="search">
             <button type="submit" aria-label="Tìm kiếm">
               <Icon name="search" size={18} />

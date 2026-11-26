@@ -1,10 +1,10 @@
 import { forwardRef, Module } from "@nestjs/common";
-import { PostsService } from "./posts.service.js";
+import { AuthModule } from "../auth/auth.module.js";
+import { MediaModule } from "../media/media.module.js";
+import { UsersModule } from "../users/users.module.js";
 import { PostsController } from "./posts.controller.js";
 import { PostsRepository } from "./posts.repository.js";
-import { MediaModule } from "../media/media.module.js";
-import { AuthModule } from "../auth/auth.module.js";
-import { UsersModule } from "../users/users.module.js";
+import { PostsService } from "./posts.service.js";
 
 @Module({
   imports: [

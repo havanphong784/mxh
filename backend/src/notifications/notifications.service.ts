@@ -1,9 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js";
-import { EventsGateway } from "../gateway/events.gateway.js";
 import { Temporal } from "@js-temporal/polyfill";
-import { NotificationsRepository } from "./notifications.repository.js";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { EventsGateway } from "../gateway/events.gateway.js";
 import { PostsService } from "../posts/posts.service.js";
+import { NotificationPaginationDto } from "./dto/notification-pagination.dto.js";
 import {
   MarkAllReadResultDto,
   MarkReadResultDto,
@@ -11,6 +10,7 @@ import {
   NotificationResponseMapper,
   UnreadCountResponseDto,
 } from "./dto/notification-response.dto.js";
+import { NotificationsRepository } from "./notifications.repository.js";
 
 @Injectable()
 export class NotificationsService {

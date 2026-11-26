@@ -1,10 +1,10 @@
-import { useState } from "react";
 import type { FormEvent } from "react";
+import { useState } from "react";
 import { api } from "./api";
 import { safeReturn } from "./routes";
 import type { AuthResult } from "./session";
-import { Icon, Logo } from "./ui";
 import { ThemeToggle } from "./theme";
+import { Icon, Logo } from "./ui";
 
 const info = {
   "/login": ["Đăng nhập", "Tiếp tục theo dõi những người và câu chuyện bạn quan tâm."],
@@ -209,7 +209,7 @@ export function Auth({
                 Quên mật khẩu?
               </a>
             )}
-            <button className="button button-primary gate-submit" disabled={busy}>
+            <button type="submit" className="button button-primary gate-submit" disabled={busy}>
               {busy
                 ? "Đang xử lý…"
                 : login

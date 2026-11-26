@@ -10,17 +10,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { AuthService } from "./auth.service.js";
-import { RegisterDto } from "./dto/register.dto.js";
-import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
-import { ResendOtpDto } from "./dto/resend-otp.dto.js";
-import { LoginDto } from "./dto/login.dto.js";
-import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
-import { CurrentUser } from "./decorators/current-user.decorator.js";
-import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
-import { ResetPasswordDto } from "./dto/reset-password.dto.js";
+import { ConfigService } from "@nestjs/config";
 import { Throttle } from "@nestjs/throttler";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { EnvironmentVariables } from "../config/env.validation.js";
+import { AuthService } from "./auth.service.js";
+import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type {
   AuthResponseDto,
   AuthUserDto,
@@ -28,8 +23,13 @@ import type {
   RefreshResponseDto,
   RegisterResponseDto,
 } from "./dto/auth-response.dto.js";
-import { ConfigService } from "@nestjs/config";
-import type { EnvironmentVariables } from "../config/env.validation.js";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
+import { LoginDto } from "./dto/login.dto.js";
+import { RegisterDto } from "./dto/register.dto.js";
+import { ResendOtpDto } from "./dto/resend-otp.dto.js";
+import { ResetPasswordDto } from "./dto/reset-password.dto.js";
+import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 
 @Controller("auth")
 export class AuthController {

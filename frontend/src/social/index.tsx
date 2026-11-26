@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { InfiniteScrollSentinel } from "../infinite-scroll";
 import type { User } from "../session";
 import { Composer } from "./composer";
+import type { Post, PostChange, SocialRoute, Toggle } from "./model";
 import {
   composePath,
   isActive,
@@ -11,7 +12,6 @@ import {
   resolveSocial,
   timelinePath,
 } from "./model";
-import type { Post, PostChange, SocialRoute, Toggle } from "./model";
 import { PostCard } from "./post";
 import { usePostPages, useQuery } from "./requests";
 import { Icon, Loading, Message } from "./ui";
@@ -123,6 +123,7 @@ function SearchForm({ route }: { route: SocialRoute }) {
   }
   return (
     <div className="social-discovery-tools">
+      {/* biome-ignore lint/a11y/useSemanticElements: The native form retains submission while exposing a search landmark. */}
       <form action="/search" role="search" onSubmit={submit}>
         <label className="social-search-field">
           <Icon name="search" />
@@ -575,6 +576,7 @@ export function UserTimeline({
   const endpoint = timelinePath(username, replies);
   return (
     <section className="social-slice social-embedded" aria-label={`Bài viết của @${username}`}>
+      {/* biome-ignore lint/a11y/useSemanticElements: This group contains filter buttons rather than form fields. */}
       <div className="social-filters" role="group" aria-label="Loại bài viết">
         <button
           type="button"

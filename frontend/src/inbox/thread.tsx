@@ -8,6 +8,7 @@ import { mergeById, messageDraft } from "./model";
 import { Avatar, Icon, Pager, Status, Time } from "./ui";
 import { usePages, useResource, useWrite } from "./use-inbox";
 import { useMessageMedia } from "./use-message-media";
+import { useTyping } from "./use-typing";
 
 export function Thread({
   id,
@@ -51,6 +52,7 @@ export function Thread({
   const [readFailed, setReadFailed] = useState(false);
   const messages = history.page?.items;
   const peer = conversation.value?.participant;
+  const typing = useTyping(id, userId, peer?.id);
   // The read endpoint marks through server time; only call it when the newest
   // loaded message is visible and the document is not in a background tab.
   const latest = messages?.at(-1);
@@ -123,6 +125,7 @@ export function Thread({
     event.preventDefault();
     if (sendingLock.current || attachments.busy || (!draft.trim() && !attachments.items.length))
       return;
+    typing.stop();
     sendingLock.current = true;
     setSending(true);
     setSendFailed(false);
@@ -199,7 +202,13 @@ export function Thread({
         {peer && <Avatar person={peer} />}
         <div className="mx-inbox-person">
           <h2>{peer?.displayName || peer?.username || "Cuộc trò chuyện"}</h2>
-          {peer && <p>@{peer.username}</p>}
+          {peer && (
+            <p className="mx-inbox-typing" aria-live="polite">
+              {typing.isPeerTyping
+                ? `${peer.displayName || peer.username} đang nhập…`
+                : `@${peer.username}`}
+            </p>
+          )}
         </div>
       </header>
       {conversation.failed && (
@@ -326,6 +335,7 @@ export function Thread({
             readOnly={sending}
             onChange={(event) => {
               setDraft(event.target.value);
+              typing.changed(event.target.value);
               setSendFailed(false);
             }}
           />

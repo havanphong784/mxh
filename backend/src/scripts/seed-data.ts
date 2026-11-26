@@ -331,34 +331,43 @@ export function buildSeedData(now: Date) {
   const postById = new Map(posts.map((post) => [post.id, post]));
   likes
     .slice(0, 45)
-    .forEach((x) =>
-      notify(postById.get(x.postId)!.authorId, x.userId, "LIKE", x.postId, x.createdAt),
+    .forEach(
+      (x) => void notify(postById.get(x.postId)!.authorId, x.userId, "LIKE", x.postId, x.createdAt),
     );
   posts
     .filter((x) => x.parentId)
     .slice(0, 15)
-    .forEach((x) =>
-      notify(postById.get(x.parentId!)!.authorId, x.authorId, "REPLY", x.id, x.createdAt),
+    .forEach(
+      (x) =>
+        void notify(postById.get(x.parentId!)!.authorId, x.authorId, "REPLY", x.id, x.createdAt),
     );
   posts
     .filter((x) => x.quotedPostId)
-    .forEach((x) =>
-      notify(postById.get(x.quotedPostId!)!.authorId, x.authorId, "QUOTE", x.id, x.createdAt),
+    .forEach(
+      (x) =>
+        void notify(
+          postById.get(x.quotedPostId!)!.authorId,
+          x.authorId,
+          "QUOTE",
+          x.id,
+          x.createdAt,
+        ),
     );
   posts
     .filter((x) => x.repostOfId)
-    .forEach((x) =>
-      notify(
-        postById.get(x.repostOfId!)!.authorId,
-        x.authorId,
-        "REPOST",
-        x.repostOfId,
-        x.createdAt,
-      ),
+    .forEach(
+      (x) =>
+        void notify(
+          postById.get(x.repostOfId!)!.authorId,
+          x.authorId,
+          "REPOST",
+          x.repostOfId,
+          x.createdAt,
+        ),
     );
   follows
     .slice(0, 25)
-    .forEach((x) => notify(x.followingId, x.followerId, "FOLLOW", null, x.createdAt));
+    .forEach((x) => void notify(x.followingId, x.followerId, "FOLLOW", null, x.createdAt));
   const sessions = [
     {
       id: id("session", 0),

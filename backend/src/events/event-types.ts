@@ -65,7 +65,15 @@ export const MESSAGE_EVENTS = {
   NEW_MESSAGE: "conversation:new-message",
   READ: "conversation:read",
   UNREAD_COUNT: "conversation:unread-count",
+  TYPING: "conversation:typing",
 } as const;
+
+export interface ConversationTypingEvent {
+  conversationId: string;
+  userId: string;
+  streamId: string;
+  isTyping: boolean;
+}
 
 export interface NewMessageEvent {
   conversationId: string;

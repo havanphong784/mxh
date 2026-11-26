@@ -1,30 +1,26 @@
+import * as crypto from "node:crypto";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
-  Inject,
-  forwardRef,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
+import argon2 from "argon2";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
+import type { EnvironmentVariables } from "../config/env.validation.js";
+import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
+import { AUTH_EVENTS } from "../events/event-types.js";
+import { MailService } from "../mail/mail.service.js";
 import { UsersService } from "../users/users.service.js";
 import { UsersAuthService } from "../users/users-auth.service.js";
-import argon2 from "argon2";
-import * as crypto from "node:crypto";
-import { MailService } from "../mail/mail.service.js";
-import { RegisterDto } from "./dto/register.dto.js";
-import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
-import { JwtService } from "@nestjs/jwt";
-import { ResendOtpDto } from "./dto/resend-otp.dto.js";
-import { LoginDto } from "./dto/login.dto.js";
-import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
-import { ResetPasswordDto } from "./dto/reset-password.dto.js";
-import { Temporal } from "@js-temporal/polyfill";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import { AUTH_EVENTS } from "../events/event-types.js";
-import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
-import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
 import type {
   AuthResultDto,
   AuthUserDto,
@@ -32,8 +28,12 @@ import type {
   RefreshResultDto,
   RegisterResponseDto,
 } from "./dto/auth-response.dto.js";
-import { ConfigService } from "@nestjs/config";
-import type { EnvironmentVariables } from "../config/env.validation.js";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
+import { LoginDto } from "./dto/login.dto.js";
+import { RegisterDto } from "./dto/register.dto.js";
+import { ResendOtpDto } from "./dto/resend-otp.dto.js";
+import { ResetPasswordDto } from "./dto/reset-password.dto.js";
+import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
 
 export interface RequestMeta {
   userAgent?: string;

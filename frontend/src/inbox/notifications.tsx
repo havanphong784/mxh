@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { markAllNoticesRead, markNoticeRead, readNotices } from "./data";
 import type { Notice } from "./data";
-import { usePages, useWrite } from "./use-inbox";
+import { markAllNoticesRead, markNoticeRead, readNotices } from "./data";
 import { Avatar, Icon, Pager, Status, Time } from "./ui";
+import { usePages, useWrite } from "./use-inbox";
 
 const action: Record<Notice["type"], string> = {
   LIKE: "đã thích bài viết của bạn",

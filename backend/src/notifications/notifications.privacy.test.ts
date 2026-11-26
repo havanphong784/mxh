@@ -1,16 +1,16 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NotificationsService } from "./notifications.service.js";
-import { NotificationsListener } from "./notifications.listener.js";
-import { NotificationsRepository } from "./notifications.repository.js";
-import { NotificationResponseMapper } from "./dto/notification-response.dto.js";
-import { PostsService } from "../posts/posts.service.js";
-import type { PostsRepository } from "../posts/posts.repository.js";
-import type { UsersService } from "../users/users.service.js";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { EventsGateway } from "../gateway/events.gateway.js";
 import type { MediaService } from "../media/media.service.js";
-import type { EventEmitter2 } from "@nestjs/event-emitter";
+import type { PostsRepository } from "../posts/posts.repository.js";
+import { PostsService } from "../posts/posts.service.js";
+import type { UsersService } from "../users/users.service.js";
+import { NotificationResponseMapper } from "./dto/notification-response.dto.js";
+import { NotificationsListener } from "./notifications.listener.js";
+import { NotificationsRepository } from "./notifications.repository.js";
+import { NotificationsService } from "./notifications.service.js";
 
 const author = {
   id: "author",
@@ -88,7 +88,7 @@ for (const transport of ["REST", "realtime"] as const) {
       const gateway = {
         pushToUser: (_userId: string, event: string, data: unknown) => sent.push({ event, data }),
       } as unknown as EventsGateway;
-      let dto;
+      let dto: ReturnType<typeof NotificationResponseMapper.toItemDto>;
       if (transport === "REST") {
         dto = (
           await new NotificationsService(repository, gateway, posts).getNotifications("recipient", {

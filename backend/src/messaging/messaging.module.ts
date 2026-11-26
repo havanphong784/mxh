@@ -6,10 +6,11 @@ import { MessageMediaService } from "./message-media.service.js";
 import { MessagingController } from "./messaging.controller.js";
 import { MessagingRepository } from "./messaging.repository.js";
 import { MessagingService } from "./messaging.service.js";
+import { MessagingTypingGateway } from "./messaging-typing.gateway.js";
 
 @Module({
   imports: [AuthModule, GatewayModule, MediaModule],
   controllers: [MessagingController],
-  providers: [MessagingRepository, MessagingService, MessageMediaService],
+  providers: [MessagingRepository, MessagingService, MessageMediaService, MessagingTypingGateway],
 })
 export class MessagingModule {}

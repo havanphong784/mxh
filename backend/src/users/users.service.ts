@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ForbiddenException,
@@ -6,18 +7,17 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import * as argon2 from "argon2";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
+import type { UserFollowedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
+import { AUTH_EVENTS, USER_EVENTS } from "../events/event-types.js";
 import { MediaService } from "../media/media.service.js";
-import { UpdateProfileDto } from "./dto/update-profile.dto.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { FollowPaginationDto } from "./dto/follow-pagination.dto.js";
-import * as argon2 from "argon2";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import { AUTH_EVENTS, USER_EVENTS } from "../events/event-types.js";
-import type { UserFollowedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
-import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
-import { Temporal } from "@js-temporal/polyfill";
-import { UsersRepository } from "./users.repository.js";
+import { UpdateProfileDto } from "./dto/update-profile.dto.js";
 import type { FollowPaginatedResponseDto } from "./dto/user-response.dto.js";
+import { UsersRepository } from "./users.repository.js";
 
 @Injectable()
 export class UsersService {

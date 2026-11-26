@@ -1,9 +1,9 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import { MediaService } from "./media.service.js";
-import { UploadSignatureQueryDto } from "./dto/upload-signature-query.dto.js";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { Throttle } from "@nestjs/throttler";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { UploadSignatureQueryDto } from "./dto/upload-signature-query.dto.js";
+import { MediaService } from "./media.service.js";
 
 export interface UploadSignatureResponseDto {
   signature: string;

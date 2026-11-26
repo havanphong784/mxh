@@ -107,6 +107,17 @@ test("direct conversations are idempotent for the same pair of users", async () 
   assert.equal(first.participant.id, "user-a");
 });
 
+test("typing resolves only the peer for an existing conversation member", async () => {
+  const conversation = conversationFixture();
+  const service = createService({
+    findParticipant: async (_id, userId) =>
+      conversation.participants.find((item) => item.userId === userId) ?? null,
+    findConversationWithParticipants: async () => conversation,
+  });
+  assert.equal(await service.getTypingRecipient("user-a", conversation.id), "user-b");
+  await assert.rejects(service.getTypingRecipient("outsider", conversation.id), ForbiddenException);
+});
+
 test("users outside a conversation cannot send messages", async () => {
   const repository = {
     findParticipant: async () => null,

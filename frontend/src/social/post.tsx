@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { User } from "../session";
+import type { ActivePost, Post, PostChange, Toggle, Visibility } from "./model";
 import {
-  MAX_CONTENT,
-  VISIBILITIES,
   composePath,
   editPayload,
   isActive,
+  MAX_CONTENT,
   postPath,
   postToggle,
   profilePath,
   repostTarget,
+  VISIBILITIES,
 } from "./model";
-import type { ActivePost, Post, PostChange, Toggle, Visibility } from "./model";
 import { errorLabel } from "./requests";
 import { Avatar, Icon, MediaView, VisibilityPicker } from "./ui";
 
@@ -67,6 +67,7 @@ function EditPost({
       <label>
         Nội dung bài viết
         <textarea
+          // biome-ignore lint/a11y/noAutofocus: Opening the edit panel intentionally focuses its text input.
           autoFocus
           value={text}
           rows={4}
@@ -426,6 +427,7 @@ export function PostCard({ post, user, change, featured, threaded, priority }: C
               <button
                 className="button"
                 type="button"
+                // biome-ignore lint/a11y/noAutofocus: Focus the safe cancel action in the confirmation dialog.
                 autoFocus
                 disabled={busy !== null}
                 onClick={closePanel}
@@ -457,7 +459,8 @@ export function PostCard({ post, user, change, featured, threaded, priority }: C
           {target.visibility !== "PUBLIC" && (
             <p className="social-visibility-note">{VISIBILITIES[target.visibility]}</p>
           )}
-          <footer className="social-post-actions" aria-label="Tương tác bài viết">
+          {/* biome-ignore lint/a11y/useSemanticElements: The post action group contains links and buttons rather than form fields. */}
+          <footer className="social-post-actions" role="group" aria-label="Tương tác bài viết">
             <a
               className="social-post-action"
               href={

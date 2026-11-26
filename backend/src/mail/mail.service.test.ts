@@ -1,9 +1,9 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MailService } from "./mail.service.js";
 import type { ConfigService } from "@nestjs/config";
 import type { EnvironmentVariables } from "../config/env.validation.js";
+import { MailService } from "./mail.service.js";
 
 function mockConfigService(
   overrides: Partial<EnvironmentVariables> = {},

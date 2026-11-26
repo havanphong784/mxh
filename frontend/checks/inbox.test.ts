@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   inboxRoute,
-  pagePath,
-  readWindow,
   mergeById,
   messageDraft,
+  pagePath,
+  readWindow,
   realtimeImpact,
 } from "../src/inbox/model.ts";
 

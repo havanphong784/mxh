@@ -1,3 +1,4 @@
+import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
@@ -11,7 +12,6 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
 
 export class PostMediaItemDto {
   @IsString()

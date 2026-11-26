@@ -1,3 +1,27 @@
+export type AuthSyncMessage =
+  | { type: "request-token"; requestId: string }
+  | { type: "token"; requestId?: string; token: string };
+
+export type AuthSync = {
+  publish(message: AuthSyncMessage): void;
+  subscribe(listener: (message: AuthSyncMessage) => void): () => void;
+};
+
+function createBrowserAuthSync(): AuthSync | undefined {
+  if (typeof window === "undefined" || typeof window.BroadcastChannel === "undefined")
+    return undefined;
+  const channel = new window.BroadcastChannel("mxh-auth");
+  return {
+    publish(message) {
+      channel.postMessage(message);
+    },
+    subscribe(listener) {
+      const receive = (event: MessageEvent<AuthSyncMessage>) => listener(event.data);
+      channel.addEventListener("message", receive);
+      return () => channel.removeEventListener("message", receive);
+    },
+  };
+}
 export interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -71,23 +95,71 @@ async function readResponse<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-export function createClient(origin: string, transport: typeof fetch = fetch) {
+export function createClient(
+  origin: string,
+  transport: typeof fetch = fetch,
+  providedAuthSync?: AuthSync,
+) {
   const prefix = `${origin.replace(/\/$/, "")}/api/v1`;
+  const authSync = providedAuthSync ?? createBrowserAuthSync();
   let token: string | null = null;
   let generation = 0;
   let flight: Promise<string | null> | null = null;
+  let requestSequence = 0;
+  const peerWaiters = new Map<string, (peerToken: string) => void>();
   const expired = new Set<() => void>();
-  const setToken = (next: string | null) => {
+  const publishToken = (next: string) => authSync?.publish({ type: "token", token: next });
+  const adoptPeerToken = (next: string) => {
+    if (next === token) return;
     generation++;
     token = next;
     flight = null;
   };
+  const unsubscribeAuthSync = authSync?.subscribe((message) => {
+    if (message.type === "request-token") {
+      if (token) authSync?.publish({ type: "token", requestId: message.requestId, token });
+      return;
+    }
+    const waiter = message.requestId ? peerWaiters.get(message.requestId) : undefined;
+    if (waiter) {
+      peerWaiters.delete(message.requestId!);
+      adoptPeerToken(message.token);
+      waiter(message.token);
+      return;
+    }
+    adoptPeerToken(message.token);
+  });
+  const setToken = (next: string | null) => {
+    generation++;
+    token = next;
+    flight = null;
+    if (next) publishToken(next);
+  };
+
+  function requestPeerToken(): Promise<string | null> {
+    if (!authSync) return Promise.resolve(null);
+    const requestId = `auth-${Date.now()}-${requestSequence++}`;
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        peerWaiters.delete(requestId);
+        resolve(null);
+      }, 50);
+      peerWaiters.set(requestId, (peerToken) => {
+        clearTimeout(timeout);
+        resolve(peerToken);
+      });
+      authSync.publish({ type: "request-token", requestId });
+    });
+  }
 
   function refresh(): Promise<string | null> {
     if (flight) return flight;
     const session = generation;
     const pending = Promise.resolve()
       .then(async () => {
+        const peerToken = await requestPeerToken();
+        if (peerToken) return peerToken;
+        if (session !== generation) return token;
         const response = await transport(`${prefix}/auth/refresh`, {
           method: "POST",
           credentials: "include",
@@ -95,13 +167,16 @@ export function createClient(origin: string, transport: typeof fetch = fetch) {
         if (session !== generation) return token;
         if (response.status === 401 || response.status === 403) {
           setToken(null);
-          expired.forEach((fn) => fn());
+          expired.forEach((fn) => {
+            fn();
+          });
           return null;
         }
         const result = await readResponse<{ accessToken?: string }>(response);
         if (session !== generation) return token;
         if (!result?.accessToken) throw new ApiError(502, "Không nhận được phiên đăng nhập.");
         token = result.accessToken;
+        publishToken(token);
         return token;
       })
       .finally(() => {
@@ -154,6 +229,9 @@ export function createClient(origin: string, transport: typeof fetch = fetch) {
       return () => {
         expired.delete(callback);
       };
+    },
+    dispose() {
+      unsubscribeAuthSync?.();
     },
   };
 }

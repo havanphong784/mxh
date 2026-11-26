@@ -1,11 +1,10 @@
-import { HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
+import { forwardRef, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { Inject, forwardRef } from "@nestjs/common";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
+import type { EnvironmentVariables } from "../config/env.validation.js";
 import { UsersService } from "../users/users.service.js";
 import type { CurrentUserPayload } from "./decorators/current-user.decorator.js";
-import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
-import { ConfigService } from "@nestjs/config";
-import type { EnvironmentVariables } from "../config/env.validation.js";
 
 @Injectable()
 export class AccessSessionService {

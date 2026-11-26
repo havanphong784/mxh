@@ -1,3 +1,23 @@
+type TypingSocket = {
+  connected: boolean;
+  volatile: {
+    emit: (event: string, data: { conversationId: string; isTyping: boolean }) => unknown;
+  };
+};
+let typingSocket: TypingSocket | undefined;
+
+export function bindTypingSocket(socket: TypingSocket): () => void {
+  typingSocket = socket;
+  return () => {
+    if (typingSocket === socket) typingSocket = undefined;
+  };
+}
+
+export function emitTyping(conversationId: string, isTyping: boolean): void {
+  if (typingSocket?.connected)
+    typingSocket.volatile.emit("conversation:typing", { conversationId, isTyping });
+}
+
 type RecoverableSocket = {
   active: boolean;
   connected: boolean;

@@ -1,7 +1,7 @@
+import type { Temporal } from "@js-temporal/polyfill";
 import { Injectable } from "@nestjs/common";
 import argon2 from "argon2";
 import { UsersRepository } from "./users.repository.js";
-import type { Temporal } from "@js-temporal/polyfill";
 
 /** Public UsersModule facade for authentication flows. */
 @Injectable()

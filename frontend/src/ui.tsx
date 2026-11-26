@@ -6,7 +6,7 @@ export function Logo() {
   return (
     <a href="/" className="brand" aria-label="MXH, trang chủ">
       <span className="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+        <svg viewBox="0 0 36 36" width="36" height="36" fill="none" aria-hidden="true">
           <rect width="36" height="36" rx="11" fill="currentColor" />
           <path
             d="M9 24V12l9 8 9-8v12M13 12l5 4 5-4"

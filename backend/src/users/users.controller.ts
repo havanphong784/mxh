@@ -12,18 +12,17 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { UsersService } from "./users.service.js";
-import { PostsService } from "../posts/posts.service.js";
-import { UpdateProfileDto } from "./dto/update-profile.dto.js";
-import { ChangePasswordDto } from "./dto/change-password.dto.js";
-import { FollowPaginationDto } from "./dto/follow-pagination.dto.js";
-import { CursorPaginationDto } from "../posts/dto/cursor-pagination.dto.js";
-import { SearchQueryDto } from "../common/dto/search-query.dto.js";
+import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard.js";
-import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
+import { SearchQueryDto } from "../common/dto/search-query.dto.js";
+import { CursorPaginationDto } from "../posts/dto/cursor-pagination.dto.js";
 import type { PostResponseDto } from "../posts/dto/post-response.dto.js";
+import { PostsService } from "../posts/posts.service.js";
+import { ChangePasswordDto } from "./dto/change-password.dto.js";
+import { FollowPaginationDto } from "./dto/follow-pagination.dto.js";
+import { UpdateProfileDto } from "./dto/update-profile.dto.js";
 import type {
   FollowActionResultDto,
   FollowPaginatedResponseDto,
@@ -31,6 +30,7 @@ import type {
   PublicProfileResponseDto,
   UserSummaryDto,
 } from "./dto/user-response.dto.js";
+import { UsersService } from "./users.service.js";
 
 @Controller("users")
 export class UsersController {

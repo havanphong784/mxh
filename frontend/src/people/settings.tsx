@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "../session";
-import { passwordProblem, profileHref, profilePatch, updatedViewer } from "./contracts";
 import type { createPeopleClient, ImageFolder, ImageReference, PrivateProfile } from "./contracts";
-import { Avatar, LoadFailure, errorText, useResource } from "./shared";
+import { passwordProblem, profileHref, profilePatch, updatedViewer } from "./contracts";
+import { Avatar, errorText, LoadFailure, useResource } from "./shared";
 
 type Client = ReturnType<typeof createPeopleClient>;
 type ImageEdit = File | ImageReference | null | undefined;

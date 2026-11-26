@@ -1,13 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
+import type { ThrottlerModuleOptions } from "@nestjs/throttler";
 import {
   getOptionsToken,
   getStorageToken,
   ThrottlerGuard,
   ThrottlerStorage,
 } from "@nestjs/throttler";
-import type { ThrottlerModuleOptions } from "@nestjs/throttler";
 
 /**
  * TieredThrottlerGuard
