@@ -1,33 +1,10 @@
 import { useState } from "react";
 import type { User } from "../session";
 import { InfiniteScrollSentinel } from "../infinite-scroll";
+import { Icon as SharedIcon } from "../icons";
 
-type IconName = "message" | "bell" | "write" | "back" | "search" | "check" | "send";
-const strokes: Record<IconName, string> = {
-  message: "M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z",
-  bell: "M18 8a6 6 0 0 0-12 0c0 7-2 7-2 9h16c0-2-2-2-2-9m-8 12a2 2 0 0 0 4 0",
-  write: "m13 6 5 5M4 20l4-.8L20 7l-4-4L4 15.2V20Z",
-  back: "M19 12H5m6 6-6-6 6-6",
-  search: "m16 16 4 4M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z",
-  check: "m4 12 5 5 11-11",
-  send: "m21 3-7 18-4-7-7-4 18-7ZM21 3 10 14",
-};
-export function Icon({ name }: { name: IconName }) {
-  return (
-    <svg
-      aria-hidden="true"
-      width="19"
-      height="19"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.65"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={strokes[name]} />
-    </svg>
-  );
+export function Icon({ name, active = false }: { name: string; active?: boolean }) {
+  return <SharedIcon name={name} size={19} active={active} />;
 }
 
 export function Avatar({ person }: { person: User | null }) {

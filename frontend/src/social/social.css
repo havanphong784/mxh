@@ -1,7 +1,11 @@
+/* Hallmark · shape: app screen · social controls · theme: monochrome (by request) · layout: preserved · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3 · weakest: V, compact headings put the existing post content first */
+/* Hallmark · waive 28b · social media video appears below the fold · the media contract supplies no poster URL for social uploads */
+/* Hallmark · dismissed 28a · first static image is an avatar; first post media receives eager loading and high fetch priority */
 .social-slice {
   --social-edge: clamp(0.9rem, 3vw, 1.65rem);
-  --social-serif: var(--font-serif, Georgia, "Times New Roman", serif);
-  --social-danger: #a13b30;
+  --social-serif: var(--font-display);
+  --social-danger: var(--color-error);
   min-width: 0;
   color: var(--ink);
   accent-color: var(--green);
@@ -72,7 +76,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.87rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--green);
 }
 .social-slice .social-back {
@@ -139,7 +143,7 @@
   border-bottom: 2px solid transparent;
   text-decoration: none;
   font-size: 0.88rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 .social-slice .social-filters :is(a, button):hover {
   color: var(--green);
@@ -198,13 +202,13 @@
 }
 .social-slice .social-author {
   color: var(--ink);
-  font-weight: 750;
+  font-weight: 600;
   text-decoration: none;
 }
 .social-slice .social-byline-text > span,
 .social-slice .social-post-meta {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 .social-slice .social-post-meta {
   margin-inline-start: auto;
@@ -250,10 +254,11 @@
   max-width: 72ch;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  line-height: 1.6;
+  font-size: var(--text-body);
+  line-height: 1.65;
 }
 .social-slice [data-featured="true"] .social-post-copy {
-  font-size: 1.08rem;
+  font-size: var(--text-body);
 }
 .social-slice .social-repost-label,
 .social-slice .social-reply-context {
@@ -268,7 +273,7 @@
 .social-slice .social-quote a,
 .social-slice .social-reference a {
   color: var(--green);
-  font-weight: 630;
+  font-weight: 600;
 }
 .social-slice .social-repost-label > a {
   margin-inline-start: auto;
@@ -358,7 +363,7 @@
 .social-slice .social-post-action[aria-pressed="true"] {
   color: var(--green);
   background: var(--green-soft);
-  font-weight: 700;
+  font-weight: 600;
 }
 .social-slice .social-post-action[aria-pressed="true"] svg {
   stroke-width: 2.2;
@@ -388,7 +393,7 @@
   border-radius: 0.45rem;
   padding: 0.3rem;
   background: var(--surface);
-  box-shadow: 0 8px 24px #172c2020;
+  box-shadow: var(--shadow-card);
 }
 .social-slice .social-post-menu button {
   display: flex;
@@ -687,7 +692,7 @@
 }
 @media (prefers-color-scheme: dark) {
   .social-slice {
-    --social-danger: #f0a394;
+    --social-danger: var(--color-error);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -714,7 +719,7 @@
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgb(16 37 29 / 42%);
+  background: var(--color-overlay);
 }
 .social-slice .social-dialog {
   width: min(100%, 30rem);
@@ -723,7 +728,7 @@
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 0.55rem;
-  box-shadow: 0 1rem 3rem rgb(16 37 29 / 20%);
+  box-shadow: var(--shadow-card);
 }
 .social-slice .social-dialog-head {
   position: sticky;
@@ -775,6 +780,118 @@
   padding: 1.5rem var(--social-edge);
   color: var(--muted);
 }
+.social-slice {
+  --social-paper: var(--color-paper);
+  --social-card: var(--color-card);
+  --social-accent: var(--color-accent-2);
+  --social-edge: var(--space-lg);
+}
+.social-slice .social-heading {
+  min-height: 96px;
+  padding: var(--space-sm) 0 var(--space-lg);
+  background: transparent;
+  border-bottom: 1px solid var(--color-rule);
+  border-radius: 0;
+  margin-bottom: var(--space-lg);
+}
+.social-slice .social-heading > div {
+  min-width: 0;
+}
+.social-slice .social-heading h1 {
+  color: var(--color-ink);
+  font-size: var(--text-2xl);
+  line-height: 1.3;
+  font-weight: 600;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+.social-slice .social-heading p {
+  font-size: var(--text-sm);
+}
+.social-slice .social-discovery-tools {
+  padding: 0 0 var(--space-sm);
+  margin-bottom: var(--space-md);
+  background: transparent;
+}
+.social-slice .social-filters {
+  column-gap: var(--space-lg);
+}
+.social-slice .social-post-list {
+  display: grid;
+  gap: var(--space-md);
+}
+.social-slice .social-post {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-stock);
+  padding: var(--space-lg);
+  background: var(--color-card);
+}
+.social-slice .social-post:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+.social-slice .social-composer {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-stock);
+  margin-bottom: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--color-card);
+}
+.social-slice .social-compose-text textarea,
+.social-slice .social-edit textarea,
+.social-slice .social-visibility select {
+  border-radius: var(--radius-input);
+  border-color: var(--color-muted);
+  background: var(--color-paper);
+}
+.social-slice .social-media :is(img, video) {
+  border-radius: var(--radius-input);
+  border-color: var(--color-rule);
+}
+.social-slice .social-post-action,
+.social-slice .social-icon-button {
+  border-radius: var(--radius-input);
+}
+.social-slice .social-post-menu > div {
+  border-radius: var(--radius-input);
+}
+.social-slice .social-post-action[aria-pressed="true"] {
+  background: var(--color-success-soft);
+  color: var(--color-mint-deep);
+}
+.social-slice .social-reference,
+.social-slice .social-quote {
+  border-inline-start-color: var(--color-accent-2);
+}
+.social-slice .social-ancestor-notice,
+.social-slice .social-guest-note {
+  background: var(--color-sugar);
+  border-radius: var(--radius-input);
+}
+.social-slice .social-state,
+.social-slice .social-loading {
+  border-radius: var(--radius-stock);
+  border: 1px solid var(--color-rule);
+}
+.social-slice .social-search-field {
+  border-radius: var(--radius-input);
+  border-color: var(--color-muted);
+}
+.social-slice .social-filters :is([aria-current], [aria-pressed="true"]) {
+  border-bottom-color: var(--color-accent-deep);
+  color: var(--color-ink);
+}
+.social-slice :where(a, button, input, textarea, select, summary):focus-visible {
+  outline: 3px solid var(--color-focus);
+}
+.social-slice :where(button, a) {
+  transition:
+    background-color var(--dur-short) var(--ease-snap),
+    color var(--dur-short) var(--ease-snap),
+    transform var(--dur-micro) var(--ease-snap);
+}
+.social-slice :where(button:active, a.button:active) {
+  transform: translateY(1px);
+}
 @media (max-width: 520px) {
   .social-slice .social-dialog-backdrop {
     align-items: end;
@@ -782,7 +899,47 @@
   }
   .social-slice .social-dialog {
     width: 100%;
-    max-height: 85vh;
-    border-radius: 0.7rem 0.7rem 0 0;
+    max-height: 85dvh;
+    border-radius: var(--radius-stock) var(--radius-stock) 0 0;
   }
+  .social-slice .social-heading {
+    min-height: 0;
+    padding: var(--space-xs) 0 var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+  .social-slice .social-heading h1 {
+    font-size: var(--text-page-mobile);
+  }
+  .social-slice .social-post {
+    padding: var(--space-md);
+  }
+  .social-slice .social-composer {
+    padding: var(--space-md);
+  }
+  .social-slice .social-post-actions {
+    margin-inline-start: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .social-slice :where(button, a) {
+    transition: none;
+  }
+}
+.social-slice .social-post-action[aria-pressed="true"] {
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+}
+.social-slice .social-post-action[aria-pressed="true"] svg {
+  stroke-width: 1.75;
+}
+.social-slice
+  :is(.social-repost-label, .social-reply-context, .social-post-action, .social-visibility-note) {
+  font-size: var(--text-xs);
+}
+.social-slice :is(.social-quote, .social-reference) {
+  font-size: var(--text-sm);
+}
+.social-slice :is(.social-compose-text, .social-edit) textarea {
+  font-size: var(--text-body);
+  line-height: 1.6;
 }

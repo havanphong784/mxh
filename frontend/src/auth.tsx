@@ -3,7 +3,8 @@ import type { FormEvent } from "react";
 import { api } from "./api";
 import { safeReturn } from "./routes";
 import type { AuthResult } from "./session";
-import { Engraving, Icon, Logo } from "./ui";
+import { Icon, Logo } from "./ui";
+import { ThemeToggle } from "./theme";
 
 const info = {
   "/login": ["Đăng nhập", "Tiếp tục theo dõi những người và câu chuyện bạn quan tâm."],
@@ -98,23 +99,24 @@ export function Auth({
     <div className="gate-page">
       <header className="gate-head">
         <Logo />
-        <a className="text-link" href="/explore">
-          Khám phá bài viết <Icon name="arrow" size={17} />
-        </a>
+        <div className="gate-head-actions">
+          <ThemeToggle />
+          <a className="text-link" href="/explore">
+            Khám phá bài viết <Icon name="arrow" size={17} />
+          </a>
+        </div>
       </header>
       <main id="noi-dung" className="gate-main" tabIndex={-1}>
         <aside className="gate-story">
           <div>
             <p className="story-title">
-              Một chỗ để
-              <br />
+              Một chỗ để <br />
               trò chuyện<span>.</span>
             </p>
             <p>
               Đọc điều bạn quan tâm. Viết điều bạn muốn chia sẻ. Nối tiếp câu chuyện trong tin nhắn.
             </p>
           </div>
-          <Engraving />
         </aside>
         <section className="gate-form">
           <h1>{title}</h1>

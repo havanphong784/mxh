@@ -1,44 +1,11 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { Icon as SharedIcon } from "../icons";
 import { VISIBILITIES } from "./model";
 import type { Author, Media, Visibility } from "./model";
 
-const paths = {
-  heart:
-    "M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6l1.2 1.2 7.6 7.6 8.8-8.8a5.4 5.4 0 0 0 0-7.6Z",
-  bookmark: "M6 4h12v17l-6-4-6 4V4Z",
-  repost: "m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4m14-1v3a2 2 0 0 1-2 2H3",
-  reply:
-    "M21 11.5a8.4 8.4 0 0 1-9 8.5 9.3 9.3 0 0 1-3.4-.7L3 21l1.6-4.2A8.3 8.3 0 0 1 3 11.5a9 9 0 0 1 18 0Z",
-  quote: "M10 5H4v8h5c0 3-1.2 4.5-4 5.5M21 5h-6v8h5c0 3-1.2 4.5-4 5.5",
-  pen: "m14.5 5.5 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z",
-  trash: "M4 7h16m-10 4v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
-  search: "M20 20l-5-5m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z",
-  arrow: "M4 12h15m-6-6 6 6-6 6",
-  back: "M20 12H5m6-6-6 6 6 6",
-  clip: "M9 13l6-6a3 3 0 1 1 4.2 4.2l-8.5 8.5a5 5 0 0 1-7.1-7.1L12 4.2",
-  close: "m6 6 12 12M18 6 6 18",
-  more: "M5 12h.01m6.99 0h.01m6.99 0h.01",
-  post: "M5 4h14v16H5Zm3 4h8m-8 4h8m-8 4h4",
-  image: "M4 4h16v16H4Zm0 13 5-5 4 4 3-3 4 4M15 8h.01",
-  check: "m5 12 4 4L19 6",
-} as const;
-export function Icon({ name }: { name: keyof typeof paths }) {
-  return (
-    <svg
-      width="19"
-      height="19"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={name === "more" ? 3.25 : 1.65}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={paths[name]} />
-    </svg>
-  );
+export function Icon({ name, active = false }: { name: string; active?: boolean }) {
+  return <SharedIcon name={name} size={20} active={active} />;
 }
 
 export function Avatar({ user }: { user: Author }) {
@@ -113,7 +80,7 @@ export function Loading({ label = "Đang tải bài viết…" }: { label?: stri
   );
 }
 
-export function MediaView({ media }: { media: Media[] }) {
+export function MediaView({ media, priority = false }: { media: Media[]; priority?: boolean }) {
   if (!media.length) return null;
   return (
     <div className="social-media" data-multiple={media.length > 1}>
@@ -146,7 +113,8 @@ export function MediaView({ media }: { media: Media[] }) {
             >
               <img
                 src={item.url}
-                loading="lazy"
+                loading={priority && index === 0 ? "eager" : "lazy"}
+                fetchPriority={priority && index === 0 ? "high" : "auto"}
                 decoding="async"
                 width={item.width || undefined}
                 height={item.height || undefined}

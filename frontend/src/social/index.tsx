@@ -209,13 +209,14 @@ function PageRows({
           className="social-post-list"
           aria-label={threaded ? "Danh sách lời trả lời" : "Danh sách bài viết"}
         >
-          {page.items.map((post) => (
+          {page.items.map((post, index) => (
             <li key={post.id}>
               <PostCard
                 post={post}
                 user={user}
                 change={change ?? pages.apply}
                 threaded={threaded}
+                priority={index === 0}
               />
             </li>
           ))}

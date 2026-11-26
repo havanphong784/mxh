@@ -7,6 +7,7 @@ import { resolveRoute, safeReturn } from "./routes";
 import { createSocketRecovery } from "./realtime";
 import type { AuthResult, User } from "./session";
 import { Avatar, Icon, Logo } from "./ui";
+import { ThemeToggle } from "./theme";
 
 const Social = lazy(() => import("./social/index").then((m) => ({ default: m.Social })));
 const People = lazy(() => import("./people/index").then((m) => ({ default: m.People })));
@@ -362,8 +363,9 @@ function Shell({
         key={url}
         aria-current={active ? "page" : undefined}
         aria-label={count > 0 ? `${label}, ${count} chưa đọc` : undefined}
+        title={label}
       >
-        <Icon name={icon} />
+        <Icon name={icon} active={active} />
         <span>{label}</span>
         {count > 0 && (
           <b className="nav-count" aria-hidden="true">
@@ -385,7 +387,7 @@ function Shell({
           <>
             <a className="button button-primary rail-write" href="/compose">
               <Icon name="plus" size={19} />
-              Viết bài
+              <span>Viết bài</span>
             </a>
             <div className="rail-account">
               <a href={profile}>
@@ -409,7 +411,7 @@ function Shell({
           </>
         ) : (
           <a className="button button-primary rail-write" href="/login">
-            Đăng nhập <Icon name="arrow" size={18} />
+            <span>Đăng nhập</span> <Icon name="arrow" size={18} />
           </a>
         )}
       </aside>
@@ -431,6 +433,7 @@ function Shell({
               maxLength={100}
             />
           </form>
+          <ThemeToggle />
           <a className="top-profile" href={profile}>
             {user ? <Avatar user={user} /> : "Đăng nhập"}
             <span className="sr-only">{user ? "Hồ sơ của bạn" : ""}</span>

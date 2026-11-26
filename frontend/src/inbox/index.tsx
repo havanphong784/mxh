@@ -65,10 +65,11 @@ function SignedInInbox({ path, userId }: { path: string; userId: string }) {
       </header>
       <nav className="mx-inbox-nav" aria-label="Hộp thư">
         <a href="/messages" aria-current={!isNotices ? "page" : undefined}>
-          <Icon name="message" /> Tin nhắn <Count count={messages.value?.count} />
+          <Icon name="message" active={!isNotices} /> Tin nhắn{" "}
+          <Count count={messages.value?.count} />
         </a>
         <a href="/notifications" aria-current={isNotices ? "page" : undefined}>
-          <Icon name="bell" /> Thông báo <Count count={notices.value?.count} />
+          <Icon name="bell" active={isNotices} /> Thông báo <Count count={notices.value?.count} />
         </a>
       </nav>
       {(messages.failed || notices.failed) && (

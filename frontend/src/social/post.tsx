@@ -96,8 +96,9 @@ type CardProps = {
   change: (change: PostChange) => void;
   featured?: boolean;
   threaded?: boolean;
+  priority?: boolean;
 };
-export function PostCard({ post, user, change, featured, threaded }: CardProps) {
+export function PostCard({ post, user, change, featured, threaded, priority }: CardProps) {
   const target = repostTarget(post);
   const [panel, setPanel] = useState<"edit" | "delete" | null>(null);
   const [busy, setBusy] = useState<Toggle | "edit" | "delete" | null>(null);
@@ -248,7 +249,7 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
         disabled={busy !== null}
         onClick={() => void toggle(action)}
       >
-        <Icon name={action === "like" ? "heart" : action} />
+        <Icon name={action === "like" ? "heart" : action} active={active} />
         {count > 0 && <span>{countFormat.format(count)}</span>}
       </button>
     );
@@ -397,7 +398,7 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
                 </a>
               )}
               {target.content && <p className="social-post-copy">{target.content}</p>}
-              <MediaView media={target.media} />
+              <MediaView media={target.media} priority={priority} />
               {target.quotedPostId && (
                 <div className="social-quote">
                   {target.quotedPost ? (

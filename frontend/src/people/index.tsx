@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { api } from "../api";
 import { InfiniteScrollSentinel } from "../infinite-scroll";
+import { Icon } from "../icons";
 import type { User } from "../session";
 import { UserTimeline } from "../social";
 import { Settings } from "./settings";
@@ -145,22 +146,7 @@ function PersonRows({ people }: { people: Person[] }) {
               <span className="people-handle">@{person.username}</span>
               {person.bio && <p className="people-bio">{person.bio}</p>}
             </div>
-            <svg
-              className="people-chevron"
-              aria-hidden="true"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-            >
-              <path
-                d="m6 3 5 5-5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Icon name="chevron" size={16} className="people-chevron" />
           </a>
         </li>
       ))}
