@@ -1,15 +1,26 @@
 import { api } from "../api";
 import type { User } from "../session";
-import { pagePath } from "./model";
 import type { MessageDraft, Page } from "./model";
+import { pagePath } from "./model";
 
 type Person = User & { bio?: string | null };
+export type MessageMedia = {
+  id: string;
+  publicId: string;
+  url: string;
+  width: number;
+  height: number;
+  format: string;
+  bytes: number;
+  order: number;
+};
 export type Message = {
   id: string;
   conversationId: string;
   senderId: string;
   clientMessageId: string;
-  type: "TEXT";
+  type: "TEXT" | "IMAGE";
+  media: MessageMedia[];
   body: string | null;
   createdAt: string;
   editedAt: string | null;

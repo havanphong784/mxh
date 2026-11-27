@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
 import { Temporal } from "@js-temporal/polyfill";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
+import type { VerifiedMessageMedia } from "./message-media.service.js";
 
 @Injectable()
 export class MessagingRepository {
@@ -194,11 +195,28 @@ export class MessagingRepository {
     return this.message.where({ senderId, clientMessageId }).first();
   }
 
+  async findMediaForMessages(messageIds: string[]) {
+    const result = new Map<string, MessageMediaRecord[]>();
+    if (!messageIds.length) return result;
+    const rows = await this.prisma.client.orm.public.MessageMedia.where((item) =>
+      item.messageId.in(messageIds),
+    )
+      .orderBy((item) => item.order.asc())
+      .all();
+    for (const row of rows) {
+      const list = result.get(row.messageId) ?? [];
+      list.push(row);
+      result.set(row.messageId, list);
+    }
+    return result;
+  }
+
   async createMessage(data: {
     conversationId: string;
     senderId: string;
     clientMessageId: string;
     body: string;
+    media?: VerifiedMessageMedia[];
   }) {
     return this.prisma.client.transaction(async (tx) => {
       const existing = await tx.orm.public.Message.where({
@@ -207,13 +225,30 @@ export class MessagingRepository {
       }).first();
       if (existing) return { message: existing, created: false };
 
+      for (const asset of [...(data.media ?? [])].sort((a, b) =>
+        a.publicId.localeCompare(b.publicId),
+      )) {
+        const lock = this.prisma.client.raw
+          .sql`SELECT pg_advisory_xact_lock(hashtextextended(${asset.publicId}, 0))`
+          .returnsRow({ pg_advisory_xact_lock: "pg/text@1" })
+          .build();
+        await tx.execute(lock);
+        const deleted = await tx.orm.public.MessageMediaDeletion.where({
+          publicId: asset.publicId,
+        }).first();
+        if (deleted) throw new BadRequestException("Ảnh đã hết hạn, vui lòng chọn và tải lại ảnh");
+      }
+
       const created = await tx.orm.public.Message.create({
         conversationId: data.conversationId,
         senderId: data.senderId,
         clientMessageId: data.clientMessageId,
-        type: "TEXT",
+        type: data.media?.length ? "IMAGE" : "TEXT",
         body: data.body,
       });
+      for (const asset of data.media ?? []) {
+        await tx.orm.public.MessageMedia.create({ ...asset, messageId: created.id });
+      }
 
       await tx.orm.public.Conversation.where({
         id: data.conversationId,
@@ -225,6 +260,44 @@ export class MessagingRepository {
         message: created,
         created: true,
       };
+    });
+  }
+
+  async reserveMediaDeletion(publicId: string): Promise<boolean> {
+    return this.prisma.client.transaction(async (tx) => {
+      const lock = this.prisma.client.raw
+        .sql`SELECT pg_advisory_xact_lock(hashtextextended(${publicId}, 0))`
+        .returnsRow({ pg_advisory_xact_lock: "pg/text@1" })
+        .build();
+      await tx.execute(lock);
+      if (await tx.orm.public.MessageMedia.where({ publicId }).first()) return false;
+      const existing = await tx.orm.public.MessageMediaDeletion.where({ publicId }).first();
+      if (existing?.status === "DELETED") return false;
+      if (!existing)
+        await tx.orm.public.MessageMediaDeletion.create({ publicId, status: "PENDING" });
+      return true;
+    });
+  }
+
+  async *pendingMediaDeletions(): AsyncGenerator<string[]> {
+    let after: string | undefined;
+    while (true) {
+      let query = this.prisma.client.orm.public.MessageMediaDeletion.where({ status: "PENDING" });
+      const cursor = after;
+      if (cursor) query = query.where((item) => item.publicId.gt(cursor));
+      const rows = await query
+        .orderBy((item) => item.publicId.asc())
+        .limit(500)
+        .all();
+      if (!rows.length) return;
+      yield rows.map((item) => item.publicId);
+      after = rows[rows.length - 1].publicId;
+    }
+  }
+
+  async completeMediaDeletion(publicId: string): Promise<void> {
+    await this.prisma.client.orm.public.MessageMediaDeletion.where({ publicId }).update({
+      status: "DELETED",
     });
   }
 
@@ -263,6 +336,18 @@ export type ConversationWithParticipants = NonNullable<
 export type ConversationParticipantRecord = NonNullable<
   Awaited<ReturnType<MessagingRepository["findParticipant"]>>
 >;
+
+export type MessageMediaRecord = {
+  id: string;
+  messageId: string;
+  publicId: string;
+  url: string;
+  width: number;
+  height: number;
+  format: string;
+  bytes: number;
+  order: number;
+};
 
 export type MessageRecord = NonNullable<
   Awaited<ReturnType<MessagingRepository["findMessageByClientId"]>>

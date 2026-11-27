@@ -1,3 +1,4 @@
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ForbiddenException,
@@ -7,13 +8,8 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { CreatePostDto } from "./dto/create-post.dto.js";
-import { UpdatePostDto } from "./dto/update-post.dto.js";
-import { MediaService } from "../media/media.service.js";
-import { UsersService } from "../users/users.service.js";
-import { CursorPaginationDto } from "./dto/cursor-pagination.dto.js";
-import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
-import { POST_EVENTS } from "../events/event-types.js";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
 import type {
   PostCreatedEvent,
   PostLikedEvent,
@@ -21,15 +17,19 @@ import type {
   PostRepliedEvent,
   PostRepostedEvent,
 } from "../events/event-types.js";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import { Temporal } from "@js-temporal/polyfill";
+import { POST_EVENTS } from "../events/event-types.js";
+import { MediaService } from "../media/media.service.js";
+import { UsersService } from "../users/users.service.js";
+import { CreatePostDto } from "./dto/create-post.dto.js";
+import { CursorPaginationDto } from "./dto/cursor-pagination.dto.js";
 import { ExploreQueryDto } from "./dto/explore-query.dto.js";
+import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
 import {
   PostLikesResponseDto,
   PostResponseDto,
   PostResponseMapper,
 } from "./dto/post-response.dto.js";
-import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
+import { UpdatePostDto } from "./dto/update-post.dto.js";
 import { PostsRepository } from "./posts.repository.js";
 
 @Injectable()
@@ -186,9 +186,7 @@ export class PostsService {
 
     await this.postRepository.updatePostAndReplies(postId, updatePayload, dto.visibility);
 
-    const updated = await this.postRepository.findByIdForResponse(postId);
-
-    return this.toPostResponse(updated);
+    return this.getPostById(postId, userId);
   }
 
   async deletePost(postId: string, userId: string) {
@@ -382,9 +380,9 @@ export class PostsService {
         postIds,
       );
 
-      likes.forEach((l: any) => likedSet.add(l.postId));
-      reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
-      bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+      likes.forEach((l: any) => void likedSet.add(l.postId));
+      reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
+      bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
     }
 
     const lastItem = items[items.length - 1];
@@ -430,9 +428,9 @@ export class PostsService {
         postIds,
       );
 
-      likes.forEach((l: any) => likedSet.add(l.postId));
-      reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
-      bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+      likes.forEach((l: any) => void likedSet.add(l.postId));
+      reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
+      bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
     }
 
     return {
@@ -799,9 +797,9 @@ export class PostsService {
       postIds,
     );
 
-    likes.forEach((l: any) => likedSet.add(l.postId));
-    bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
-    reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
+    likes.forEach((l: any) => void likedSet.add(l.postId));
+    bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
+    reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
 
     return {
       items: orderedPosts.map((post: any) =>
@@ -843,9 +841,9 @@ export class PostsService {
         postIds,
       );
 
-      likes.forEach((l: any) => likedSet.add(l.postId));
-      reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
-      bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+      likes.forEach((l: any) => void likedSet.add(l.postId));
+      reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
+      bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
     }
 
     const lastScannedPost = pageCandidates[pageCandidates.length - 1];
@@ -884,9 +882,9 @@ export class PostsService {
         postIds,
       );
 
-      likes.forEach((l: any) => likedSet.add(l.postId));
-      reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
-      bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+      likes.forEach((l: any) => void likedSet.add(l.postId));
+      reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
+      bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
     }
 
     const lastItem = items[items.length - 1];
@@ -939,9 +937,9 @@ export class PostsService {
         postIds,
       );
 
-      likes.forEach((l: any) => likedSet.add(l.postId));
-      reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
-      bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+      likes.forEach((l: any) => void likedSet.add(l.postId));
+      reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
+      bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
     }
 
     const lastItem = items[items.length - 1];
@@ -979,9 +977,9 @@ export class PostsService {
         postIds,
       );
 
-      likes.forEach((l: any) => likedSet.add(l.postId));
-      reposts.forEach((r: any) => repostedSet.add(r.repostOfId));
-      bookmarks.forEach((b: any) => bookmarkedSet.add(b.postId));
+      likes.forEach((l: any) => void likedSet.add(l.postId));
+      reposts.forEach((r: any) => void repostedSet.add(r.repostOfId));
+      bookmarks.forEach((b: any) => void bookmarkedSet.add(b.postId));
     }
 
     const lastScannedPost = pageCandidates[pageCandidates.length - 1];
@@ -1010,7 +1008,7 @@ export class PostsService {
   }
 
   async reconcileCounters(targetPostId?: string) {
-    const posts = await this.postRepository.listActivePosts(targetPostId);
+    const posts = await this.postRepository.listPostsForCounterReconciliation(targetPostId);
     let correctedCount = 0;
     const discrepancies: any[] = [];
     const countsByPostId = new Map<string, any>();

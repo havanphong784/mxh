@@ -1,7 +1,7 @@
+import type { Temporal } from "@js-temporal/polyfill";
 import { Injectable } from "@nestjs/common";
 import argon2 from "argon2";
 import { UsersRepository } from "./users.repository.js";
-import type { Temporal } from "@js-temporal/polyfill";
 
 /** Public UsersModule facade for authentication flows. */
 @Injectable()
@@ -68,8 +68,8 @@ export class UsersAuthService {
     };
   }
 
-  async incrementOtpAttempts(otpId: string, attempts: number) {
-    await this.repo.incrementOtpAttempts(otpId, attempts);
+  async claimOtpAttempt(otpId: string) {
+    return this.repo.claimOtpAttempt(otpId);
   }
 
   async createOtp(data: {

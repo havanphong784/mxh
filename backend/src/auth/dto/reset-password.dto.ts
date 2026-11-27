@@ -1,3 +1,4 @@
+import { Transform } from "class-transformer";
 import {
   IsEmail,
   IsNotEmpty,
@@ -6,7 +7,6 @@ import {
   Length,
   MaxLength,
 } from "class-validator";
-import { Transform } from "class-transformer";
 
 export class ResetPasswordDto {
   @Transform(({ value }) => (typeof value === "string" ? value.trim().toLowerCase() : value))

@@ -1,30 +1,26 @@
+import * as crypto from "node:crypto";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
-  Inject,
-  forwardRef,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
+import argon2 from "argon2";
+import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
+import type { EnvironmentVariables } from "../config/env.validation.js";
+import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
+import { AUTH_EVENTS } from "../events/event-types.js";
+import { MailService } from "../mail/mail.service.js";
 import { UsersService } from "../users/users.service.js";
 import { UsersAuthService } from "../users/users-auth.service.js";
-import argon2 from "argon2";
-import * as crypto from "node:crypto";
-import { MailService } from "../mail/mail.service.js";
-import { RegisterDto } from "./dto/register.dto.js";
-import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
-import { JwtService } from "@nestjs/jwt";
-import { ResendOtpDto } from "./dto/resend-otp.dto.js";
-import { LoginDto } from "./dto/login.dto.js";
-import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
-import { ResetPasswordDto } from "./dto/reset-password.dto.js";
-import { Temporal } from "@js-temporal/polyfill";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import { AUTH_EVENTS } from "../events/event-types.js";
-import { DomainException, ERROR_CODES } from "../common/exceptions/domain.exception.js";
-import type { SessionRevokedEvent, UserSessionsRevokedEvent } from "../events/event-types.js";
 import type {
   AuthResultDto,
   AuthUserDto,
@@ -32,8 +28,12 @@ import type {
   RefreshResultDto,
   RegisterResponseDto,
 } from "./dto/auth-response.dto.js";
-import { ConfigService } from "@nestjs/config";
-import type { EnvironmentVariables } from "../config/env.validation.js";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
+import { LoginDto } from "./dto/login.dto.js";
+import { RegisterDto } from "./dto/register.dto.js";
+import { ResendOtpDto } from "./dto/resend-otp.dto.js";
+import { ResetPasswordDto } from "./dto/reset-password.dto.js";
+import { VerifyOtpDto } from "./dto/verify-otp.dto.js";
 
 export interface RequestMeta {
   userAgent?: string;
@@ -128,14 +128,19 @@ export class AuthService {
       );
     }
 
-    const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
-    if (Date.now() > expiresAtMs) {
-      throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.");
+    const claimedOtp = await this.usersAuthService.claimOtpAttempt(otpRecord.id);
+    if (!claimedOtp) {
+      const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
+      if (Date.now() >= expiresAtMs) {
+        throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.");
+      }
+      throw new ForbiddenException(
+        "Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.",
+      );
     }
 
     const inputHash = this.hashSha256(dto.code);
-    if (inputHash !== otpRecord.codeHash) {
-      await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
+    if (inputHash !== claimedOtp.codeHash) {
       throw new BadRequestException("Mã OTP không chính xác");
     }
 
@@ -149,7 +154,7 @@ export class AuthService {
     const sessionData = this.createSessionData(user.id, refreshToken, meta);
     const session = await this.usersAuthService.activateAndCreateSession(
       email,
-      otpRecord.id,
+      claimedOtp.id,
       sessionData,
     );
 
@@ -450,28 +455,33 @@ export class AuthService {
       );
     }
 
-    const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
-    if (Date.now() > expiresAtMs) {
-      throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.");
+    const claimedOtp = await this.usersAuthService.claimOtpAttempt(otpRecord.id);
+    if (!claimedOtp) {
+      const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
+      if (Date.now() >= expiresAtMs) {
+        throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.");
+      }
+      throw new ForbiddenException(
+        "Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.",
+      );
     }
 
     const inputHash = this.hashSha256(dto.code);
-    if (inputHash !== otpRecord.codeHash) {
-      await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
+    if (inputHash !== claimedOtp.codeHash) {
       throw new BadRequestException("Mã OTP không chính xác.");
     }
 
     const passwordHash = await argon2.hash(dto.newPassword);
     await this.usersAuthService.resetPasswordAndRevokeSessions(
       email,
-      otpRecord.id,
-      otpRecord.userId,
+      claimedOtp.id,
+      claimedOtp.userId,
       passwordHash,
     );
 
-    if (otpRecord.userId) {
+    if (claimedOtp.userId) {
       this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
-        userId: otpRecord.userId,
+        userId: claimedOtp.userId,
       } satisfies UserSessionsRevokedEvent);
     }
 

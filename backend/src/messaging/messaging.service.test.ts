@@ -2,14 +2,15 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
-import { MessagingService } from "./messaging.service.js";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import type { EventsGateway } from "../gateway/events.gateway.js";
+import type { MessageMediaService } from "./message-media.service.js";
 import type {
   ConversationWithParticipants,
   MessageRecord,
   MessagingRepository,
 } from "./messaging.repository.js";
+import { MessagingService } from "./messaging.service.js";
 
 function createService(
   repository: Partial<MessagingRepository>,
@@ -18,9 +19,14 @@ function createService(
       assert.fail("Unexpected realtime event");
     },
   },
+  media?: MessageMediaService,
 ) {
   // Each test supplies only the methods it exercises; their signatures stay checked.
-  return new MessagingService(repository as MessagingRepository, gateway as EventsGateway);
+  return new MessagingService(
+    { findMediaForMessages: async () => new Map(), ...repository } as MessagingRepository,
+    gateway as EventsGateway,
+    media!,
+  );
 }
 
 const now = Temporal.Instant.from("2026-11-06T00:00:00Z");
@@ -99,6 +105,17 @@ test("direct conversations are idempotent for the same pair of users", async () 
   assert.equal(created, 1);
   assert.equal(first.id, second.id);
   assert.equal(first.participant.id, "user-a");
+});
+
+test("typing resolves only the peer for an existing conversation member", async () => {
+  const conversation = conversationFixture();
+  const service = createService({
+    findParticipant: async (_id, userId) =>
+      conversation.participants.find((item) => item.userId === userId) ?? null,
+    findConversationWithParticipants: async () => conversation,
+  });
+  assert.equal(await service.getTypingRecipient("user-a", conversation.id), "user-b");
+  await assert.rejects(service.getTypingRecipient("outsider", conversation.id), ForbiddenException);
 });
 
 test("users outside a conversation cannot send messages", async () => {
@@ -251,4 +268,92 @@ test("a concurrent idempotent insert does not emit a duplicate realtime event", 
 
   assert.equal(result.id, message.id);
   assert.deepEqual(pushed, []);
+});
+
+test("expired image reservations tell the sender to upload again", async () => {
+  const failure = new BadRequestException("Ảnh đã hết hạn, vui lòng chọn và tải lại ảnh");
+  const service = createService(
+    {
+      findParticipant: async () => conversationFixture().participants[0],
+      findMessageByClientId: async () => null,
+      createMessage: async () => {
+        throw failure;
+      },
+    },
+    undefined,
+    { verify: async () => [] } as unknown as MessageMediaService,
+  );
+  await assert.rejects(
+    service.sendMessage("user-a", "conversation-1", {
+      clientMessageId: "expired-image",
+      media: [{ publicId: "mxh/user-a/messages/expired", version: 1, signature: "fixture" }],
+    }),
+    (error: unknown) => error === failure,
+  );
+});
+
+test("image-only messages keep verified media and retry without verifying or emitting again", async () => {
+  const media = [
+    {
+      id: "media-1",
+      messageId: "message-1",
+      publicId: "mxh/user-a/messages/a",
+      url: "https://example.test/a.png",
+      width: 10,
+      height: 10,
+      format: "png",
+      bytes: 100,
+      order: 0,
+    },
+  ];
+  let stored: MessageRecord | null = null;
+  let verified = 0;
+  const pushed: string[] = [];
+  const service = createService(
+    {
+      findParticipant: async () => conversationFixture().participants[0],
+      findMessageByClientId: async () => stored,
+      findMediaForMessages: async () => new Map([["message-1", media]]),
+      createMessage: async (data) => {
+        assert.equal(data.body, "");
+        assert.equal(data.media?.[0].publicId, "mxh/user-a/messages/a");
+        stored = {
+          id: "message-1",
+          conversationId: "conversation-1",
+          senderId: "user-a",
+          clientMessageId: "client-image",
+          type: "IMAGE",
+          body: "",
+          createdAt: now,
+          editedAt: null,
+          deletedAt: null,
+        };
+        return { message: stored, created: true };
+      },
+      findConversationWithParticipants: async () => conversationFixture(),
+      countAllUnreadForUser: async () => 1,
+    },
+    {
+      pushToUser: (_id, event) => {
+        pushed.push(event);
+      },
+    },
+    {
+      verify: async () => {
+        verified++;
+        return media;
+      },
+    } as unknown as MessageMediaService,
+  );
+  const request = {
+    clientMessageId: "client-image",
+    media: [{ publicId: media[0].publicId, version: 123, signature: "verified-by-test-adapter" }],
+  };
+  const first = await service.sendMessage("user-a", "conversation-1", request);
+  const second = await service.sendMessage("user-a", "conversation-1", request);
+  assert.equal(first.type, "IMAGE");
+  assert.deepEqual(first.media, second.media);
+  assert.equal(first.media.length, 1);
+  assert.equal(verified, 1);
+  assert.equal(pushed.filter((event) => event === "conversation:new-message").length, 2);
 });

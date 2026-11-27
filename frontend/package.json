@@ -14,6 +14,7 @@
     "lint": "eslint src checks vite.config.ts",
     "test": "node --test checks/*.test.ts",
     "test:browser": "node checks/browser.test.mjs",
+    "test:appearance": "node checks/appearance.test.mjs",
     "test:live": "node checks/live.test.mjs"
   },
   "dependencies": {

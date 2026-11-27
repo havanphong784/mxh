@@ -2,8 +2,8 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
-import { NotificationsService } from "./notifications.service.js";
 import { NotificationsRepository } from "./notifications.repository.js";
+import { NotificationsService } from "./notifications.service.js";
 
 function createService(prisma: any, gateway: any) {
   return new NotificationsService(new NotificationsRepository(prisma), gateway, {

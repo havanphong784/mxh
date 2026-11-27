@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { searchPeople, startDirect, threadHref } from "./data";
-import { usePages, useWrite } from "./use-inbox";
 import { Avatar, Icon, Pager, Status } from "./ui";
+import { usePages, useWrite } from "./use-inbox";
 
 export function Compose({ to, userId }: { to: string | null; userId: string }) {
   const [input, setInput] = useState("");

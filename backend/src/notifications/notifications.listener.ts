@@ -1,11 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
-import { EventsGateway } from "../gateway/events.gateway.js";
-import { UsersService } from "../users/users.service.js";
-import { POST_EVENTS, USER_EVENTS } from "../events/event-types.js";
-import { NotificationsRepository } from "./notifications.repository.js";
-import { PostsService } from "../posts/posts.service.js";
-import { NotificationResponseMapper } from "./dto/notification-response.dto.js";
 import type {
   PostCreatedEvent,
   PostLikedEvent,
@@ -14,6 +8,12 @@ import type {
   PostRepostedEvent,
   UserFollowedEvent,
 } from "../events/event-types.js";
+import { POST_EVENTS, USER_EVENTS } from "../events/event-types.js";
+import { EventsGateway } from "../gateway/events.gateway.js";
+import { PostsService } from "../posts/posts.service.js";
+import { UsersService } from "../users/users.service.js";
+import { NotificationResponseMapper } from "./dto/notification-response.dto.js";
+import { NotificationsRepository } from "./notifications.repository.js";
 
 @Injectable()
 export class NotificationsListener {

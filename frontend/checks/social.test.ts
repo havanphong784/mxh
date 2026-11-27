@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { ActivePost } from "../src/social/model.ts";
 import {
   appendPage,
+  classifyMedia,
   composePayload,
   createRequest,
-  classifyMedia,
-  mergePostChange,
   mediaPayload,
+  mergePostChange,
   pagePath,
   postToggle,
   repostTarget,
@@ -14,7 +15,6 @@ import {
   signedUpload,
   timelinePath,
 } from "../src/social/model.ts";
-import type { ActivePost } from "../src/social/model.ts";
 
 function post(id: string, fields: Partial<ActivePost> = {}): ActivePost {
   return {

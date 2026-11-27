@@ -1,20 +1,20 @@
 import "reflect-metadata";
 import * as crypto from "node:crypto";
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal as TemporalPolyfill } from "@js-temporal/polyfill";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module.js";
 import "dotenv/config";
 import fastifyCookie from "@fastify/cookie";
 import { ValidationPipe } from "@nestjs/common";
-import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter.js";
 import { ConfigService } from "@nestjs/config";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter.js";
 import type { EnvironmentVariables } from "./config/env.validation.js";
 
 declare global {
   var Temporal: typeof import("@js-temporal/polyfill").Temporal;
 }
-globalThis.Temporal = Temporal;
+globalThis.Temporal = TemporalPolyfill;
 
 async function bootstrap() {
   const cookieSecret = process.env.COOKIE_SECRET;

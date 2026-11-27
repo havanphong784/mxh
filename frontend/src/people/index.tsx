@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { Icon } from "../icons";
 import { InfiniteScrollSentinel } from "../infinite-scroll";
 import type { User } from "../session";
 import { UserTimeline } from "../social";
-import { Settings } from "./settings";
-import { Avatar, LoadFailure, errorText, useResource } from "./shared";
+import type { Connection, PeoplePage, Person } from "./contracts";
 import {
   afterFollow,
   bumpTimelineForFollow,
@@ -17,7 +17,8 @@ import {
   searchProblem,
   uniquePeople,
 } from "./contracts";
-import type { Connection, PeoplePage, Person } from "./contracts";
+import { Settings } from "./settings";
+import { Avatar, errorText, LoadFailure, useResource } from "./shared";
 import "./people.css";
 
 const client = createPeopleClient(api);
@@ -145,22 +146,7 @@ function PersonRows({ people }: { people: Person[] }) {
               <span className="people-handle">@{person.username}</span>
               {person.bio && <p className="people-bio">{person.bio}</p>}
             </div>
-            <svg
-              className="people-chevron"
-              aria-hidden="true"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-            >
-              <path
-                d="m6 3 5 5-5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Icon name="chevron" size={16} className="people-chevron" />
           </a>
         </li>
       ))}
@@ -333,6 +319,7 @@ function Directory({ query, user }: { query: string; user: User | null }) {
     <section className="people-panel" aria-labelledby="people-directory-title">
       <header className="people-section-head">
         <h1 id="people-directory-title">Tìm người dùng</h1>
+        {/* biome-ignore lint/a11y/useSemanticElements: A native form supplies submission and the search landmark. */}
         <form className="people-search" role="search" action="/people" onSubmit={search}>
           <div className="people-search-input">
             <label htmlFor="people-query">Tên hiển thị hoặc tên người dùng</label>

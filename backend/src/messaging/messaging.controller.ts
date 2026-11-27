@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/co
 import { Throttle } from "@nestjs/throttler";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { MediaService } from "../media/media.service.js";
 import { ConversationPaginationDto } from "./dto/conversation-pagination.dto.js";
 import { CreateDirectConversationDto } from "./dto/create-direct-conversation.dto.js";
 import type {
@@ -18,7 +19,20 @@ import { MessagingService } from "./messaging.service.js";
 @Controller("conversations")
 @UseGuards(JwtAuthGuard)
 export class MessagingController {
-  constructor(private readonly messagingService: MessagingService) {}
+  constructor(
+    private readonly messagingService: MessagingService,
+    private readonly mediaService: MediaService,
+  ) {}
+
+  @Post(":id/media/upload-signature")
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
+  async getMessageUploadSignature(
+    @CurrentUser("sub") userId: string,
+    @Param("id") conversationId: string,
+  ) {
+    await this.messagingService.getConversation(userId, conversationId);
+    return this.mediaService.generateUploadSignature("messages", userId, "image");
+  }
 
   @Get()
   @Throttle({ default: { limit: 120, ttl: 60000 } })

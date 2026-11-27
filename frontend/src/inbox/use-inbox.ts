@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { mergeById, readWindow, realtimeImpact } from "./model";
 import type { Page, WindowPage } from "./model";
+import { mergeById, readWindow, realtimeImpact } from "./model";
 
 type Work = "refresh" | "more";
 
@@ -16,6 +16,7 @@ export function usePages<T extends { id: string }>(
   const depth = useRef(1);
   const active = useRef<AbortController | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: revision and retry invalidate the page even when the loader identity is unchanged.
   useEffect(() => {
     const controller = new AbortController();
     active.current?.abort();
@@ -90,6 +91,7 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, revisi
   const [value, setValue] = useState<T | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: revision and retry explicitly request a fresh resource.
   useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
@@ -162,7 +164,7 @@ export function useWrite() {
     async <T>(
       request: (signal: AbortSignal) => Promise<T>,
       success: (result: T) => void,
-      fail: () => void,
+      fail: (error: unknown) => void,
     ) => {
       if (active.current) return;
       const controller = new AbortController();
@@ -170,8 +172,8 @@ export function useWrite() {
       try {
         const result = await request(controller.signal);
         if (!controller.signal.aborted) success(result);
-      } catch {
-        if (!controller.signal.aborted) fail();
+      } catch (error) {
+        if (!controller.signal.aborted) fail(error);
       } finally {
         if (active.current === controller) active.current = null;
       }

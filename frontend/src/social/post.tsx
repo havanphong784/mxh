@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { User } from "../session";
+import type { ActivePost, Post, PostChange, Toggle, Visibility } from "./model";
 import {
-  MAX_CONTENT,
-  VISIBILITIES,
   composePath,
   editPayload,
   isActive,
+  MAX_CONTENT,
   postPath,
   postToggle,
   profilePath,
   repostTarget,
+  VISIBILITIES,
 } from "./model";
-import type { ActivePost, Post, PostChange, Toggle, Visibility } from "./model";
 import { errorLabel } from "./requests";
 import { Avatar, Icon, MediaView, VisibilityPicker } from "./ui";
 
@@ -67,6 +67,7 @@ function EditPost({
       <label>
         Nội dung bài viết
         <textarea
+          // biome-ignore lint/a11y/noAutofocus: Opening the edit panel intentionally focuses its text input.
           autoFocus
           value={text}
           rows={4}
@@ -96,8 +97,9 @@ type CardProps = {
   change: (change: PostChange) => void;
   featured?: boolean;
   threaded?: boolean;
+  priority?: boolean;
 };
-export function PostCard({ post, user, change, featured, threaded }: CardProps) {
+export function PostCard({ post, user, change, featured, threaded, priority }: CardProps) {
   const target = repostTarget(post);
   const [panel, setPanel] = useState<"edit" | "delete" | null>(null);
   const [busy, setBusy] = useState<Toggle | "edit" | "delete" | null>(null);
@@ -248,7 +250,7 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
         disabled={busy !== null}
         onClick={() => void toggle(action)}
       >
-        <Icon name={action === "like" ? "heart" : action} />
+        <Icon name={action === "like" ? "heart" : action} active={active} />
         {count > 0 && <span>{countFormat.format(count)}</span>}
       </button>
     );
@@ -397,7 +399,7 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
                 </a>
               )}
               {target.content && <p className="social-post-copy">{target.content}</p>}
-              <MediaView media={target.media} />
+              <MediaView media={target.media} priority={priority} />
               {target.quotedPostId && (
                 <div className="social-quote">
                   {target.quotedPost ? (
@@ -425,6 +427,7 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
               <button
                 className="button"
                 type="button"
+                // biome-ignore lint/a11y/noAutofocus: Focus the safe cancel action in the confirmation dialog.
                 autoFocus
                 disabled={busy !== null}
                 onClick={closePanel}
@@ -456,7 +459,8 @@ export function PostCard({ post, user, change, featured, threaded }: CardProps) 
           {target.visibility !== "PUBLIC" && (
             <p className="social-visibility-note">{VISIBILITIES[target.visibility]}</p>
           )}
-          <footer className="social-post-actions" aria-label="Tương tác bài viết">
+          {/* biome-ignore lint/a11y/useSemanticElements: The post action group contains links and buttons rather than form fields. */}
+          <footer className="social-post-actions" role="group" aria-label="Tương tác bài viết">
             <a
               className="social-post-action"
               href={

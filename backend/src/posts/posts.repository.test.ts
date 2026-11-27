@@ -1,9 +1,9 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PostsRepository } from "./posts.repository.js";
-import { PostResponseMapper } from "./dto/post-response.dto.js";
 import { createOrmTestClient } from "../testing/orm-test-client.js";
+import { PostResponseMapper } from "./dto/post-response.dto.js";
+import { PostsRepository } from "./posts.repository.js";
 
 const author = {
   id: "author",
@@ -140,7 +140,7 @@ for (const method of [
       query: (plan) => (plan.ast.kind === "insert" ? [{ id: "quote" }] : [includedRow(plan)]),
     });
     const repo = new PostsRepository(prisma);
-    let result;
+    let result: Awaited<ReturnType<PostsRepository["findByIdForResponse"]>>;
     switch (method) {
       case "findByIdForResponse":
         result = await repo.findByIdForResponse("quote");

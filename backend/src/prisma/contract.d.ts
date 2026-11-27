@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'a5cd9d506ba3af6ac41e72f943dbff0e43cee16b42478712ed25da289f0ee751'>;
+  StorageHashBase<'5e1d1f5b91cc0a9849531488859029e7179d93d1caa0c328de7704dc00a6c764'>;
 export type ExecutionHash =
-  ExecutionHashBase<'57fedcf5bc62801fcafb3e2a0eb0ac0e047dd3e00b50646220a255308910a801'>;
+  ExecutionHashBase<'157f0e167c9c3861a9383ea3bb2ddb5209799f4486cc52e45516342a6e82b8e8'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -265,11 +265,27 @@ export type FieldOutputTypes = {
       readonly conversationId: CodecTypes['pg/text@1']['output'];
       readonly senderId: CodecTypes['pg/text@1']['output'];
       readonly clientMessageId: CodecTypes['pg/text@1']['output'];
-      readonly type: 'TEXT';
+      readonly type: 'TEXT' | 'IMAGE';
       readonly body: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly deletedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    };
+    readonly MessageMedia: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly messageId: CodecTypes['pg/text@1']['output'];
+      readonly publicId: CodecTypes['pg/text@1']['output'];
+      readonly url: CodecTypes['pg/text@1']['output'];
+      readonly width: CodecTypes['pg/int4@1']['output'];
+      readonly height: CodecTypes['pg/int4@1']['output'];
+      readonly format: CodecTypes['pg/text@1']['output'];
+      readonly bytes: CodecTypes['pg/int4@1']['output'];
+      readonly order: CodecTypes['pg/int4@1']['output'];
+    };
+    readonly MessageMediaDeletion: {
+      readonly publicId: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly Notification: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -385,11 +401,27 @@ export type FieldInputTypes = {
       readonly conversationId: CodecTypes['pg/text@1']['input'];
       readonly senderId: CodecTypes['pg/text@1']['input'];
       readonly clientMessageId: CodecTypes['pg/text@1']['input'];
-      readonly type: 'TEXT';
+      readonly type: 'TEXT' | 'IMAGE';
       readonly body: CodecTypes['pg/text@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly deletedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+    };
+    readonly MessageMedia: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly messageId: CodecTypes['pg/text@1']['input'];
+      readonly publicId: CodecTypes['pg/text@1']['input'];
+      readonly url: CodecTypes['pg/text@1']['input'];
+      readonly width: CodecTypes['pg/int4@1']['input'];
+      readonly height: CodecTypes['pg/int4@1']['input'];
+      readonly format: CodecTypes['pg/text@1']['input'];
+      readonly bytes: CodecTypes['pg/int4@1']['input'];
+      readonly order: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly MessageMediaDeletion: {
+      readonly publicId: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly Notification: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -509,7 +541,23 @@ export type StorageColumnTypes = {
       readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly senderId: CodecTypes['pg/text@1']['output'];
-      readonly type: 'TEXT';
+      readonly type: 'TEXT' | 'IMAGE';
+    };
+    readonly messageMedia: {
+      readonly bytes: CodecTypes['pg/int4@1']['output'];
+      readonly format: CodecTypes['pg/text@1']['output'];
+      readonly height: CodecTypes['pg/int4@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly messageId: CodecTypes['pg/text@1']['output'];
+      readonly order: CodecTypes['pg/int4@1']['output'];
+      readonly publicId: CodecTypes['pg/text@1']['output'];
+      readonly url: CodecTypes['pg/text@1']['output'];
+      readonly width: CodecTypes['pg/int4@1']['output'];
+    };
+    readonly messageMediaDeletion: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly publicId: CodecTypes['pg/text@1']['output'];
+      readonly status: CodecTypes['pg/text@1']['output'];
     };
     readonly notification: {
       readonly actorId: CodecTypes['pg/text@1']['output'];
@@ -629,7 +677,23 @@ export type StorageColumnInputTypes = {
       readonly editedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly senderId: CodecTypes['pg/text@1']['input'];
-      readonly type: 'TEXT';
+      readonly type: 'TEXT' | 'IMAGE';
+    };
+    readonly messageMedia: {
+      readonly bytes: CodecTypes['pg/int4@1']['input'];
+      readonly format: CodecTypes['pg/text@1']['input'];
+      readonly height: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly messageId: CodecTypes['pg/text@1']['input'];
+      readonly order: CodecTypes['pg/int4@1']['input'];
+      readonly publicId: CodecTypes['pg/text@1']['input'];
+      readonly url: CodecTypes['pg/text@1']['input'];
+      readonly width: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly messageMediaDeletion: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly publicId: CodecTypes['pg/text@1']['input'];
+      readonly status: CodecTypes['pg/text@1']['input'];
     };
     readonly notification: {
       readonly actorId: CodecTypes['pg/text@1']['input'];
@@ -907,14 +971,34 @@ export namespace Models {
     conversationId: CodecTypes['pg/text@1']['output'];
     senderId: CodecTypes['pg/text@1']['output'];
     clientMessageId: CodecTypes['pg/text@1']['output'];
-    type: 'TEXT';
+    type: 'TEXT' | 'IMAGE';
     body: CodecTypes['pg/text@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     editedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     deletedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     conversation: public_Conversation;
+    media: public_MessageMedia[];
     sender: public_User;
-    readonly [RelationKeys]?: 'conversation' | 'sender';
+    readonly [RelationKeys]?: 'conversation' | 'media' | 'sender';
+  };
+  export type public_MessageMedia = {
+    id: CodecTypes['pg/text@1']['output'];
+    messageId: CodecTypes['pg/text@1']['output'];
+    publicId: CodecTypes['pg/text@1']['output'];
+    url: CodecTypes['pg/text@1']['output'];
+    width: CodecTypes['pg/int4@1']['output'];
+    height: CodecTypes['pg/int4@1']['output'];
+    format: CodecTypes['pg/text@1']['output'];
+    bytes: CodecTypes['pg/int4@1']['output'];
+    order: CodecTypes['pg/int4@1']['output'];
+    message: public_Message;
+    readonly [RelationKeys]?: 'message';
+  };
+  export type public_MessageMediaDeletion = {
+    publicId: CodecTypes['pg/text@1']['output'];
+    status: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    readonly [RelationKeys]?: never;
   };
 }
 
@@ -932,6 +1016,8 @@ export declare const models: {
     Conversation: Models.public_Conversation;
     ConversationParticipant: Models.public_ConversationParticipant;
     Message: Models.public_Message;
+    MessageMedia: Models.public_MessageMedia;
+    MessageMediaDeletion: Models.public_MessageMediaDeletion;
   };
 };
 
@@ -1240,6 +1326,110 @@ type ContractBase = Omit<
                   };
                 },
               ];
+            };
+            readonly messageMedia: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly messageId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly publicId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly url: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly width: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly height: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly format: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly bytes: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly order: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [
+                { readonly columns: readonly ['publicId'] },
+                { readonly columns: readonly ['messageId', 'order'] },
+              ];
+              indexes: readonly [
+                {
+                  readonly name: 'messageMedia_messageId_idx_3cdded8d';
+                  readonly prefix: 'messageMedia_messageId_idx';
+                  readonly columns: readonly ['messageId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'messageMedia';
+                    readonly columns: readonly ['messageId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'message';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly messageMediaDeletion: {
+              columns: {
+                readonly publicId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'PENDING'>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['publicId'] };
+              uniques: readonly [];
+              indexes: readonly [];
+              foreignKeys: readonly [];
             };
             readonly notification: {
               columns: {
@@ -2083,7 +2273,10 @@ type ContractBase = Omit<
               readonly kind: 'valueSet';
               readonly values: readonly ['IMAGE', 'VIDEO', 'AUDIO'];
             };
-            readonly MessageType: { readonly kind: 'valueSet'; readonly values: readonly ['TEXT'] };
+            readonly MessageType: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['TEXT', 'IMAGE'];
+            };
             readonly NotificationType: {
               readonly kind: 'valueSet';
               readonly values: readonly ['LIKE', 'REPLY', 'REPOST', 'QUOTE', 'FOLLOW'];
@@ -2130,6 +2323,14 @@ type ContractBase = Omit<
       readonly model: 'ConversationParticipant';
     };
     readonly message: { readonly namespace: 'public' & NamespaceId; readonly model: 'Message' };
+    readonly messageMedia: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'MessageMedia';
+    };
+    readonly messageMediaDeletion: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'MessageMediaDeletion';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -2368,6 +2569,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly media: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'MessageMedia';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['messageId'];
+                };
+              };
               readonly sender: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
@@ -2391,6 +2603,104 @@ type ContractBase = Omit<
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly editedAt: { readonly column: 'editedAt' };
                 readonly deletedAt: { readonly column: 'deletedAt' };
+              };
+            };
+          };
+          readonly MessageMedia: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly messageId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly publicId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly url: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly width: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly height: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly format: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly bytes: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly order: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+            };
+            readonly relations: {
+              readonly message: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Message';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['messageId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'messageMedia';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly messageId: { readonly column: 'messageId' };
+                readonly publicId: { readonly column: 'publicId' };
+                readonly url: { readonly column: 'url' };
+                readonly width: { readonly column: 'width' };
+                readonly height: { readonly column: 'height' };
+                readonly format: { readonly column: 'format' };
+                readonly bytes: { readonly column: 'bytes' };
+                readonly order: { readonly column: 'order' };
+              };
+            };
+          };
+          readonly MessageMediaDeletion: {
+            readonly fields: {
+              readonly publicId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'messageMediaDeletion';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly publicId: { readonly column: 'publicId' };
+                readonly status: { readonly column: 'status' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -3224,7 +3534,10 @@ type ContractBase = Omit<
           };
           readonly MessageType: {
             readonly codecId: 'pg/text@1';
-            readonly members: readonly [{ readonly name: 'TEXT'; readonly value: 'TEXT' }];
+            readonly members: readonly [
+              { readonly name: 'TEXT'; readonly value: 'TEXT' },
+              { readonly name: 'IMAGE'; readonly value: 'IMAGE' },
+            ];
           };
           readonly PostVisibility: {
             readonly codecId: 'pg/text@1';
@@ -3300,6 +3613,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'message';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'cuid2' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'messageMedia';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'cuid2' };

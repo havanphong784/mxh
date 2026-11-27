@@ -8,7 +8,9 @@ Từ thư mục `backend`, đặt `MESSAGING_TEST_DATABASE_URL` tới database �
 MESSAGING_TEST_DATABASE_URL='postgresql://postgres:password@localhost:5432/mxh_test' npm run test:messaging:integration
 ```
 
-Lệnh từ chối host không phải loopback và từ chối `NODE_ENV=production`. Kiểm thử tự đặt `DATABASE_URL` theo biến trên, tạo các tài khoản fixture ngẫu nhiên rồi xóa chúng khi kết thúc; nó không tạo migration hoặc xóa schema. Kiểm thử đơn vị messaging không cần database: `npm run test:messaging`.
+Lệnh từ chối host không phải loopback và từ chối `NODE_ENV=production`. Kiểm thử tự đặt `DATABASE_URL` theo biến trên, tạo các tài khoản fixture ngẫu nhiên rồi xóa chúng khi kết thúc; nó không tạo migration hoặc xóa schema. Cần áp dụng migration `20261126T0229_message_media` trước khi chạy. Suite kiểm tra nhóm 5 ảnh, thứ tự/history/lastMessage, retry, cạnh tranh cleanup/gửi và socket typing không tăng unread; metadata Cloudinary được mock nên không xác nhận upload thật.
+
+`npm run test:messaging` không cần database. Ngoài unit tests, lệnh này khởi động Nest + Socket.IO trên cổng loopback tạm để kiểm tra đăng ký gateway, xác thực socket, cô lập người nhận và disconnect khi phiên bị thu hồi. Các nguồn dữ liệu phiên và membership trong bài transport này được thay thế bằng fixture; kiểm tra PostgreSQL thật vẫn dùng lệnh integration bên trên.
 
 # Dữ liệu mẫu để kiểm thử
 

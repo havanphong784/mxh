@@ -1,0 +1,137 @@
+/* Hallmark · shape: app screen · theme: teal (by request) · redesign: restyle · layout: preserved · v2.0.0 */
+/* Hallmark · critique: soft off-white/charcoal canvas, gently raised surfaces and restrained teal interaction states; verification recorded separately. */
+:root {
+  color-scheme: light dark;
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.75rem;
+  --text-caption: 0.75rem;
+  --text-body: 1rem;
+  --text-page-mobile: 1.375rem;
+  --text-display-s: 1.75rem;
+  --text-display: 2rem;
+  --text-section: 1.125rem;
+  --text-title: 1rem;
+  --text-lead: 1rem;
+  --paper: var(--color-paper);
+  --surface: var(--color-card);
+  --ink: var(--color-ink);
+  --muted: var(--color-muted);
+  --line: var(--color-rule);
+  --green: var(--color-accent-2);
+  --green-soft: var(--color-accent-soft);
+  --accent: var(--color-accent);
+  --warning: var(--color-error);
+  --body: var(--font-body);
+  --display: var(--font-display);
+  --color-overlay: light-dark(rgb(0 0 0 / 0.48), rgb(0 0 0 / 0.72));
+  --color-edge-strong: light-dark(#d4d4d4, #404040);
+  --color-danger-soft: light-dark(#fff1f2, #321c21);
+  --color-success-soft: var(--color-accent-soft);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --color-error: light-dark(#b42332, #f0a3aa);
+  --color-success: var(--color-accent-2);
+  --container: 1440px;
+  --gutter: 64px;
+  --gap-columns: 32px;
+  --section-gap-s: 120px;
+  --section-gap: 144px;
+  --section-gap-l: 176px;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+  --color-paper: light-dark(#f5f5f3, #161819);
+  --color-paper-2: light-dark(#eeefec, #242728);
+  --color-paper-3: light-dark(#e3e5e1, #303536);
+  --color-ink: light-dark(#252a29, #e6e9e7);
+  --color-ink-2: light-dark(#464e4b, #c6ceca);
+  --color-muted: light-dark(#626b67, #a4afaa);
+  --color-rule: light-dark(#dcdfda, #333a37);
+  --color-accent: light-dark(#286f65, #83c5b5);
+  --color-accent-deep: light-dark(#205c53, #a3d6c9);
+  --color-accent-ink: light-dark(#ffffff, #16352e);
+  --color-accent-soft: light-dark(#e3efea, #233b33);
+  --color-accent-2: var(--color-accent);
+  --color-accent-3: var(--color-accent-deep);
+  --color-mint: var(--color-accent-soft);
+  --color-mint-deep: var(--color-accent-2);
+  --color-focus: var(--color-accent);
+  --color-card: light-dark(#fcfcfa, #1d2021);
+  --color-edge: var(--color-rule);
+  --color-fringe: var(--color-card);
+  --color-kraft: var(--color-muted);
+  --color-sand: var(--color-paper-3);
+  --color-sugar: var(--color-paper-2);
+  --color-hill-1: var(--color-paper-2);
+  --color-hill-2: var(--color-paper-3);
+  --color-leaf: var(--color-ink-2);
+  --color-story-bg: var(--color-paper-2);
+  --color-story-ink: var(--color-ink);
+  --color-story-muted: var(--color-muted);
+  --font-display: "Noto Sans", "Segoe UI", Arial, sans-serif;
+  --font-body: var(--font-display);
+  --font-outlier: var(--font-body);
+  --radius-card: 24px;
+  --radius-stock: 16px;
+  --radius-input: 14px;
+  --radius-pill: 999px;
+  --rule-hair: 1px;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 12px 28px -14px rgb(0 0 0 / 0.18);
+  --shadow-paper: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1));
+  --tracking-display: -0.02em;
+  --display-weight: 600;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/noto-sans-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/noto-sans-medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/noto-sans-semibold.woff2") format("woff2");
+}

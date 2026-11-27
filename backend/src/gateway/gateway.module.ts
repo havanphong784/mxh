@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { EventsGateway } from "./events.gateway.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { EventsGateway } from "./events.gateway.js";
 
 @Module({
   imports: [AuthModule],

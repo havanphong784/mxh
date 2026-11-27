@@ -1,7 +1,15 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service.js";
-import { toContainsPattern } from "../common/search.js";
 import type { Temporal } from "@js-temporal/polyfill";
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import { toContainsPattern } from "../common/search.js";
+import { PrismaService } from "../prisma/prisma.service.js";
+
+export type ClaimedOtp = {
+  id: string;
+  codeHash: string;
+  attempts: number;
+  expiresAt: Temporal.Instant;
+  userId: string | null;
+};
 
 @Injectable()
 export class UsersRepository {
@@ -77,10 +85,32 @@ export class UsersRepository {
       .first();
   }
 
-  async incrementOtpAttempts(otpId: string, attempts: number) {
-    return this.prisma.client.orm.public.OtpVerification.where({
-      id: otpId,
-    }).update({ attempts });
+  async claimOtpAttempt(otpId: string): Promise<ClaimedOtp | null> {
+    const plan = this.prisma.client.raw.sql`
+      UPDATE "otpVerification"
+      SET "attempts" = "attempts" + 1
+      WHERE "id" = ${otpId}
+        AND "attempts" < 5
+        AND "expiresAt" > CURRENT_TIMESTAMP
+      RETURNING "id", "codeHash", "attempts", "expiresAt", "userId"
+    `
+      .returnsRow({
+        id: "pg/text@1",
+        codeHash: "pg/text@1",
+        attempts: "pg/int4@1",
+        expiresAt: "pg/timestamptz-temporal@1",
+        userId: { codecId: "pg/text@1", nullable: true },
+      })
+      .build();
+    const [row] = await this.prisma.client.runtime().query(plan);
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      codeHash: String(row.codeHash),
+      attempts: Number(row.attempts),
+      expiresAt: row.expiresAt as Temporal.Instant,
+      userId: row.userId ? String(row.userId) : null,
+    };
   }
 
   async createOtp(data: {
@@ -113,10 +143,11 @@ export class UsersRepository {
     },
   ) {
     return this.prisma.client.transaction(async (tx) => {
+      const consumed = await tx.orm.public.OtpVerification.where({ id: otpId }).deleteAndCount();
+      if (consumed !== 1) throw new ForbiddenException("Mã OTP đã được sử dụng.");
       await tx.orm.public.User.where((user) => user.email.eq(email)).update({
         isEmailVerified: true,
       });
-      await tx.orm.public.OtpVerification.where({ id: otpId }).delete();
       return tx.orm.public.Session.create(sessionData);
     });
   }
@@ -128,10 +159,11 @@ export class UsersRepository {
     passwordHash: string,
   ) {
     await this.prisma.client.transaction(async (tx) => {
+      const consumed = await tx.orm.public.OtpVerification.where({ id: otpId }).deleteAndCount();
+      if (consumed !== 1) throw new ForbiddenException("Mã OTP đã được sử dụng.");
       await tx.orm.public.User.where((user) => user.email.eq(email)).update({
         passwordHash,
       });
-      await tx.orm.public.OtpVerification.where({ id: otpId }).delete();
       if (userId) {
         await tx.orm.public.Session.where((session) => session.userId.eq(userId)).updateAndCount({
           isRevoked: true,

@@ -2,8 +2,8 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
-import { UsersRepository } from "./users.repository.js";
 import { createOrmTestClient } from "../testing/orm-test-client.js";
+import { UsersRepository } from "./users.repository.js";
 
 for (const resetPassword of [false, true]) {
   test(`${resetPassword ? "password reset" : "token reuse detection"} revokes all user sessions with a bulk update`, async () => {
@@ -48,6 +48,35 @@ for (const resetPassword of [false, true]) {
     assert.equal(revokedUsers.length, 1);
   });
 }
+
+test("claims one OTP attempt atomically and returns the claimed snapshot", async () => {
+  const expiresAt = new Date(Date.now() + 60_000);
+  const { prisma, plans } = createOrmTestClient({
+    query: () => [
+      {
+        id: "otp-id",
+        codeHash: "hash",
+        attempts: 5,
+        expiresAt,
+        userId: "user-id",
+      },
+    ],
+  });
+  const repository = new UsersRepository(prisma);
+
+  const claimed = await repository.claimOtpAttempt("otp-id");
+
+  assert.deepEqual(claimed, {
+    id: "otp-id",
+    codeHash: "hash",
+    attempts: 5,
+    expiresAt,
+    userId: "user-id",
+  });
+  assert.equal(plans.length, 1);
+  assert.match(JSON.stringify(plans[0].ast), /attempts/);
+  assert.match(JSON.stringify(plans[0].ast), /CURRENT_TIMESTAMP/);
+});
 
 for (const method of ["listFollowers", "listFollowing"] as const) {
   test(`${method} compiles a service cursor using the actual follow column`, async () => {

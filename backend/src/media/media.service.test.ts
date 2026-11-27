@@ -1,10 +1,10 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { test } from "node:test";
+import { HttpException } from "@nestjs/common";
 import { v2 as cloudinary } from "cloudinary";
 import { MediaService } from "./media.service.js";
-import crypto from "node:crypto";
-import { HttpException } from "@nestjs/common";
 
 test("video-backed media is deleted with Cloudinary resource_type video", async (t) => {
   const originalDestroy = cloudinary.uploader.destroy;

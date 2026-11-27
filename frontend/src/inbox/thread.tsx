@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { markThreadRead, readConversation, readThread, sendMessage } from "./data";
-import { mergeById, messageDraft } from "./model";
+import type { MessageMediaInput } from "./media";
+import { MessageMedia } from "./message-media";
 import type { MessageDraft } from "./model";
-import { usePages, useResource, useWrite } from "./use-inbox";
+import { mergeById, messageDraft } from "./model";
 import { Avatar, Icon, Pager, Status, Time } from "./ui";
+import { usePages, useResource, useWrite } from "./use-inbox";
+import { useMessageMedia } from "./use-message-media";
+import { useTyping } from "./use-typing";
 
 export function Thread({
   id,
@@ -32,8 +36,11 @@ export function Thread({
       return "";
     }
   });
+  const attachments = useMessageMedia(id);
+  const sendingLock = useRef(false);
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
+  const [sendError, setSendError] = useState("");
   const pendingDraft = useRef<MessageDraft | null>(null);
   const write = useWrite();
   const read = useWrite();
@@ -45,6 +52,7 @@ export function Thread({
   const [readFailed, setReadFailed] = useState(false);
   const messages = history.page?.items;
   const peer = conversation.value?.participant;
+  const typing = useTyping(id, userId, peer?.id);
   // The read endpoint marks through server time; only call it when the newest
   // loaded message is visible and the document is not in a background tab.
   const latest = messages?.at(-1);
@@ -100,6 +108,7 @@ export function Thread({
     read,
   ]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message changes trigger scroll restoration after the DOM renders the new history.
   useLayoutEffect(() => {
     const element = log.current;
     if (!element) return;
@@ -112,17 +121,39 @@ export function Thread({
     }
   }, [messages, atEnd]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (sending) return;
-    const request = messageDraft(draft, pendingDraft.current, () => {
-      const bytes = crypto.getRandomValues(new Uint8Array(16));
-      return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    });
-    if (!request) return;
-    pendingDraft.current = request;
+    if (sendingLock.current || attachments.busy || (!draft.trim() && !attachments.items.length))
+      return;
+    typing.stop();
+    sendingLock.current = true;
     setSending(true);
     setSendFailed(false);
+    setSendError("");
+    let media: MessageMediaInput[];
+    try {
+      media = await attachments.uploadAll();
+    } catch {
+      sendingLock.current = false;
+      setSending(false);
+      setSendFailed(true);
+      return;
+    }
+    const request = messageDraft(
+      draft,
+      pendingDraft.current,
+      () => {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+      },
+      media,
+    );
+    if (!request) {
+      sendingLock.current = false;
+      setSending(false);
+      return;
+    }
+    pendingDraft.current = request;
     void write(
       (signal) => sendMessage(id, request, signal),
       (message) => {
@@ -134,17 +165,21 @@ export function Thread({
         );
         history.reload();
         setDraft("");
+        attachments.clear();
         try {
           sessionStorage.removeItem(draftKey);
         } catch {
           // Ignore unavailable storage after a successful message.
         }
+        sendingLock.current = false;
         setSending(false);
         onActivity();
       },
-      () => {
+      (error) => {
+        sendingLock.current = false;
         setSending(false);
         setSendFailed(true);
+        setSendError(error instanceof Error ? error.message : "");
       },
     );
   }
@@ -167,7 +202,13 @@ export function Thread({
         {peer && <Avatar person={peer} />}
         <div className="mx-inbox-person">
           <h2>{peer?.displayName || peer?.username || "Cuộc trò chuyện"}</h2>
-          {peer && <p>@{peer.username}</p>}
+          {peer && (
+            <p className="mx-inbox-typing" aria-live="polite">
+              {typing.isPeerTyping
+                ? `${peer.displayName || peer.username} đang nhập…`
+                : `@${peer.username}`}
+            </p>
+          )}
         </div>
       </header>
       {conversation.failed && (
@@ -205,6 +246,7 @@ export function Thread({
                     message.body
                   )}
                 </p>
+                {!message.deletedAt && <MessageMedia items={message.media ?? []} />}
                 <Time value={message.createdAt} />
               </li>
             ))}
@@ -230,6 +272,59 @@ export function Thread({
       )}
       {history.page && peer && (
         <form className="mx-inbox-form mx-inbox-reply" onSubmit={submit}>
+          <div className="mx-message-attachments">
+            {attachments.items.map((item, index) => (
+              <div key={item.id}>
+                <img src={item.preview} alt={`Ảnh chờ gửi ${index + 1}`} />
+                <button
+                  className="button"
+                  type="button"
+                  aria-label={`Bỏ ảnh ${index + 1}`}
+                  disabled={sending}
+                  onClick={() => attachments.remove(item.id)}
+                >
+                  ×
+                </button>
+                {item.state === "uploading" && (
+                  <progress
+                    max={100}
+                    value={item.progress}
+                    aria-label={`Đang tải ảnh ${index + 1}`}
+                  />
+                )}
+                {item.state === "ready" && <span>Đã tải lên</span>}
+                {item.state === "error" && (
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={sending || attachments.busy}
+                    onClick={() => void attachments.retry(item.id)}
+                  >
+                    Thử lại ảnh {index + 1}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <label className="mx-message-picker">
+            Thêm ảnh
+            <input
+              aria-label="Thêm ảnh"
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              disabled={sending || attachments.busy || attachments.items.length >= 5}
+              onChange={(event) => {
+                attachments.add(Array.from(event.target.files ?? []));
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {attachments.error && (
+            <p role="alert" className="mx-inbox-error">
+              {attachments.error}
+            </p>
+          )}
           <label htmlFor="mx-inbox-draft">Tin nhắn</label>
           <textarea
             id="mx-inbox-draft"
@@ -240,19 +335,21 @@ export function Thread({
             readOnly={sending}
             onChange={(event) => {
               setDraft(event.target.value);
+              typing.changed(event.target.value);
               setSendFailed(false);
             }}
           />
           <button
             type="submit"
             className="button button-primary"
-            disabled={sending || !draft.trim()}
+            disabled={sending || attachments.busy || (!draft.trim() && !attachments.items.length)}
           >
             <Icon name="send" /> {sending ? "Đang gửi…" : "Gửi"}
           </button>
           {sendFailed && (
             <p className="mx-inbox-error" role="alert">
-              Không thể gửi tin nhắn. Tin nhắn vẫn ở ô soạn; hãy thử gửi lại.
+              Không thể gửi tin nhắn. {sendError && `${sendError} `}Nội dung và ảnh vẫn được giữ;
+              hãy thử gửi lại.
             </p>
           )}
         </form>

@@ -1,15 +1,16 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as crypto from "node:crypto";
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { test } from "node:test";
 import { Temporal } from "@js-temporal/polyfill";
-import { PostsService } from "./posts.service.js";
-import { UsersService } from "../users/users.service.js";
-import { UsersRepository } from "../users/users.repository.js";
-import { PostsRepository } from "./posts.repository.js";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import { MediaService } from "../media/media.service.js";
+import { UsersRepository } from "../users/users.repository.js";
+import { UsersService } from "../users/users.service.js";
 import type { ActivePostResponseDto } from "./dto/post-response.dto.js";
+import { PostsRepository } from "./posts.repository.js";
+import { PostsService } from "./posts.service.js";
 
 function createPostsService(prisma: any, media: any, events: any): PostsService {
   const users = new UsersService(new UsersRepository(prisma), media, events);
@@ -81,6 +82,73 @@ test("post creation persists through PostsRepository before emitting its event",
   assert.deepEqual(actions, ["create", "event"]);
 });
 
+for (const [name, marked, visibility] of [
+  ["update_response_preserves_viewer_marks", true, "PUBLIC"],
+  ["update_response_without_marks_remains_false", false, "PUBLIC"],
+  ["update_visibility_response_matches_authenticated_detail", true, "PRIVATE"],
+] as const) {
+  test(name, async () => {
+    let post = postFixture({
+      id: "edited",
+      authorId: "author-id",
+      parentId: null,
+      rootId: null,
+      visibility: "PUBLIC",
+    });
+    const mark = marked ? [{ postId: "edited" }] : [];
+    const marks = { likes: mark, reposts: mark, bookmarks: mark };
+    const writes: string[] = [];
+    const repository = {
+      async findByIdWithAuthorAndMedia() {
+        return post;
+      },
+      async findByIdForResponse() {
+        return post;
+      },
+      async findViewerMarks(viewerId: string, postIds: string[]) {
+        assert.equal(viewerId, "author-id");
+        assert.deepEqual(postIds, ["edited"]);
+        return marks;
+      },
+      async updatePostAndReplies(
+        id: string,
+        payload: Record<string, unknown>,
+        nextVisibility?: string,
+      ) {
+        assert.equal(id, "edited");
+        assert.equal(nextVisibility, visibility);
+        writes.push("post-update");
+        post = { ...post, ...payload };
+      },
+    };
+    const service = new PostsService(
+      repository as unknown as PostsRepository,
+      {} as MediaService,
+      {} as EventEmitter2,
+      { async ensureActiveUser() {} } as unknown as UsersService,
+    );
+    const before = structuredClone(marks);
+    const updated = await service.updatePost("edited", "author-id", {
+      content: "edited content",
+      visibility,
+    });
+    const detail = await service.getPostById("edited", "author-id");
+    assert.equal(updated.isDeleted, false);
+    assert.equal(detail.isDeleted, false);
+    if (!("interactions" in updated) || !("interactions" in detail))
+      throw new Error("Expected active post");
+    assert.deepEqual(updated.interactions, {
+      isLiked: marked,
+      isReposted: marked,
+      isBookmarked: marked,
+    });
+    assert.deepEqual(updated, detail);
+    assert.equal(updated.visibility, visibility);
+    assert.deepEqual(writes, ["post-update"]);
+    assert.deepEqual(marks, before);
+  });
+}
+
 test("post editing reads and writes through PostsRepository", async () => {
   const post = postFixture({
     id: "post-id",
@@ -99,6 +167,9 @@ test("post editing reads and writes through PostsRepository", async () => {
     },
     async findByIdForResponse() {
       return { ...post, content: updatedContent };
+    },
+    async findViewerMarks() {
+      return { likes: [], reposts: [], bookmarks: [] };
     },
   };
   const users = { async ensureActiveUser() {} };
@@ -377,7 +448,7 @@ test("counter reconciliation reads and writes through PostsRepository", async ()
   const post = postFixture({ id: "post-id", likeCount: 0 });
   let updated = 0;
   const repository = {
-    async listActivePosts() {
+    async listPostsForCounterReconciliation() {
       return [post];
     },
     async countPostRelationsForPosts() {
@@ -411,7 +482,7 @@ test("counter reconciliation batches changed posts and skips unchanged posts", a
   );
   const writes: Array<Array<{ postId: string; likeCount: number }>> = [];
   const repository = {
-    listActivePosts: async () => posts,
+    listPostsForCounterReconciliation: async () => posts,
     countPostRelationsForPosts: async (ids: string[]) => {
       assert.ok(ids.length <= 500);
       return new Map(ids.map((id) => [id, counts]));
@@ -632,7 +703,7 @@ test("changing root visibility propagates to every reply in the thread", async (
         },
         async updateAndCount(payload: Record<string, unknown>) {
           const matched = rows.filter(matches);
-          matched.forEach((row) => Object.assign(row, payload));
+          matched.forEach((row) => void Object.assign(row, payload));
           return matched.length;
         },
       };
@@ -653,7 +724,15 @@ test("changing root visibility propagates to every reply in the thread", async (
       return callback({ orm: client.orm });
     },
   };
-  const service = createPostsService({ client } as any, {} as any, {} as any);
+  const prisma = { client } as ConstructorParameters<typeof PostsRepository>[0];
+  const repository = new PostsRepository(prisma);
+  repository.findViewerMarks = async () => ({ likes: [], reposts: [], bookmarks: [] });
+  const service = new PostsService(
+    repository,
+    {} as MediaService,
+    {} as EventEmitter2,
+    new UsersService(new UsersRepository(prisma), {} as MediaService, {} as EventEmitter2),
+  );
 
   await service.updatePost("root-id", "root-author", { visibility: "PRIVATE" });
 
@@ -894,7 +973,15 @@ test("updating a pure repost reloads the embedded original post", async () => {
       return callback({ orm: client.orm });
     },
   };
-  const service = createPostsService({ client } as any, {} as any, {} as any);
+  const prisma = { client } as ConstructorParameters<typeof PostsRepository>[0];
+  const repository = new PostsRepository(prisma);
+  repository.findViewerMarks = async () => ({ likes: [], reposts: [], bookmarks: [] });
+  const service = new PostsService(
+    repository,
+    {} as MediaService,
+    {} as EventEmitter2,
+    new UsersService(new UsersRepository(prisma), {} as MediaService, {} as EventEmitter2),
+  );
 
   const response = (await service.updatePost(
     "repost-id",

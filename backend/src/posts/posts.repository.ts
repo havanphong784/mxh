@@ -1,8 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service.js";
-import type { VerifiedMediaItem } from "../media/media.service.js";
 import type { Temporal } from "@js-temporal/polyfill";
+import { Injectable } from "@nestjs/common";
 import { toContainsPattern } from "../common/search.js";
+import type { VerifiedMediaItem } from "../media/media.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class PostsRepository {
@@ -526,6 +526,11 @@ export class PostsRepository {
     return query.all();
   }
 
+  async listPostsForCounterReconciliation(targetPostId?: string) {
+    const query = targetPostId ? this.post.where({ id: targetPostId }) : this.post;
+    return query.all();
+  }
+
   async countPostRelations(postId: string) {
     const [likes, bookmarks, reposts, quotes, replies] = await Promise.all([
       this.like
@@ -544,7 +549,6 @@ export class PostsRepository {
         .aggregate((item) => ({ total: item.count() })),
       this.post
         .where((post) => post.parentId.eq(postId))
-        .where((post) => post.isDeleted.eq(false))
         .aggregate((item) => ({ total: item.count() })),
     ]);
     return {
@@ -588,7 +592,6 @@ export class PostsRepository {
         .aggregate((aggregate) => ({ count: aggregate.count() })),
       this.post
         .where((item) => item.parentId.in(postIds))
-        .where((item) => item.isDeleted.eq(false))
         .groupBy("parentId")
         .aggregate((aggregate) => ({ count: aggregate.count() })),
     ]);
@@ -652,15 +655,27 @@ export class PostsRepository {
     },
   ) {
     await this.prisma.client.transaction(async (tx) => {
+      // FK inserts take KEY SHARE. Wait for them before a fresh relation read;
+      // a single DELETE snapshot could otherwise miss a just-committed reply.
+      const lock = this.prisma.client.raw.sql`SELECT id FROM "post" WHERE id = ${postId} FOR UPDATE`
+        .returnsRow({ id: "pg/text@1" })
+        .build();
+      await tx.execute(lock);
+      const current = await tx.orm.public.Post.where({ id: postId }).first();
+      if (!current || current.isDeleted) return;
       const repliesCount = await tx.orm.public.Post.where((reply) =>
         reply.parentId.eq(postId),
       ).aggregate((aggregate) => ({ total: aggregate.count() }));
-      const hasReplies = Number(repliesCount.total) > 0;
+      const rootReferences = await tx.orm.public.Post.where((reply) =>
+        reply.rootId.eq(postId),
+      ).aggregate((aggregate) => ({ total: aggregate.count() }));
+      const hasReplies = Number(repliesCount.total) > 0 || Number(rootReferences.total) > 0;
 
       if (hasReplies) {
         await tx.orm.public.Post.where({ id: postId }).update({
           isDeleted: true,
           content: null,
+          replyCount: Number(repliesCount.total),
         });
         await tx.orm.public.PostMedia.where((media) => media.postId.eq(postId)).deleteAndCount();
         await tx.orm.public.PostLike.where((like) => like.postId.eq(postId)).deleteAndCount();
@@ -796,20 +811,25 @@ export class PostsRepository {
   private async cleanupParentTombstone(tx: any, parentId: string) {
     let currentId: string | null = parentId;
     while (currentId) {
-      const plan = this.prisma.client.raw.sql`
-        UPDATE "post" SET "replyCount" = GREATEST(0, "replyCount" - 1)
-        WHERE id = ${currentId}
-      `
-        .affectedCount()
+      const nodeId: string = currentId;
+      const lock = this.prisma.client.raw.sql`SELECT id FROM "post" WHERE id = ${nodeId} FOR UPDATE`
+        .returnsRow({ id: "pg/text@1" })
         .build();
-      await tx.execute(plan);
-      const parent: any = await tx.orm.public.Post.where({
-        id: currentId,
-      }).first();
-      if (parent && parent.isDeleted && parent.replyCount === 0) {
-        await tx.orm.public.Post.where({ id: currentId }).delete();
+      await tx.execute(lock);
+      const parent = await tx.orm.public.Post.where({ id: nodeId }).first();
+      if (!parent) break;
+      const replies = await tx.orm.public.Post.where({ parentId: nodeId }).aggregate(
+        (item: any) => ({ total: item.count() }),
+      );
+      const rootReferences = await tx.orm.public.Post.where({ rootId: nodeId }).aggregate(
+        (item: any) => ({ total: item.count() }),
+      );
+      const replyCount = Number(replies.total);
+      if (parent.isDeleted && replyCount === 0 && Number(rootReferences.total) === 0) {
+        await tx.orm.public.Post.where({ id: nodeId }).delete();
         currentId = parent.parentId;
       } else {
+        await tx.orm.public.Post.where({ id: nodeId }).update({ replyCount });
         break;
       }
     }

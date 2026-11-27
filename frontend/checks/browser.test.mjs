@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { checkAuth } from "./auth-browser.mjs";
+import { checkInbox } from "./inbox-browser.mjs";
+
 const browser = await chromium.launch({ headless: true });
 const account = {
   id: "person1",
@@ -15,6 +18,7 @@ const account = {
 let requests = 0;
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
+page.setDefaultTimeout(5000);
 await page.route("**/socket.io/**", (route) => route.fulfill({ status: 503 }));
 await page.routeWebSocket("**/socket.io/**", (socket) => socket.close());
 let loginBody;
@@ -59,6 +63,8 @@ try {
   await page.goBack();
   await page.waitForURL("**/");
   if (process.env.MXH_SHOTS) await page.screenshot({ path: `${process.env.MXH_SHOTS}/mobile.png` });
+  await checkInbox(page, process.env.MXH_TEST_URL || "http://localhost:3000");
+  await checkAuth(browser, process.env.MXH_TEST_URL || "http://localhost:3000");
   console.log("Browser: login payload, session transition, mobile navigation and viewport passed");
 } finally {
   await browser.close();

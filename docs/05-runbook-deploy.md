@@ -367,14 +367,30 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
 - **Hiện tượng**: Bài viết hiển thị `likeCount: 15` nhưng khi mở danh sách chỉ có 10 người thích, hoặc `replyCount` bị âm / không khớp thực tế.
 - **Nguyên nhân tiềm ẩn**: Sự cố mạng giữa chừng khi cập nhật bài viết con, hoặc dữ liệu seed/test chưa được đối soát.
 - **Quy trình xử lý (SOP)**:
-  1. Chạy script đối soát và tự động chữa lành bộ đếm (đã tích hợp sẵn trong repo):
+  1. Xác nhận `DATABASE_URL` trỏ đúng môi trường, có backup và được phép cập nhật trước khi chạy đối soát. Lệnh sau ghi lại counter, không phải dry-run:
 
      ```bash
      cd backend
      npm run reconcile:counters
      ```
-  2. Script sẽ quét toàn bộ bảng `Post`, đếm lại chính xác số lượng từ các bảng quan hệ thực tế (`PostLike`, `PostBookmark`, `PostReplies`, `PostReposts`) và cập nhật lại giá trị chuẩn xác vào từng dòng `Post`.
-  3. Kiểm tra log kết quả: Toàn bộ các bài bị lệch số sẽ được ghi nhận và đưa về đúng thực tế.
+  2. Script đối soát cả bài active và tombstone còn giữ. `replyCount` là số **direct reply rows còn tồn tại**, gồm tombstone cần giữ cho descendants; không phải tổng replies còn hiển thị. Các counter tương tác khác vẫn đếm quan hệ tương ứng.
+  3. Kiểm tra `totalScanned` và `correctedCount` trong log. Cleanup/purge chỉ hard-delete tombstone không còn row tham chiếu `parentId` hoặc `rootId`, sau khi lấy row lock trong transaction; counter bằng 0 không đủ để cho phép xóa.
+
+  Trước repair dữ liệu cũ, có thể chạy truy vấn chỉ đọc sau để tìm quan hệ thiếu và visibility lệch với root:
+
+  ```sql
+  SELECT p.id, p."parentId", p."rootId", p.visibility,
+         r.visibility AS "rootVisibility"
+  FROM "post" p
+  LEFT JOIN "post" parent ON parent.id = p."parentId"
+  LEFT JOIN "post" r ON r.id = p."rootId"
+  WHERE (p."parentId" IS NOT NULL AND parent.id IS NULL)
+     OR (p."rootId" IS NOT NULL AND r.id IS NULL)
+     OR (p."parentId" IS NOT NULL AND p."rootId" IS NULL)
+     OR (r.id IS NOT NULL AND p.visibility <> r.visibility);
+  ```
+
+  FK `ON DELETE SET NULL` có thể đã xóa cả hai ID của row từng là reply; truy vấn này không thể nhận ra mọi trường hợp đó. Đối chiếu backup/audit trail để xác định cây và quyền gốc trước khi khôi phục. Không suy đoán root từ tác giả hoặc tự thay visibility hàng loạt. Bản sửa cleanup ngăn mất liên kết mới, không tự phục hồi liên kết đã mất.
 
 ---
 
@@ -421,7 +437,30 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
 
 ---
 
-## 6. Danh Mục Kiểm Tra Khi Bàn Giao & Vận Hành (Operational Readiness Checklist)
+## 6. Dọn ảnh tin nhắn không được gửi
+
+Sau khi triển khai migration `20261126T0229_message_media`, dùng script từ thư mục gốc repo:
+
+```sh
+# Mặc định chỉ thống kê, không xóa ảnh hoặc tạo reservation.
+npm run purge:message-media -w backend
+# Xem kết quả dry-run trước khi bật xóa thật.
+npm run purge:message-media -w backend -- --apply
+```
+
+Script chỉ xét ảnh trong `mxh/{userId}/messages/` cũ hơn 24 giờ, đọc inventory theo trang. `candidates` là số ảnh cũ cần kiểm tra, có thể gồm ảnh đã gắn vào tin; `deleted` chỉ tăng khi xóa thành công. Ảnh đã được tham chiếu trong `MessageMedia` được bỏ qua khi kiểm tra dưới khóa PostgreSQL. Không áp dụng script này cho posts, avatars hoặc banners.
+
+Cleanup và gửi tin dùng cùng advisory transaction lock theo publicId. Cleanup ghi reservation `PENDING` rồi commit trước khi gọi Cloudinary; gửi tin từ chối ảnh đã có reservation. Khi Cloudinary lỗi, hoặc đã xóa nhưng bước cập nhật DB lỗi, lần chạy kế tiếp đọc lại `PENDING` từ DB để retry. Cloudinary trả `not found` được coi là xóa thành công. Không xóa thủ công reservation để tái sử dụng publicId; cần upload một ảnh mới. Script trả exit code khác 0 nếu có ảnh xử lý lỗi.
+
+Có thể cấu hình cron hàng ngày trên máy triển khai, sau khi kiểm tra dry-run bằng cùng môi trường và tài khoản chạy ứng dụng. Ví dụ (thay `/srv/mxh` và bảo đảm PATH có Node/npm):
+
+```cron
+30 2 * * * cd /srv/mxh && npm run purge:message-media -w backend -- --apply >> /var/log/mxh-message-media.log 2>&1
+```
+
+Theo dõi `failed` và số reservation `PENDING`; sửa kết nối Cloudinary/PostgreSQL rồi chạy lại cùng lệnh. Không giữ transaction trong network I/O. Cron ví dụ chỉ là hướng dẫn; tác vụ phát triển không tự cài lịch vào máy.
+
+## 7. Danh Mục Kiểm Tra Khi Bàn Giao & Vận Hành (Operational Readiness Checklist)
 
 Trước khi công bố dịch vụ cho người dùng chính thức (Go-Live):
 

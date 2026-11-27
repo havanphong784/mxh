@@ -12,6 +12,7 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>) {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const request = useRef(load);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt explicitly reruns the failed request.
   useEffect(() => {
     const controller = new AbortController();
     request

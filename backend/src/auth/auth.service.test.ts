@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
+import * as crypto from "node:crypto";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
-import * as crypto from "node:crypto";
-import { AuthService } from "./auth.service.js";
-import { UsersAuthService } from "../users/users-auth.service.js";
 import { UsersRepository } from "../users/users.repository.js";
+import { UsersAuthService } from "../users/users-auth.service.js";
+import { AuthService } from "./auth.service.js";
 
 function createAuthService(
   prisma: any,
@@ -15,12 +15,22 @@ function createAuthService(
   users?: any,
   usersAuth?: any,
 ) {
+  const repository = new UsersRepository(prisma);
+  // Legacy transaction fixtures model ORM operations only. Atomic SQL is covered
+  // by repository tests and the opt-in PostgreSQL integration, not this double.
+  if (prisma.client?.orm?.public?.OtpVerification && !prisma.client.raw) {
+    repository.claimOtpAttempt = async () =>
+      prisma.client.orm.public.OtpVerification.where().where().orderBy().first();
+  }
+  if (usersAuth?.findLatestOtp && !usersAuth.claimOtpAttempt) {
+    usersAuth.claimOtpAttempt = () => usersAuth.findLatestOtp();
+  }
   return new AuthService(
     mail,
     jwt,
     events,
     users ?? ({} as any),
-    usersAuth ?? new UsersAuthService(new UsersRepository(prisma)),
+    usersAuth ?? new UsersAuthService(repository),
   );
 }
 
@@ -174,6 +184,44 @@ test("OTP verification activates the account through the Users auth facade", asy
   const result = await service.verifyOtp({ email: account.email, code: "123456" }, {});
   assert.equal(result.user.isEmailVerified, true);
   assert.equal(result.accessToken, "access-token");
+});
+
+test("OTP verification compares against an atomic claim instead of incrementing a stale snapshot", async () => {
+  const otp = {
+    id: "otp-id",
+    codeHash: crypto.createHash("sha256").update("654321").digest("hex"),
+    attempts: 4,
+    expiresAt: new Date(Date.now() + 60_000),
+    userId: "user-id",
+  };
+  let claimed = 0;
+  const usersAuth = {
+    async findLatestOtp() {
+      return otp;
+    },
+    async claimOtpAttempt(id: string) {
+      assert.equal(id, otp.id);
+      claimed++;
+      return { ...otp, attempts: 5 };
+    },
+    async incrementOtpAttempts() {
+      throw new Error("stale snapshot increment used");
+    },
+  };
+  const service = createAuthService(
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    usersAuth as any,
+  );
+
+  await assert.rejects(
+    service.verifyOtp({ email: "user@example.test", code: "123456" }, {}),
+    BadRequestException,
+  );
+  assert.equal(claimed, 1);
 });
 
 test("resend OTP stores the new code through the Users auth facade", async () => {
@@ -665,7 +713,7 @@ test("OTP verification rolls back account activation when OTP deletion fails", a
         async first() {
           return otp;
         },
-        async delete() {
+        async deleteAndCount() {
           throw new Error("OTP delete failed");
         },
       };
@@ -733,7 +781,7 @@ test("password reset rolls back password change when OTP deletion fails", async 
         async first() {
           return otp;
         },
-        async delete() {
+        async deleteAndCount() {
           throw new Error("OTP delete failed");
         },
       };
@@ -928,7 +976,9 @@ test("OTP verification returns the newly verified account state", async () => {
         async first() {
           return otp;
         },
-        async delete() {},
+        async deleteAndCount() {
+          return 1;
+        },
       };
       return query;
     },
@@ -994,7 +1044,9 @@ test("OTP verification rolls back activation if session creation fails", async (
         async first() {
           return otp;
         },
-        async delete() {},
+        async deleteAndCount() {
+          return 1;
+        },
       };
       return query;
     },

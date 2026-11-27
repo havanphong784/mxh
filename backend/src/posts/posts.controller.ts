@@ -12,18 +12,18 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { PostsService } from "./posts.service.js";
-import { CreatePostDto } from "./dto/create-post.dto.js";
-import { UpdatePostDto } from "./dto/update-post.dto.js";
+import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard.js";
-import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
-import { CursorPaginationDto } from "./dto/cursor-pagination.dto.js";
-import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
-import { SearchQueryDto } from "../common/dto/search-query.dto.js";
-import { ExploreQueryDto } from "./dto/explore-query.dto.js";
 import type { CursorPage, OffsetPage } from "../common/dto/cursor-page.dto.js";
+import { SearchQueryDto } from "../common/dto/search-query.dto.js";
+import { CreatePostDto } from "./dto/create-post.dto.js";
+import { CursorPaginationDto } from "./dto/cursor-pagination.dto.js";
+import { ExploreQueryDto } from "./dto/explore-query.dto.js";
+import { OffsetPaginationDto } from "./dto/offset-pagination.dto.js";
 import type { PostLikesResponseDto, PostResponseDto } from "./dto/post-response.dto.js";
+import { UpdatePostDto } from "./dto/update-post.dto.js";
+import { PostsService } from "./posts.service.js";
 
 @Controller("posts")
 export class PostsController {

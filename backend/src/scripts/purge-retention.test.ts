@@ -6,6 +6,7 @@ import { executePurgeRetention } from "./purge-retention.js";
 test("executePurgeRetention deletes expired OTPs, revoked sessions, old read notifications, and orphan tombstone posts", async () => {
   let executedQueries = 0;
   const mockTx = {
+    query: async () => [{ id: "tombstone" }],
     execute: async (_plan: any) => {
       executedQueries++;
       return { affectedRows: 2 };
@@ -17,6 +18,9 @@ test("executePurgeRetention deletes expired OTPs, revoked sessions, old read not
       raw: {
         sql: () => ({
           affectedCount: () => ({
+            build: () => ({}),
+          }),
+          returnsRow: () => ({
             build: () => ({}),
           }),
         }),
