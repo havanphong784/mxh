@@ -367,14 +367,30 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
 - **Hiện tượng**: Bài viết hiển thị `likeCount: 15` nhưng khi mở danh sách chỉ có 10 người thích, hoặc `replyCount` bị âm / không khớp thực tế.
 - **Nguyên nhân tiềm ẩn**: Sự cố mạng giữa chừng khi cập nhật bài viết con, hoặc dữ liệu seed/test chưa được đối soát.
 - **Quy trình xử lý (SOP)**:
-  1. Chạy script đối soát và tự động chữa lành bộ đếm (đã tích hợp sẵn trong repo):
+  1. Xác nhận `DATABASE_URL` trỏ đúng môi trường, có backup và được phép cập nhật trước khi chạy đối soát. Lệnh sau ghi lại counter, không phải dry-run:
 
      ```bash
      cd backend
      npm run reconcile:counters
      ```
-  2. Script sẽ quét toàn bộ bảng `Post`, đếm lại chính xác số lượng từ các bảng quan hệ thực tế (`PostLike`, `PostBookmark`, `PostReplies`, `PostReposts`) và cập nhật lại giá trị chuẩn xác vào từng dòng `Post`.
-  3. Kiểm tra log kết quả: Toàn bộ các bài bị lệch số sẽ được ghi nhận và đưa về đúng thực tế.
+  2. Script đối soát cả bài active và tombstone còn giữ. `replyCount` là số **direct reply rows còn tồn tại**, gồm tombstone cần giữ cho descendants; không phải tổng replies còn hiển thị. Các counter tương tác khác vẫn đếm quan hệ tương ứng.
+  3. Kiểm tra `totalScanned` và `correctedCount` trong log. Cleanup/purge chỉ hard-delete tombstone không còn row tham chiếu `parentId` hoặc `rootId`, sau khi lấy row lock trong transaction; counter bằng 0 không đủ để cho phép xóa.
+
+  Trước repair dữ liệu cũ, có thể chạy truy vấn chỉ đọc sau để tìm quan hệ thiếu và visibility lệch với root:
+
+  ```sql
+  SELECT p.id, p."parentId", p."rootId", p.visibility,
+         r.visibility AS "rootVisibility"
+  FROM "post" p
+  LEFT JOIN "post" parent ON parent.id = p."parentId"
+  LEFT JOIN "post" r ON r.id = p."rootId"
+  WHERE (p."parentId" IS NOT NULL AND parent.id IS NULL)
+     OR (p."rootId" IS NOT NULL AND r.id IS NULL)
+     OR (p."parentId" IS NOT NULL AND p."rootId" IS NULL)
+     OR (r.id IS NOT NULL AND p.visibility <> r.visibility);
+  ```
+
+  FK `ON DELETE SET NULL` có thể đã xóa cả hai ID của row từng là reply; truy vấn này không thể nhận ra mọi trường hợp đó. Đối chiếu backup/audit trail để xác định cây và quyền gốc trước khi khôi phục. Không suy đoán root từ tác giả hoặc tự thay visibility hàng loạt. Bản sửa cleanup ngăn mất liên kết mới, không tự phục hồi liên kết đã mất.
 
 ---
 

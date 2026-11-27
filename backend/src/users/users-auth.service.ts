@@ -68,8 +68,8 @@ export class UsersAuthService {
     };
   }
 
-  async incrementOtpAttempts(otpId: string, attempts: number) {
-    await this.repo.incrementOtpAttempts(otpId, attempts);
+  async claimOtpAttempt(otpId: string) {
+    return this.repo.claimOtpAttempt(otpId);
   }
 
   async createOtp(data: {

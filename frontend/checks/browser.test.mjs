@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { checkAuth } from "./auth-browser.mjs";
 import { checkInbox } from "./inbox-browser.mjs";
 
 const browser = await chromium.launch({ headless: true });
@@ -63,6 +64,7 @@ try {
   await page.waitForURL("**/");
   if (process.env.MXH_SHOTS) await page.screenshot({ path: `${process.env.MXH_SHOTS}/mobile.png` });
   await checkInbox(page, process.env.MXH_TEST_URL || "http://localhost:3000");
+  await checkAuth(browser, process.env.MXH_TEST_URL || "http://localhost:3000");
   console.log("Browser: login payload, session transition, mobile navigation and viewport passed");
 } finally {
   await browser.close();

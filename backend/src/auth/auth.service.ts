@@ -128,14 +128,19 @@ export class AuthService {
       );
     }
 
-    const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
-    if (Date.now() > expiresAtMs) {
-      throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.");
+    const claimedOtp = await this.usersAuthService.claimOtpAttempt(otpRecord.id);
+    if (!claimedOtp) {
+      const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
+      if (Date.now() >= expiresAtMs) {
+        throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng lấy mã mới.");
+      }
+      throw new ForbiddenException(
+        "Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.",
+      );
     }
 
     const inputHash = this.hashSha256(dto.code);
-    if (inputHash !== otpRecord.codeHash) {
-      await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
+    if (inputHash !== claimedOtp.codeHash) {
       throw new BadRequestException("Mã OTP không chính xác");
     }
 
@@ -149,7 +154,7 @@ export class AuthService {
     const sessionData = this.createSessionData(user.id, refreshToken, meta);
     const session = await this.usersAuthService.activateAndCreateSession(
       email,
-      otpRecord.id,
+      claimedOtp.id,
       sessionData,
     );
 
@@ -450,28 +455,33 @@ export class AuthService {
       );
     }
 
-    const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
-    if (Date.now() > expiresAtMs) {
-      throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.");
+    const claimedOtp = await this.usersAuthService.claimOtpAttempt(otpRecord.id);
+    if (!claimedOtp) {
+      const expiresAtMs = this.getTimestampMs(otpRecord.expiresAt);
+      if (Date.now() >= expiresAtMs) {
+        throw new BadRequestException("Mã OTP đã hết hiệu lực. Vui lòng yêu cầu mã mới.");
+      }
+      throw new ForbiddenException(
+        "Bạn đã vượt quá số lần thử tối đa. Vui lòng yêu cầu mã OTP mới.",
+      );
     }
 
     const inputHash = this.hashSha256(dto.code);
-    if (inputHash !== otpRecord.codeHash) {
-      await this.usersAuthService.incrementOtpAttempts(otpRecord.id, otpRecord.attempts + 1);
+    if (inputHash !== claimedOtp.codeHash) {
       throw new BadRequestException("Mã OTP không chính xác.");
     }
 
     const passwordHash = await argon2.hash(dto.newPassword);
     await this.usersAuthService.resetPasswordAndRevokeSessions(
       email,
-      otpRecord.id,
-      otpRecord.userId,
+      claimedOtp.id,
+      claimedOtp.userId,
       passwordHash,
     );
 
-    if (otpRecord.userId) {
+    if (claimedOtp.userId) {
       this.eventEmitter.emit(AUTH_EVENTS.USER_SESSIONS_REVOKED, {
-        userId: otpRecord.userId,
+        userId: claimedOtp.userId,
       } satisfies UserSessionsRevokedEvent);
     }
 

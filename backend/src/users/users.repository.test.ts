@@ -49,6 +49,35 @@ for (const resetPassword of [false, true]) {
   });
 }
 
+test("claims one OTP attempt atomically and returns the claimed snapshot", async () => {
+  const expiresAt = new Date(Date.now() + 60_000);
+  const { prisma, plans } = createOrmTestClient({
+    query: () => [
+      {
+        id: "otp-id",
+        codeHash: "hash",
+        attempts: 5,
+        expiresAt,
+        userId: "user-id",
+      },
+    ],
+  });
+  const repository = new UsersRepository(prisma);
+
+  const claimed = await repository.claimOtpAttempt("otp-id");
+
+  assert.deepEqual(claimed, {
+    id: "otp-id",
+    codeHash: "hash",
+    attempts: 5,
+    expiresAt,
+    userId: "user-id",
+  });
+  assert.equal(plans.length, 1);
+  assert.match(JSON.stringify(plans[0].ast), /attempts/);
+  assert.match(JSON.stringify(plans[0].ast), /CURRENT_TIMESTAMP/);
+});
+
 for (const method of ["listFollowers", "listFollowing"] as const) {
   test(`${method} compiles a service cursor using the actual follow column`, async () => {
     const { prisma, plans } = createOrmTestClient();

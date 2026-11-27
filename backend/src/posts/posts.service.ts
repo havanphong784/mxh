@@ -186,9 +186,7 @@ export class PostsService {
 
     await this.postRepository.updatePostAndReplies(postId, updatePayload, dto.visibility);
 
-    const updated = await this.postRepository.findByIdForResponse(postId);
-
-    return this.toPostResponse(updated);
+    return this.getPostById(postId, userId);
   }
 
   async deletePost(postId: string, userId: string) {
@@ -1010,7 +1008,7 @@ export class PostsService {
   }
 
   async reconcileCounters(targetPostId?: string) {
-    const posts = await this.postRepository.listActivePosts(targetPostId);
+    const posts = await this.postRepository.listPostsForCounterReconciliation(targetPostId);
     let correctedCount = 0;
     const discrepancies: any[] = [];
     const countsByPostId = new Map<string, any>();

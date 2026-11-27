@@ -35,6 +35,7 @@ export function createOrmTestClient(
   const client = {
     ...db,
     orm: tables,
+    runtime: () => runtime,
     transaction: async <T>(
       callback: (tx: { orm: typeof tables; execute: RuntimeQueryable["execute"] }) => Promise<T>,
     ) => callback({ orm: tables, execute: runtime.execute }),

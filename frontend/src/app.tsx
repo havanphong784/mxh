@@ -76,7 +76,11 @@ export function App() {
   useEffect(() => {
     let active = true;
     const epoch = authEpoch.current;
-    const clear = sessionClient.onExpired(() => setSession({ phase: "ready", user: null }));
+    const clear = sessionClient.onExpired((reason) => {
+      authEpoch.current += 1;
+      setSession({ phase: "ready", user: null });
+      if (reason === "peer") setStartup((value) => value + 1);
+    });
     const controller = new AbortController();
     async function start() {
       try {
