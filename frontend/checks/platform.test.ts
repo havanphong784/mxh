@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AuthSyncMessage } from "../src/api.ts";
+import { createArrivalBarrier } from "./async-barrier.mjs";
+
+test("arrival barrier holds the first request until its peer arrives", async () => {
+  const arrive = createArrivalBarrier(2);
+  let released = false;
+  const first = arrive().then(() => {
+    released = true;
+  });
+  await Promise.resolve();
+  assert.equal(released, false, "the first request cannot rotate a cookie before its peer arrives");
+
+  await Promise.all([first, arrive()]);
+  assert.equal(released, true);
+});
+
+test("arrival barrier rejects a missing peer within its configured timeout", {
+  timeout: 1000,
+}, async () => {
+  const arrive = createArrivalBarrier(2, 20);
+  await assert.rejects(arrive(), /arrival barrier.*timed out/i);
+});
 
 const loadApi = () => import("../src/api.ts");
 const loadRoutes = () => import("../src/routes.ts");
