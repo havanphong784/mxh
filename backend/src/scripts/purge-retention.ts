@@ -3,6 +3,8 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../app.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
+const TOMBSTONE_PURGE_BATCH_SIZE = 200;
+
 export interface PurgeRetentionResult {
   deletedOtps: number;
   deletedSessions: number;
@@ -37,19 +39,35 @@ export async function executePurgeRetention(prisma: PrismaService): Promise<Purg
     .affectedCount()
     .build();
 
-  // Lock first, then inspect relationships in a fresh statement snapshot. This
-  // serializes with FK inserts; counters alone cannot authorize a hard delete.
-  const postLocks = prisma.client.raw.sql`
-    SELECT id FROM "post" WHERE "isDeleted" = true ORDER BY id FOR UPDATE
-  `
-    .returnsRow({ id: "pg/text@1" })
-    .build();
-  const [otpRes, sessionRes, notifRes, postRes] = await prisma.client.transaction(async (tx) => {
+  const [otpRes, sessionRes, notifRes] = await prisma.client.transaction(async (tx) => {
     const o = await tx.execute(otpPlan);
     const s = await tx.execute(sessionPlan);
     const n = await tx.execute(notifPlan);
-    const locked = await tx.query(postLocks);
-    const postPlan = prisma.client.raw.sql`
+    return [o, s, n];
+  });
+
+  // Filter before limiting so retained ancestors cannot starve eligible rows.
+  const postLocks = prisma.client.raw.sql`
+    SELECT candidate.id FROM "post" AS candidate
+    WHERE candidate."isDeleted" = true
+      AND NOT EXISTS (
+        SELECT 1 FROM "post" AS child
+        WHERE child."parentId" = candidate.id OR child."rootId" = candidate.id
+      )
+    ORDER BY candidate.id
+    LIMIT ${TOMBSTONE_PURGE_BATCH_SIZE}
+    FOR UPDATE SKIP LOCKED
+  `
+    .returnsRow({ id: "pg/text@1" })
+    .build();
+  let deletedTombstonePosts = 0;
+  while (true) {
+    // Release this batch's locks before opening the next transaction. Recheck
+    // relationships in a fresh statement after locking to serialize FK inserts.
+    const batch = await prisma.client.transaction(async (tx) => {
+      const locked = await tx.query(postLocks);
+      if (locked.length === 0) return { candidates: 0, deleted: 0 };
+      const postPlan = prisma.client.raw.sql`
         DELETE FROM "post" AS candidate
         WHERE candidate.id IN (
           SELECT jsonb_array_elements_text(${JSON.stringify(locked.map((row) => row.id))}::jsonb)
@@ -60,17 +78,20 @@ export async function executePurgeRetention(prisma: PrismaService): Promise<Purg
             WHERE child."parentId" = candidate.id OR child."rootId" = candidate.id
           )
       `
-      .affectedCount()
-      .build();
-    const p = await tx.execute(postPlan);
-    return [o, s, n, p];
-  });
+        .affectedCount()
+        .build();
+      const result = await tx.execute(postPlan);
+      return { candidates: locked.length, deleted: result?.affectedRows ?? 0 };
+    });
+    deletedTombstonePosts += batch.deleted;
+    if (batch.candidates === 0) break;
+  }
 
   return {
     deletedOtps: otpRes?.affectedRows ?? 0,
     deletedSessions: sessionRes?.affectedRows ?? 0,
     deletedNotifications: notifRes?.affectedRows ?? 0,
-    deletedTombstonePosts: postRes?.affectedRows ?? 0,
+    deletedTombstonePosts,
   };
 }
 

@@ -239,6 +239,65 @@ test("purge does not delete a new tombstone outside its locked candidate set", a
   await assertProtected(root.id, child.id, root.id);
 });
 
+test("purge drains 201 orphan tombstones in separate transactions of at most 200 candidates", async () => {
+  const tombstones = await Promise.all(
+    Array.from({ length: 201 }, (_, index) =>
+      prisma.client.orm.public.Post.create({
+        id: `batch_${rootAuthor.id}_${index.toString().padStart(3, "0")}`,
+        authorId: rootAuthor.id,
+        isDeleted: true,
+        content: null,
+      }),
+    ),
+  );
+  const batches: { transaction: number; size: number }[] = [];
+  let transactions = 0;
+  let activeTransactions = 0;
+  const wrapped = {
+    client: {
+      raw: prisma.client.raw,
+      transaction: (callback: Parameters<typeof prisma.client.transaction>[0]) => {
+        const transaction = ++transactions;
+        assert.equal(activeTransactions, 0, "previous transaction must release its locks first");
+        activeTransactions++;
+        return prisma.client
+          .transaction(async (tx) => {
+            const proxy = new Proxy(tx, {
+              get(target, property) {
+                if (property !== "query") return Reflect.get(target, property);
+                return async (...args: Parameters<typeof tx.query>) => {
+                  const result = await tx.query(...args);
+                  batches.push({ transaction, size: result.length });
+                  return result;
+                };
+              },
+            });
+            return callback(proxy);
+          })
+          .finally(() => {
+            activeTransactions--;
+          });
+      },
+    },
+  } as unknown as InstanceType<typeof PrismaService>;
+
+  const result = await executePurgeRetention(wrapped);
+
+  assert.equal(result.deletedTombstonePosts, 201);
+  assert.ok(
+    (await Promise.all(tombstones.map(({ id }) => row(id)))).every((post) => post === null),
+    "all fixture tombstones must be drained",
+  );
+  assert.ok(
+    batches.every(({ size }) => size <= 200),
+    JSON.stringify(batches),
+  );
+  const nonEmpty = batches.filter(({ size }) => size > 0);
+  assert.ok(nonEmpty.length >= 2, "processing must span multiple non-empty batches");
+  assert.equal(new Set(nonEmpty.map(({ transaction }) => transaction)).size, nonEmpty.length);
+  assert.equal(batches.at(-1)?.size, 0, "drain stops after an empty candidate selection");
+});
+
 test("purge removes actual orphan tombstones even with a stale positive counter", async () => {
   const root = await post(rootAuthor.id);
   await prisma.client.orm.public.Post.where({ id: root.id }).update({
