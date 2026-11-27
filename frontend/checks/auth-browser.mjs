@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import { createArrivalBarrier } from "./async-barrier.mjs";
 
 const jwt = (sub, sessionId = sub) =>
   `e30.${Buffer.from(JSON.stringify({ sub, sessionId, exp: Math.floor(Date.now() / 1000) + 600 })).toString("base64url")}.fixture`;
@@ -154,6 +155,8 @@ async function checkRecovery(browser, url, coordinated, socketOrigin, cleanupSoc
   };
   let refreshes = 0;
   let cookie = "initial";
+  const fallbackCookies = [];
+  const arrive = createArrivalBarrier(2);
   let valid = jwt("recovery", "0");
   const authorizations = [];
   const trace = [];
@@ -179,7 +182,20 @@ async function checkRecovery(browser, url, coordinated, socketOrigin, cleanupSoc
         attempt: refreshes,
         cookieMatches: supplied?.split("; ").includes(`refresh=${cookie}`),
       });
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      if (coordinated) await new Promise((resolve) => setTimeout(resolve, 30));
+      else {
+        fallbackCookies.push(supplied);
+        await arrive();
+        assert.equal(
+          fallbackCookies.length,
+          2,
+          "both fallback requests must arrive before rotation",
+        );
+        assert.ok(
+          fallbackCookies.every((header) => header?.split("; ").includes("refresh=initial")),
+          "both fallback requests must submit the original refresh cookie",
+        );
+      }
       if (!supplied?.split("; ").includes(`refresh=${cookie}`))
         return route.fulfill({ status: 401, json: {} });
       cookie = `rotation-${refreshes}`;
@@ -240,6 +256,8 @@ async function checkRecovery(browser, url, coordinated, socketOrigin, cleanupSoc
         ),
       );
       assert.equal(refreshes, 2, "unsupported coordination must remain bounded");
+      assert.equal(fallbackCookies.length, 2);
+      assert.ok(fallbackCookies.every((header) => header?.split("; ").includes("refresh=initial")));
       const loggedOut = await Promise.all(
         pages.map((page) => page.getByRole("heading", { name: "Đăng nhập", exact: true }).count()),
       );

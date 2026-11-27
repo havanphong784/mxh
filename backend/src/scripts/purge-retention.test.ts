@@ -5,8 +5,14 @@ import { executePurgeRetention } from "./purge-retention.js";
 
 test("executePurgeRetention deletes expired OTPs, revoked sessions, old read notifications, and orphan tombstone posts", async () => {
   let executedQueries = 0;
+  let candidateQueries = 0;
+  const candidates = [[{ id: "tombstone-1" }], [{ id: "tombstone-2" }], []];
   const mockTx = {
-    query: async () => [{ id: "tombstone" }],
+    query: async () => {
+      const batch = candidates[candidateQueries++];
+      assert.ok(batch, "purge must stop after the empty batch");
+      return batch;
+    },
     execute: async (_plan: any) => {
       executedQueries++;
       return { affectedRows: 2 };
@@ -33,9 +39,10 @@ test("executePurgeRetention deletes expired OTPs, revoked sessions, old read not
 
   const result = await executePurgeRetention(mockPrisma as any);
 
-  assert.equal(executedQueries, 4);
+  assert.equal(candidateQueries, 3);
+  assert.equal(executedQueries, 5);
   assert.equal(result.deletedOtps, 2);
   assert.equal(result.deletedSessions, 2);
   assert.equal(result.deletedNotifications, 2);
-  assert.equal(result.deletedTombstonePosts, 2);
+  assert.equal(result.deletedTombstonePosts, 4);
 });

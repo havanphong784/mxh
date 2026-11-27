@@ -374,7 +374,7 @@ Dưới đây là **5 kịch bản sự cố thực chiến** điển hình nh�
      npm run reconcile:counters
      ```
   2. Script đối soát cả bài active và tombstone còn giữ. `replyCount` là số **direct reply rows còn tồn tại**, gồm tombstone cần giữ cho descendants; không phải tổng replies còn hiển thị. Các counter tương tác khác vẫn đếm quan hệ tương ứng.
-  3. Kiểm tra `totalScanned` và `correctedCount` trong log. Cleanup/purge chỉ hard-delete tombstone không còn row tham chiếu `parentId` hoặc `rootId`, sau khi lấy row lock trong transaction; counter bằng 0 không đủ để cho phép xóa.
+  3. Kiểm tra `totalScanned` và `correctedCount` trong log. Cleanup/purge chỉ hard-delete tombstone không còn row tham chiếu `parentId` hoặc `rootId`, sau khi lấy row lock trong transaction; counter bằng 0 không đủ để cho phép xóa. Purge chọn tối đa 200 orphan tombstones mỗi batch, theo ID và `FOR UPDATE SKIP LOCKED`; tombstone còn được tham chiếu không chiếm chỗ trong batch. Mỗi batch dùng transaction riêng, kiểm tra lại cả hai quan hệ bằng statement mới sau khi khóa, rồi commit trước khi chọn batch tiếp theo. Một lần chạy tiếp tục đến khi không chọn được candidate, cộng dồn số row đã xóa; row bị worker khác khóa sẽ được bỏ qua để xử lý ở lần chạy sau. OTP/session/notification vẫn được dọn một lần trước vòng lặp tombstone.
 
   Trước repair dữ liệu cũ, có thể chạy truy vấn chỉ đọc sau để tìm quan hệ thiếu và visibility lệch với root:
 
