@@ -97,8 +97,8 @@ export async function checkAuth(browser, url) {
     }
   };
   try {
-    await checkRecovery(browser, url, true, socketOrigin);
-    await checkRecovery(browser, url, false, socketOrigin);
+    await checkRecovery(browser, url, true, socketOrigin, () => io.disconnectSockets(true));
+    await checkRecovery(browser, url, false, socketOrigin, () => io.disconnectSockets(true));
     await Promise.all([first.goto(`${url}/login`), second.goto(`${url}/login`)]);
     await login(first, "alice");
     await waitFor(() => [...connected.values()].includes(tokens.alice));
@@ -134,7 +134,7 @@ export async function checkAuth(browser, url) {
   }
 }
 
-async function checkRecovery(browser, url, coordinated, socketOrigin) {
+async function checkRecovery(browser, url, coordinated, socketOrigin, cleanupSockets) {
   const context = await browser.newContext();
   if (!coordinated)
     await context.addInitScript(() => {
@@ -256,5 +256,6 @@ async function checkRecovery(browser, url, coordinated, socketOrigin) {
   } finally {
     await context.unrouteAll({ behavior: "ignoreErrors" });
     await context.close();
+    cleanupSockets?.();
   }
 }
